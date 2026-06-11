@@ -77,7 +77,6 @@ android {
     buildTypes {
         debug {
             versionNameSuffix = "-debug"
-            versionCode = debugVersionCode
             isDebuggable = true
             isMinifyEnabled = false
             isShrinkResources = false
@@ -85,7 +84,7 @@ android {
 
         create("beta") {
             versionNameSuffix = "-beta"
-            versionCode = betaVersionCode
+            signingConfig = signingConfigs.findByName("release")
             isDebuggable = false
             isMinifyEnabled = true
             isShrinkResources = true
@@ -97,7 +96,6 @@ android {
         }
 
         release {
-            versionCode = releaseVersionCode
             signingConfig = signingConfigs.findByName("release")
             if (signingConfig == null) {
                 project.logger.lifecycle(
@@ -114,16 +112,6 @@ android {
         }
     }
 
-    // 自定义APK输出文件名
-    applicationVariants.all {
-        outputs.all {
-            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            val appName = "PureDuPan"
-            val version = versionName
-            val buildType = buildType.name
-            output.outputFileName = "${appName}-v${version}-${buildType}.apk"
-        }
-    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -142,6 +130,28 @@ android {
                 "kotlin/**",
                 "DebugProbesKt.bin",
             )
+        }
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.forEach { output ->
+            val appName = "PureDuPan"
+            val versionName = variant.name.let {
+                when {
+                    it.contains("debug", ignoreCase = true) -> "${android.defaultConfig.versionName}-debug"
+                    it.contains("beta", ignoreCase = true) -> "${android.defaultConfig.versionName}-beta"
+                    else -> android.defaultConfig.versionName
+                }
+            }
+            val buildType = variant.buildType ?: "release"
+            output.versionName.set(versionName)
+            output.versionCode.set(when (buildType) {
+                "debug" -> 10099
+                "beta" -> 10050
+                else -> 10000
+            })
         }
     }
 }

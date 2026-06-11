@@ -19,10 +19,19 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
+      - name: 解码签名密钥
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > key.jks
+
       - name: 授予Gradle执行权限
         run: chmod +x gradlew
 
       - name: 构建Beta APK
+        env:
+          RELEASE_STORE_FILE: ../key.jks
+          RELEASE_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleBeta --stacktrace
 
       - name: 上传Beta APK
