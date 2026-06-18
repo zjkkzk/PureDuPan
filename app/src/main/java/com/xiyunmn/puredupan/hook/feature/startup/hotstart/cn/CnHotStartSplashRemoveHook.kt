@@ -1,4 +1,4 @@
-package com.xiyunmn.puredupan.hook.feature.ad.hotstart.cn
+package com.xiyunmn.puredupan.hook.feature.startup.hotstart.cn
 
 import android.app.Activity
 import com.xiyunmn.puredupan.hook.config.ConfigManager

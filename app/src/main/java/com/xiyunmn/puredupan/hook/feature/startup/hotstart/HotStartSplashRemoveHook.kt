@@ -1,7 +1,7 @@
-package com.xiyunmn.puredupan.hook.feature.ad.hotstart
+package com.xiyunmn.puredupan.hook.feature.startup.hotstart
 
-import com.xiyunmn.puredupan.hook.feature.ad.hotstart.cn.CnHotStartSplashRemoveHook
-import com.xiyunmn.puredupan.hook.feature.ad.hotstart.intl.IntlHotStartSplashRemoveHook
+import com.xiyunmn.puredupan.hook.feature.startup.hotstart.cn.CnHotStartSplashRemoveHook
+import com.xiyunmn.puredupan.hook.feature.startup.hotstart.intl.IntlHotStartSplashRemoveHook
 import com.xiyunmn.puredupan.hook.host.HostFlavor
 import com.xiyunmn.puredupan.hook.host.HostRegistry
 

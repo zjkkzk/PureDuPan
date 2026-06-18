@@ -1,9 +1,9 @@
-package com.xiyunmn.puredupan.hook.feature.ad
+package com.xiyunmn.puredupan.hook.feature.startup
 
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
-import com.xiyunmn.puredupan.hook.feature.ad.hotstart.HotStartSplashRemoveHook
+import com.xiyunmn.puredupan.hook.feature.startup.hotstart.HotStartSplashRemoveHook
 
 /**
  * 开屏 / 切屏广告拦截 Hook。

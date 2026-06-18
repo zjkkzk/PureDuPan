@@ -7,8 +7,6 @@ import com.xiyunmn.puredupan.hook.feature.ad.BusinessOpDialogBlockHook
 import com.xiyunmn.puredupan.hook.feature.ad.FullScreenBackupBlockHook
 import com.xiyunmn.puredupan.hook.feature.ad.LuckyCouponBlockHook
 import com.xiyunmn.puredupan.hook.feature.ad.SharePushGuideBlockHook
-import com.xiyunmn.puredupan.hook.feature.ad.SplashBypassCore
-import com.xiyunmn.puredupan.hook.feature.ad.SplashInterstitialBlockHook
 import com.xiyunmn.puredupan.hook.feature.ad.SvipIconGuideBlockHook
 import com.xiyunmn.puredupan.hook.feature.ad.UpdateDialogBlockHook
 import com.xiyunmn.puredupan.hook.feature.performance.AigcBackgroundComponentBlockHook
@@ -24,6 +22,9 @@ import com.xiyunmn.puredupan.hook.feature.performance.OemPushServiceBlockHook
 import com.xiyunmn.puredupan.hook.feature.performance.SwanPreloadBlockHook
 import com.xiyunmn.puredupan.hook.feature.performance.ThumbnailOperatorServiceBlockHook
 import com.xiyunmn.puredupan.hook.feature.performance.VideoAdPreloadBlockHook
+import com.xiyunmn.puredupan.hook.feature.startup.SplashBypassCore
+import com.xiyunmn.puredupan.hook.feature.startup.SplashInterstitialBlockHook
+import com.xiyunmn.puredupan.hook.feature.startup.hotstart.HotStartSplashRemoveHook
 import com.xiyunmn.puredupan.hook.feature.ui.AlbumBackupBarBlockHook
 import com.xiyunmn.puredupan.hook.feature.ui.BottomAiTabReplaceHook
 import com.xiyunmn.puredupan.hook.feature.ui.BottomBarBadgeBlockHook
@@ -132,7 +133,7 @@ internal object HookInstallPlanner {
                 context.host.capabilities.supportsStandaloneHotStartSplashRemove &&
                 context.host.capabilities.supportsHotStartSplashAd &&
                 settings.isHotStartSplashRemoveEnabled
-        }) { cl -> com.xiyunmn.puredupan.hook.feature.ad.hotstart.HotStartSplashRemoveHook.hook(cl) },
+        }) { cl -> HotStartSplashRemoveHook.hook(cl) },
         HookSpec("SplashBypassCore", { context, settings, _ ->
             context.isMain && settings.isSplashInterstitialBlockEnabled
         }) { cl -> SplashBypassCore.hook(cl) },

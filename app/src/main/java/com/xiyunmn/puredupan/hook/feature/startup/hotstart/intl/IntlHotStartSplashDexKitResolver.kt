@@ -1,4 +1,4 @@
-package com.xiyunmn.puredupan.hook.feature.ad.hotstart.intl
+package com.xiyunmn.puredupan.hook.feature.startup.hotstart.intl
 
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.XposedCompat
