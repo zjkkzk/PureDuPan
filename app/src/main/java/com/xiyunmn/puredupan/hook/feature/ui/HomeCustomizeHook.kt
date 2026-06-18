@@ -35,9 +35,11 @@ object HomeCustomizeHook {
     private const val FEED_TIP_RECOMMENDATION_TEXT_ID = "recommendation_text"
     private const val FEED_TIP_HEADER_FIELD = "feedSettingTipViewHeader"
     private const val INIT_FEED_SETTING_TIP_HEADER_METHOD = "initFeedSettingTipHeader"
+    private const val INIT_BANNER_CARD_VIEW_METHOD = "initBannerCardView"
     private const val INIT_RECENT_CARD_VIEW_METHOD = "initRecentCardView"
     private const val INIT_SAVE_CARD_VIEW_METHOD = "initSaveCardView"
     private const val INIT_STORY_CARD_VIEW_METHOD = "initStoryCardView"
+    private const val HOME_BANNER_FIELD = "headerBanner"
     private const val HOME_RECENT_CARD_FIELD = "headerRecent"
     private const val HOME_SAVE_CARD_FIELD = "headerMySaves"
     private const val HOME_MEMORIES_CARD_FIELD = "headerMemories"
@@ -255,6 +257,25 @@ object HomeCustomizeHook {
                 XposedCompat.logD("[HomeCustomizeHook] $className.$INIT_FEED_SETTING_TIP_HEADER_METHOD not found")
             }
 
+            val initBannerCardView = XposedCompat.findMethodOrNull(
+                clazz,
+                INIT_BANNER_CARD_VIEW_METHOD,
+            )
+            if (initBannerCardView != null) {
+                mod.hook(initBannerCardView).intercept { chain ->
+                    val result = chain.proceed()
+                    if (isHomeBannerHidden()) {
+                        hideView(result as? View)
+                        hideHomeBannerField(chain.thisObject)
+                        XposedCompat.logD("[HomeCustomizeHook] $className.$INIT_BANNER_CARD_VIEW_METHOD hidden")
+                    }
+                    result
+                }
+                count += 1
+            } else {
+                XposedCompat.logD("[HomeCustomizeHook] $className.$INIT_BANNER_CARD_VIEW_METHOD not found")
+            }
+
             val onCreateView = XposedCompat.findMethodOrNull(
                 clazz,
                 "onCreateView",
@@ -267,6 +288,7 @@ object HomeCustomizeHook {
                     val result = chain.proceed()
                     attachHomeCustomizeWatcher(result as? View)
                     hideFeedTipHeaderField(chain.thisObject)
+                    hideHomeBannerField(chain.thisObject)
                     hideHomeSectionFields(chain.thisObject)
                     result
                 }
@@ -286,6 +308,7 @@ object HomeCustomizeHook {
                     val result = chain.proceed()
                     attachHomeCustomizeWatcher(chain.args.firstOrNull() as? View)
                     hideFeedTipHeaderField(chain.thisObject)
+                    hideHomeBannerField(chain.thisObject)
                     hideHomeSectionFields(chain.thisObject)
                     result
                 }
@@ -345,6 +368,9 @@ object HomeCustomizeHook {
         }
         if (ConfigManager.isHomeFeedTipHidden) {
             hideFeedTipViews(root, resources, packageName)
+        }
+        if (ConfigManager.isHomeBannerHidden) {
+            hideHomeBannerViews(root, resources, packageName)
         }
         hideHomeSectionCards(root)
     }
@@ -415,6 +441,22 @@ object HomeCustomizeHook {
         }
     }
 
+    private fun hideHomeBannerField(fragment: Any?) {
+        if (!isHomeBannerHidden() || fragment == null) return
+        runCatching {
+            var current: Class<*>? = fragment.javaClass
+            while (current != null) {
+                val field = current.declaredFields.firstOrNull { it.name == HOME_BANNER_FIELD }
+                if (field != null) {
+                    field.isAccessible = true
+                    hideView(field.get(fragment) as? View)
+                    return
+                }
+                current = current.superclass
+            }
+        }
+    }
+
     private fun hideHomeSectionFields(fragment: Any?) {
         if (fragment == null) return
         homeSectionTargets.forEach { target ->
@@ -442,6 +484,9 @@ object HomeCustomizeHook {
     }
 
     private fun hideHomeSectionCards(root: View) {
+        if (ConfigManager.isHomeBannerHidden) {
+            hideHomeBannerCards(root)
+        }
         homeSectionTargets.forEach { target ->
             if (isHomeSectionHidden(target)) {
                 hideHomeSectionCards(root, target)
@@ -464,6 +509,36 @@ object HomeCustomizeHook {
         val simpleName = view.javaClass.simpleName
         return target.classNames.any { targetClassName ->
             className == targetClassName || simpleName == targetClassName.substringAfterLast('.')
+        }
+    }
+
+    private fun hideHomeBannerViews(
+        root: View,
+        resources: android.content.res.Resources,
+        packageName: String,
+    ) {
+        hideViewByEntryName(root, resources, packageName, "header_banner") {
+            XposedCompat.logD("[HomeCustomizeHook] home banner hidden by id: header_banner")
+        }
+        hideViewByEntryName(root, resources, packageName, "banner") {
+            XposedCompat.logD("[HomeCustomizeHook] home banner hidden by id: banner")
+        }
+    }
+
+    private fun hideHomeBannerCards(view: View) {
+        val viewIdName = runCatching {
+            if (view.id == View.NO_ID) null
+            else view.resources.getResourceEntryName(view.id)
+        }.getOrNull()
+        if (
+            viewIdName == "header_banner" ||
+            viewIdName == "banner"
+        ) {
+            hideView(view)
+        }
+        val group = view as? ViewGroup ?: return
+        for (index in 0 until group.childCount) {
+            hideHomeBannerCards(group.getChildAt(index))
         }
     }
 
@@ -567,6 +642,7 @@ object HomeCustomizeHook {
                 ConfigManager.isHomeSearchPlaceholderHidden ||
                     ConfigManager.isHomeSearchAigcIconHidden ||
                     ConfigManager.isHomeFeedTipHidden ||
+                    ConfigManager.isHomeBannerHidden ||
                     hasHomeSectionHiddenOption()
             )
     }
@@ -577,6 +653,10 @@ object HomeCustomizeHook {
 
     private fun isFeedTipHidden(): Boolean {
         return ConfigManager.isHomeCustomizeEnabled && ConfigManager.isHomeFeedTipHidden
+    }
+
+    private fun isHomeBannerHidden(): Boolean {
+        return ConfigManager.isHomeCustomizeEnabled && ConfigManager.isHomeBannerHidden
     }
 
     private fun hasHomeSectionHiddenOption(): Boolean {

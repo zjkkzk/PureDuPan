@@ -350,10 +350,12 @@ internal object HookInstallPlanner {
                 settings.isHomeSearchPlaceholderHidden ||
                 settings.isHomeSearchAigcIconHidden ||
                 settings.isHomeFeedTipHidden ||
+                settings.isHomeBannerHidden ||
                 settings.isHomeMemoriesSectionHidden ||
                 settings.isHomeSaveSectionHidden ||
                 settings.isHomeRecentSectionHidden,
             hasBottomBarTabOption = settings.isBottomBarTabFileHidden ||
+                settings.isBottomBarTabAigcHidden ||
                 settings.isBottomBarTabShareHidden ||
                 settings.isBottomBarTabVipHidden ||
                 settings.isBottomBarTabHomeHidden ||

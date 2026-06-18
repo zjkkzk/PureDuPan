@@ -722,6 +722,7 @@ object SettingsMenuHook {
                 hideFile = prefs.getBoolean(ConfigManager.KEY_HIDE_TAB_FILE, false),
                 hideShare = prefs.getBoolean(ConfigManager.KEY_HIDE_TAB_SHARE, false),
                 hideVip = prefs.getBoolean(ConfigManager.KEY_HIDE_TAB_VIP, false),
+                hideAigc = prefs.getBoolean(ConfigManager.KEY_HIDE_TAB_AIGC, false),
                 hideHome = prefs.getBoolean(ConfigManager.KEY_HIDE_TAB_HOME, false),
                 hideMine = prefs.getBoolean(ConfigManager.KEY_HIDE_TAB_MINE, false),
             )
@@ -772,6 +773,10 @@ object SettingsMenuHook {
                 context, prefs, UiText.Settings.BOTTOM_BAR_HIDE_TAB_VIP_LABEL,
                 null, null, padding, true, initialSelection.hideVip,
             )
+            val aigcRow = createSwitchRow(
+                context, prefs, UiText.Settings.BOTTOM_BAR_HIDE_TAB_AIGC_LABEL,
+                null, null, padding, true, initialSelection.hideAigc,
+            )
             val mineRow = createSwitchRow(
                 context, prefs, UiText.Settings.BOTTOM_BAR_HIDE_TAB_MINE_LABEL,
                 null, null, padding, true, initialSelection.hideMine,
@@ -781,6 +786,7 @@ object SettingsMenuHook {
             val showHideFile = isFeatureVisible(context, ConfigManager.KEY_HIDE_TAB_FILE)
             val showHideShare = isFeatureVisible(context, ConfigManager.KEY_HIDE_TAB_SHARE)
             val showHideVip = isFeatureVisible(context, ConfigManager.KEY_HIDE_TAB_VIP)
+            val showHideAigc = isFeatureVisible(context, ConfigManager.KEY_HIDE_TAB_AIGC)
             val showHideMine = isFeatureVisible(context, ConfigManager.KEY_HIDE_TAB_MINE)
             addTitledSection(
                 root = root,
@@ -799,6 +805,7 @@ object SettingsMenuHook {
                     context,
                     ConfigManager.KEY_HIDE_TAB_HOME to homeRow,
                     ConfigManager.KEY_HIDE_TAB_FILE to fileRow,
+                    ConfigManager.KEY_HIDE_TAB_AIGC to aigcRow,
                     ConfigManager.KEY_HIDE_TAB_SHARE to shareRow,
                     ConfigManager.KEY_HIDE_TAB_VIP to vipRow,
                     ConfigManager.KEY_HIDE_TAB_MINE to mineRow,
@@ -810,11 +817,12 @@ object SettingsMenuHook {
             val fileSwitch = findSwitchView(fileRow)
             val shareSwitch = findSwitchView(shareRow)
             val vipSwitch = findSwitchView(vipRow)
+            val aigcSwitch = findSwitchView(aigcRow)
             val mineSwitch = findSwitchView(mineRow)
             val badgeSwitch = findSwitchView(badgeRow)
             if (replaceAiSwitch == null || badgeSwitch == null ||
                 homeSwitch == null || fileSwitch == null || shareSwitch == null ||
-                vipSwitch == null || mineSwitch == null
+                vipSwitch == null || aigcSwitch == null || mineSwitch == null
             ) {
                 XposedCompat.logW("[SettingsMenuHook] showBottomBarDialog failed: switch view missing")
                 return
@@ -833,6 +841,7 @@ object SettingsMenuHook {
                         hideFile = showHideFile && fileSwitch.isChecked,
                         hideShare = showHideShare && shareSwitch.isChecked,
                         hideVip = showHideVip && vipSwitch.isChecked,
+                        hideAigc = showHideAigc && aigcSwitch.isChecked,
                         hideMine = showHideMine && mineSwitch.isChecked,
                     )
                     if (!rawSelection.hasVisibleTab()) {
@@ -851,6 +860,7 @@ object SettingsMenuHook {
                             normalized.hideFile ||
                             normalized.hideShare ||
                             normalized.hideVip ||
+                            normalized.hideAigc ||
                             normalized.hideMine
                     prefs.edit()
                         .putBoolean(ConfigManager.KEY_CUSTOM_BOTTOM_BAR, hasEnabledBottomBarOption)
@@ -860,6 +870,7 @@ object SettingsMenuHook {
                         .putBoolean(ConfigManager.KEY_HIDE_TAB_FILE, normalized.hideFile)
                         .putBoolean(ConfigManager.KEY_HIDE_TAB_SHARE, normalized.hideShare)
                         .putBoolean(ConfigManager.KEY_HIDE_TAB_VIP, normalized.hideVip)
+                        .putBoolean(ConfigManager.KEY_HIDE_TAB_AIGC, normalized.hideAigc)
                         .putBoolean(ConfigManager.KEY_HIDE_TAB_MINE, normalized.hideMine)
                         .apply()
                     Toast.makeText(
@@ -1277,6 +1288,16 @@ object SettingsMenuHook {
                 true,
                 prefs.getBoolean(ConfigManager.KEY_HIDE_HOME_FEED_TIP, false),
             )
+            val bannerRow = createSwitchRow(
+                context,
+                prefs,
+                UiText.Settings.HIDE_HOME_BANNER_LABEL,
+                UiText.Settings.HIDE_HOME_BANNER_DESC,
+                null,
+                padding,
+                true,
+                prefs.getBoolean(ConfigManager.KEY_HIDE_HOME_BANNER, false),
+            )
 
             addTitledSection(
                 root = root,
@@ -1288,6 +1309,7 @@ object SettingsMenuHook {
                     ConfigManager.KEY_HIDE_HOME_SEARCH_PLACEHOLDER to placeholderRow,
                     ConfigManager.KEY_HIDE_HOME_SEARCH_AIGC_ICON to aigcIconRow,
                     ConfigManager.KEY_HIDE_HOME_FEED_TIP to feedTipRow,
+                    ConfigManager.KEY_HIDE_HOME_BANNER to bannerRow,
                 ),
                 addDividerBefore = root.childCount > 0,
             )
@@ -1341,6 +1363,7 @@ object SettingsMenuHook {
             val placeholderSwitch = findSwitchView(placeholderRow)
             val aigcIconSwitch = findSwitchView(aigcIconRow)
             val feedTipSwitch = findSwitchView(feedTipRow)
+            val bannerSwitch = findSwitchView(bannerRow)
             val memoriesSectionSwitch = findSwitchView(memoriesSectionRow)
             val saveSectionSwitch = findSwitchView(saveSectionRow)
             val recentSectionSwitch = findSwitchView(recentSectionRow)
@@ -1349,6 +1372,7 @@ object SettingsMenuHook {
                 placeholderSwitch == null ||
                 aigcIconSwitch == null ||
                 feedTipSwitch == null ||
+                bannerSwitch == null ||
                 memoriesSectionSwitch == null ||
                 saveSectionSwitch == null ||
                 recentSectionSwitch == null
@@ -1374,6 +1398,8 @@ object SettingsMenuHook {
                             aigcIconSwitch.isChecked ||
                             isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_FEED_TIP) &&
                             feedTipSwitch.isChecked ||
+                            isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_BANNER) &&
+                            bannerSwitch.isChecked ||
                             isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_MEMORIES_SECTION) &&
                             memoriesSectionSwitch.isChecked ||
                             isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_SAVE_SECTION) &&
@@ -1392,6 +1418,7 @@ object SettingsMenuHook {
                             aigcIconSwitch.isChecked,
                         )
                         .putBoolean(ConfigManager.KEY_HIDE_HOME_FEED_TIP, feedTipSwitch.isChecked)
+                        .putBoolean(ConfigManager.KEY_HIDE_HOME_BANNER, bannerSwitch.isChecked)
                         .putBoolean(
                             ConfigManager.KEY_HIDE_HOME_MEMORIES_SECTION,
                             memoriesSectionSwitch.isChecked,
@@ -2450,6 +2477,8 @@ object SettingsMenuHook {
             prefs.getBoolean(ConfigManager.KEY_HIDE_HOME_SEARCH_AIGC_ICON, false) ||
             isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_FEED_TIP) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_HOME_FEED_TIP, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_BANNER) &&
+            prefs.getBoolean(ConfigManager.KEY_HIDE_HOME_BANNER, false) ||
             isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_MEMORIES_SECTION) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_HOME_MEMORIES_SECTION, false) ||
             isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_SAVE_SECTION) &&
@@ -2508,6 +2537,8 @@ object SettingsMenuHook {
             prefs.getBoolean(ConfigManager.KEY_HIDE_TAB_SHARE, false) ||
             isFeatureVisible(context, ConfigManager.KEY_HIDE_TAB_VIP) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_TAB_VIP, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_TAB_AIGC) &&
+            prefs.getBoolean(ConfigManager.KEY_HIDE_TAB_AIGC, false) ||
             isFeatureVisible(context, ConfigManager.KEY_HIDE_TAB_HOME) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_TAB_HOME, false) ||
             isFeatureVisible(context, ConfigManager.KEY_HIDE_TAB_MINE) &&

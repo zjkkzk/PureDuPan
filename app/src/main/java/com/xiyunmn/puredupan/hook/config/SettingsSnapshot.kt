@@ -21,6 +21,7 @@ data class SettingsSnapshot(
     val isHomeSearchPlaceholderHidden: Boolean = false,
     val isHomeSearchAigcIconHidden: Boolean = false,
     val isHomeFeedTipHidden: Boolean = false,
+    val isHomeBannerHidden: Boolean = false,
     val isHomeMemoriesSectionHidden: Boolean = false,
     val isHomeSaveSectionHidden: Boolean = false,
     val isHomeRecentSectionHidden: Boolean = false,
@@ -82,6 +83,7 @@ data class SettingsSnapshot(
     val isBottomBarTabFileHidden: Boolean = false,
     val isBottomBarTabShareHidden: Boolean = false,
     val isBottomBarTabVipHidden: Boolean = false,
+    val isBottomBarTabAigcHidden: Boolean = false,
     val isBottomBarTabHomeHidden: Boolean = false,
     val isBottomBarTabMineHidden: Boolean = false,
 

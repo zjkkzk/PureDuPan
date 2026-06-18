@@ -9,6 +9,11 @@ internal object HostFeatureAvailabilityRegistry {
         state = FeatureAvailabilityState.DISABLED,
     )
 
+    private val cnDisabledKeys = setOf(
+        ConfigManager.KEY_HIDE_TAB_AIGC,
+        ConfigManager.KEY_HIDE_HOME_BANNER,
+    )
+
     private val intlDisabledKeys = setOf(
         ConfigManager.KEY_BLOCK_IN_APP_DIALOG,
         ConfigManager.KEY_BLOCK_UPDATE_DIALOG,
@@ -19,12 +24,12 @@ internal object HostFeatureAvailabilityRegistry {
         ConfigManager.KEY_HIDE_HOME_TOP_PROMOTION,
         ConfigManager.KEY_HIDE_HOME_SEARCH_PLACEHOLDER,
         ConfigManager.KEY_HIDE_HOME_SEARCH_AIGC_ICON,
+        ConfigManager.KEY_HIDE_TAB_VIP,
         ConfigManager.KEY_HIDE_RENEW_BUTTON,
         ConfigManager.KEY_REMOVE_GAME_CENTER,
         ConfigManager.KEY_HIDE_ABOUT_ME_AI_COIN_ASSET,
         ConfigManager.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT,
         ConfigManager.KEY_BLOCK_ALBUM_BACKUP_BAR,
-        ConfigManager.KEY_HIDE_TAB_VIP,
         ConfigManager.KEY_MEMBER_CARD_CUSTOMIZE,
         ConfigManager.KEY_REPLACE_MEMBER_CARD_BACKGROUND,
         ConfigManager.KEY_MEMBER_CARD_BACKGROUND_URI,
@@ -63,7 +68,7 @@ internal object HostFeatureAvailabilityRegistry {
 
     fun featureStatusMapFor(packageName: String): Map<String, FeatureAvailabilityStatus> {
         return when (HostRegistry.requireByPackageName(packageName).flavor) {
-            HostFlavor.BAIDU_CN -> emptyMap()
+            HostFlavor.BAIDU_CN -> cnDisabledKeys.associateWith { disabledStatus }
             HostFlavor.BAIDU_INTL -> intlDisabledKeys.associateWith { disabledStatus }
         }
     }

@@ -31,6 +31,7 @@ object ConfigManager {
     const val KEY_HIDE_HOME_SEARCH_PLACEHOLDER = "hide_home_search_placeholder"
     const val KEY_HIDE_HOME_SEARCH_AIGC_ICON = "hide_home_search_aigc_icon"
     const val KEY_HIDE_HOME_FEED_TIP = "hide_home_feed_tip"
+    const val KEY_HIDE_HOME_BANNER = "hide_home_banner"
     const val KEY_HIDE_HOME_MEMORIES_SECTION = "hide_home_memories_section"
     const val KEY_HIDE_HOME_SAVE_SECTION = "hide_home_save_section"
     const val KEY_HIDE_HOME_RECENT_SECTION = "hide_home_recent_section"
@@ -113,6 +114,7 @@ object ConfigManager {
     val isHomeSearchPlaceholderHidden: Boolean get() = settingsSnapshot.isHomeSearchPlaceholderHidden
     val isHomeSearchAigcIconHidden: Boolean get() = settingsSnapshot.isHomeSearchAigcIconHidden
     val isHomeFeedTipHidden: Boolean get() = settingsSnapshot.isHomeFeedTipHidden
+    val isHomeBannerHidden: Boolean get() = settingsSnapshot.isHomeBannerHidden
     val isHomeMemoriesSectionHidden: Boolean get() = settingsSnapshot.isHomeMemoriesSectionHidden
     val isHomeSaveSectionHidden: Boolean get() = settingsSnapshot.isHomeSaveSectionHidden
     val isHomeRecentSectionHidden: Boolean get() = settingsSnapshot.isHomeRecentSectionHidden
@@ -347,6 +349,7 @@ object ConfigManager {
                 featureBoolean(KEY_HIDE_HOME_SEARCH_PLACEHOLDER, false) ||
                 featureBoolean(KEY_HIDE_HOME_SEARCH_AIGC_ICON, false) ||
                 featureBoolean(KEY_HIDE_HOME_FEED_TIP, false) ||
+                featureBoolean(KEY_HIDE_HOME_BANNER, false) ||
                 featureBoolean(KEY_HIDE_HOME_MEMORIES_SECTION, false) ||
                 featureBoolean(KEY_HIDE_HOME_SAVE_SECTION, false) ||
                 featureBoolean(KEY_HIDE_HOME_RECENT_SECTION, false)
@@ -370,6 +373,7 @@ object ConfigManager {
                 featureBoolean(KEY_HIDE_TAB_FILE, false) ||
                 featureBoolean(KEY_HIDE_TAB_SHARE, false) ||
                 featureBoolean(KEY_HIDE_TAB_VIP, false) ||
+                featureBoolean(KEY_HIDE_TAB_AIGC, false) ||
                 featureBoolean(KEY_HIDE_TAB_HOME, false) ||
                 featureBoolean(KEY_HIDE_TAB_MINE, false)
         val hasPerformanceOptionEnabled =
@@ -403,6 +407,7 @@ object ConfigManager {
             isHomeSearchPlaceholderHidden = featureBoolean(KEY_HIDE_HOME_SEARCH_PLACEHOLDER, false),
             isHomeSearchAigcIconHidden = featureBoolean(KEY_HIDE_HOME_SEARCH_AIGC_ICON, false),
             isHomeFeedTipHidden = featureBoolean(KEY_HIDE_HOME_FEED_TIP, false),
+            isHomeBannerHidden = featureBoolean(KEY_HIDE_HOME_BANNER, false),
             isHomeMemoriesSectionHidden = featureBoolean(KEY_HIDE_HOME_MEMORIES_SECTION, false),
             isHomeSaveSectionHidden = featureBoolean(KEY_HIDE_HOME_SAVE_SECTION, false),
             isHomeRecentSectionHidden = featureBoolean(KEY_HIDE_HOME_RECENT_SECTION, false),
@@ -515,6 +520,7 @@ object ConfigManager {
             isBottomBarTabFileHidden = featureBoolean(KEY_HIDE_TAB_FILE, false),
             isBottomBarTabShareHidden = featureBoolean(KEY_HIDE_TAB_SHARE, false),
             isBottomBarTabVipHidden = featureBoolean(KEY_HIDE_TAB_VIP, false),
+            isBottomBarTabAigcHidden = featureBoolean(KEY_HIDE_TAB_AIGC, false),
             isBottomBarTabHomeHidden = featureBoolean(KEY_HIDE_TAB_HOME, false),
             isBottomBarTabMineHidden = featureBoolean(KEY_HIDE_TAB_MINE, false),
             areRestrictedFeaturesUnlocked = p.getBoolean(KEY_RESTRICTED_FEATURES_UNLOCKED, false),
@@ -556,6 +562,7 @@ object ConfigManager {
     const val KEY_HIDE_TAB_FILE = "hide_tab_file"
     const val KEY_HIDE_TAB_SHARE = "hide_tab_share"
     const val KEY_HIDE_TAB_VIP = "hide_tab_vip"
+    const val KEY_HIDE_TAB_AIGC = "hide_tab_aigc"
     const val KEY_HIDE_TAB_HOME = "hide_tab_home"
     const val KEY_HIDE_TAB_MINE = "hide_tab_mine"
 
@@ -563,6 +570,7 @@ object ConfigManager {
     val isBottomBarTabFileHidden: Boolean get() = settingsSnapshot.isBottomBarTabFileHidden
     val isBottomBarTabShareHidden: Boolean get() = settingsSnapshot.isBottomBarTabShareHidden
     val isBottomBarTabVipHidden: Boolean get() = settingsSnapshot.isBottomBarTabVipHidden
+    val isBottomBarTabAigcHidden: Boolean get() = settingsSnapshot.isBottomBarTabAigcHidden
     val isBottomBarTabHomeHidden: Boolean get() = settingsSnapshot.isBottomBarTabHomeHidden
     val isBottomBarTabMineHidden: Boolean get() = settingsSnapshot.isBottomBarTabMineHidden
 
@@ -570,11 +578,12 @@ object ConfigManager {
         val hideFile: Boolean = false,
         val hideShare: Boolean = false,
         val hideVip: Boolean = false,
+        val hideAigc: Boolean = false,
         val hideHome: Boolean = false,
         val hideMine: Boolean = false,
     ) {
         /** 可见 Tab 数量 = 总数 - 隐藏数，至少保留 1 个 */
-        val visibleCount: Int get() = 5 - listOf(hideFile, hideShare, hideVip, hideHome, hideMine).count { it }
+        val visibleCount: Int get() = 6 - listOf(hideFile, hideShare, hideVip, hideAigc, hideHome, hideMine).count { it }
 
         fun hasVisibleTab(): Boolean = visibleCount >= 1
     }
@@ -583,7 +592,7 @@ object ConfigManager {
         if (selection.hasVisibleTab()) return selection
         // 全部隐藏时恢复默认：只显示首页
         return BottomBarTabSelection(
-            hideFile = true, hideShare = true, hideVip = true,
+            hideFile = true, hideShare = true, hideVip = true, hideAigc = true,
             hideHome = false, hideMine = true,
         )
     }
