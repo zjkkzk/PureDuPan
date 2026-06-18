@@ -1,10 +1,9 @@
 package com.xiyunmn.puredupan.hook.feature.ad
 
-import android.app.Activity
 import com.xiyunmn.puredupan.hook.config.ConfigManager
-import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.feature.ad.hotstart.HotStartSplashRemoveHook
 
 /**
  * 开屏 / 切屏广告拦截 Hook。
@@ -23,35 +22,11 @@ object SplashInterstitialBlockHook {
             XposedCompat.log("[SplashInterstitialBlockHook] skipped: config disabled")
             return
         }
-        val mod = XposedCompat.module ?: return
         if (!hookState.markInstalled()) return
 
         try {
-            var installed = 0
-
-            // AdvertiseHotStartManager.onResume(Activity) -> false
-            val hotStartClass = XposedCompat.findClassOrNull(
-                StableBaiduPanHookPoints.ADVERTISE_HOT_START_MANAGER, cl
-            )
-            if (hotStartClass != null) {
-                val method = XposedCompat.findMethodOrNull(
-                    hotStartClass, "onResume", Activity::class.java
-                )
-                if (method != null) {
-                    mod.hook(method).intercept {
-                        if (ConfigManager.isSplashInterstitialBlockEnabled) false else it.proceed()
-                    }
-                    installed++
-                    XposedCompat.log("[SplashInterstitialBlockHook] AdvertiseHotStartManager.onResume hooked")
-                } else {
-                    XposedCompat.log("[SplashInterstitialBlockHook] AdvertiseHotStartManager.onResume NOT FOUND")
-                }
-            } else {
-                XposedCompat.log("[SplashInterstitialBlockHook] AdvertiseHotStartManager class NOT FOUND")
-            }
-
-            if (installed == 0) { hookState.reset(); return }
-            XposedCompat.log("[SplashInterstitialBlockHook] hooks INSTALLED: count=$installed")
+            HotStartSplashRemoveHook.hook(cl)
+            XposedCompat.log("[SplashInterstitialBlockHook] delegated to host-specific hot start hook")
         } catch (e: ReflectiveOperationException) {
             hookState.reset()
             XposedCompat.log("[SplashInterstitialBlockHook] FAILED (reflection): ${e.javaClass.simpleName}: ${e.message}")

@@ -12,6 +12,8 @@ object UiText {
 
         const val BLOCK_SPLASH_INTERSTITIAL_LABEL = "去除开屏、热重载广告"
         const val BLOCK_SPLASH_INTERSTITIAL_DESC = "拦截冷启动时开屏与切屏时热重载广告"
+        const val REMOVE_HOT_START_SPLASH_LABEL = "去除切屏加载"
+        const val REMOVE_HOT_START_SPLASH_DESC = "拦截切回前台时拉起的切屏加载/热启动启动图，不影响冷启动开屏处理"
         const val BLOCK_IN_APP_DIALOG_LABEL = "屏蔽应用内弹窗"
         const val BLOCK_IN_APP_DIALOG_DESC = "拦截网盘运行期间弹出的运营浮窗、幸运券包等活动弹窗"
         const val BLOCK_UPDATE_DIALOG_LABEL = "屏蔽软件更新"
@@ -123,6 +125,8 @@ object UiText {
         const val PERFORMANCE_OPTIMIZE_SAVED = "性能优化配置已保存"
         const val DETAILED_LOGGING_LABEL = "输出详细日志"
         const val DETAILED_LOGGING_DESC = "输出更详细的 Hook 调试日志，日志通常位于宿主应用缓存目录下的 wangpanhook/logs/"
+        const val EXPERIMENTAL_DEXKIT_LABEL = "启用 DexKit 实验解析"
+        const val EXPERIMENTAL_DEXKIT_DESC = "默认关闭。为国际版等高混淆宿主启用 DexKit 备用解析链路，仅用于实验和调试，不保证稳定性"
         const val CLEAR_LOGS_LABEL = "清理日志"
         const val CLEAR_LOGS_DESC = "删除宿主应用缓存目录下 wangpanhook/logs/ 中的模块日志文件；多用户环境以确认框显示路径为准"
         const val CLEAR_LOGS_CONFIRM_TITLE = "清理日志"

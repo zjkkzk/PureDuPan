@@ -16,7 +16,9 @@ object ConfigManager {
     private const val KEY_USER_SETTINGS_VERSION_CODE = "user_settings_version_code"
 
     const val KEY_ENABLE_DETAILED_LOGGING = "enable_detailed_logging"
+    const val KEY_ENABLE_EXPERIMENTAL_DEXKIT = "enable_experimental_dexkit"
     const val KEY_BLOCK_SPLASH_INTERSTITIAL = "block_splash_interstitial"
+    const val KEY_REMOVE_HOT_START_SPLASH = "remove_hot_start_splash"
     const val KEY_BLOCK_IN_APP_DIALOG = "block_in_app_dialog"
     const val KEY_BLOCK_UPDATE_DIALOG = "block_update_dialog"
     const val KEY_BLOCK_FULL_SCREEN_BACKUP = "block_full_screen_backup"
@@ -97,7 +99,9 @@ object ConfigManager {
     @Volatile private var prefsListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
 
     val isDetailedLoggingEnabled: Boolean get() = settingsSnapshot.isDetailedLoggingEnabled
+    val isExperimentalDexKitEnabled: Boolean get() = settingsSnapshot.isExperimentalDexKitEnabled
     val isSplashInterstitialBlockEnabled: Boolean get() = settingsSnapshot.isSplashInterstitialBlockEnabled
+    val isHotStartSplashRemoveEnabled: Boolean get() = settingsSnapshot.isHotStartSplashRemoveEnabled
     val isInAppDialogBlocked: Boolean get() = settingsSnapshot.isInAppDialogBlocked
     val isUpdateDialogBlocked: Boolean get() = settingsSnapshot.isUpdateDialogBlocked
     val isFullScreenBackupBlocked: Boolean get() = settingsSnapshot.isFullScreenBackupBlocked
@@ -385,7 +389,9 @@ object ConfigManager {
 
         return SettingsSnapshot(
             isDetailedLoggingEnabled = featureBoolean(KEY_ENABLE_DETAILED_LOGGING),
+            isExperimentalDexKitEnabled = p.getBoolean(KEY_ENABLE_EXPERIMENTAL_DEXKIT, false),
             isSplashInterstitialBlockEnabled = featureBoolean(KEY_BLOCK_SPLASH_INTERSTITIAL, false),
+            isHotStartSplashRemoveEnabled = featureBoolean(KEY_REMOVE_HOT_START_SPLASH, false),
             isInAppDialogBlocked = featureBoolean(KEY_BLOCK_IN_APP_DIALOG, false),
             isUpdateDialogBlocked = featureBoolean(KEY_BLOCK_UPDATE_DIALOG, false),
             isFullScreenBackupBlocked = featureBoolean(KEY_BLOCK_FULL_SCREEN_BACKUP, false),

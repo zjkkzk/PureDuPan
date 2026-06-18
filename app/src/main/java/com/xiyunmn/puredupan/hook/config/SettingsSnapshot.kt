@@ -3,9 +3,11 @@
 data class SettingsSnapshot(
     // Logging
     val isDetailedLoggingEnabled: Boolean = false,
+    val isExperimentalDexKitEnabled: Boolean = false,
 
     // Splash / interstitial and dialog blocking
     val isSplashInterstitialBlockEnabled: Boolean = false,
+    val isHotStartSplashRemoveEnabled: Boolean = false,
     val isInAppDialogBlocked: Boolean = false,
     val isUpdateDialogBlocked: Boolean = false,
     val isFullScreenBackupBlocked: Boolean = false,

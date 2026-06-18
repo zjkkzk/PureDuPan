@@ -3,6 +3,7 @@ package com.xiyunmn.puredupan.hook.host
 internal data class HostCapabilities(
     val supportsOemPushHook: Boolean = false,
     val supportsHotStartSplashAd: Boolean = true,
+    val supportsStandaloneHotStartSplashRemove: Boolean = false,
     val supportsUpdateDialogBlock: Boolean = true,
     val supportsSvipIconGuideBlock: Boolean = true,
     val supportsSharePushGuideBlock: Boolean = true,

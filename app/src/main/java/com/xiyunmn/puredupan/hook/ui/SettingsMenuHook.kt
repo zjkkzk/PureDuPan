@@ -154,19 +154,33 @@ object SettingsMenuHook {
 
             // 分组1：广告拦截
             val adBlockItems = mutableListOf<SwitchItem>()
+            val hostCapabilities = hostCapabilities(context)
 
             // 仅解锁后显示
             if (ConfigManager.areRestrictedFeaturesUnlocked) {
-                adBlockItems.add(
-                    SwitchItem(
-                        UiText.Settings.BLOCK_SPLASH_INTERSTITIAL_LABEL,
-                        UiText.Settings.BLOCK_SPLASH_INTERSTITIAL_DESC,
-                        ConfigManager.KEY_BLOCK_SPLASH_INTERSTITIAL,
-                        hostCapabilities(context).supportsHotStartSplashAd,
-                        false,
-                        visible = isFeatureVisible(context, ConfigManager.KEY_BLOCK_SPLASH_INTERSTITIAL),
+                if (!hostCapabilities.supportsStandaloneHotStartSplashRemove) {
+                    adBlockItems.add(
+                        SwitchItem(
+                            UiText.Settings.BLOCK_SPLASH_INTERSTITIAL_LABEL,
+                            UiText.Settings.BLOCK_SPLASH_INTERSTITIAL_DESC,
+                            ConfigManager.KEY_BLOCK_SPLASH_INTERSTITIAL,
+                            hostCapabilities.supportsHotStartSplashAd,
+                            false,
+                            visible = isFeatureVisible(context, ConfigManager.KEY_BLOCK_SPLASH_INTERSTITIAL),
+                        )
                     )
-                )
+                } else {
+                    adBlockItems.add(
+                        SwitchItem(
+                            UiText.Settings.REMOVE_HOT_START_SPLASH_LABEL,
+                            UiText.Settings.REMOVE_HOT_START_SPLASH_DESC,
+                            ConfigManager.KEY_REMOVE_HOT_START_SPLASH,
+                            hostCapabilities.supportsHotStartSplashAd,
+                            false,
+                            visible = isFeatureVisible(context, ConfigManager.KEY_REMOVE_HOT_START_SPLASH),
+                        )
+                    )
+                }
             }
 
             adBlockItems.addAll(listOf(
@@ -182,7 +196,7 @@ object SettingsMenuHook {
                     UiText.Settings.BLOCK_UPDATE_DIALOG_LABEL,
                     UiText.Settings.BLOCK_UPDATE_DIALOG_DESC,
                     ConfigManager.KEY_BLOCK_UPDATE_DIALOG,
-                    hostCapabilities(context).supportsUpdateDialogBlock,
+                    hostCapabilities.supportsUpdateDialogBlock,
                     false,
                     visible = isFeatureVisible(context, ConfigManager.KEY_BLOCK_UPDATE_DIALOG),
                 ),
@@ -206,7 +220,7 @@ object SettingsMenuHook {
                     UiText.Settings.BLOCK_SHARE_PUSH_GUIDE_LABEL,
                     UiText.Settings.BLOCK_SHARE_PUSH_GUIDE_DESC,
                     ConfigManager.KEY_BLOCK_SHARE_PUSH_GUIDE,
-                    hostCapabilities(context).supportsSharePushGuideBlock,
+                    hostCapabilities.supportsSharePushGuideBlock,
                     false,
                     visible = isFeatureVisible(context, ConfigManager.KEY_BLOCK_SHARE_PUSH_GUIDE),
                 )
@@ -222,7 +236,7 @@ object SettingsMenuHook {
                         UiText.Settings.HOME_CUSTOMIZE_LABEL,
                         UiText.Settings.HOME_CUSTOMIZE_DESC,
                         ConfigManager.KEY_HOME_CUSTOMIZE,
-                        hostCapabilities(context).supportsHomeCustomize,
+                        hostCapabilities.supportsHomeCustomize,
                         homeCustomizeDefault,
                         UiText.Settings.ACTION_ICON_SETTINGS,
                         onActionClick = {
@@ -258,7 +272,7 @@ object SettingsMenuHook {
                         UiText.Settings.MEMBER_CARD_CUSTOMIZE_LABEL,
                         UiText.Settings.MEMBER_CARD_CUSTOMIZE_DESC,
                         ConfigManager.KEY_MEMBER_CARD_CUSTOMIZE,
-                        hostCapabilities(context).supportsMemberCardCustomize,
+                        hostCapabilities.supportsMemberCardCustomize,
                         memberCardCustomizeDefault,
                         UiText.Settings.ACTION_ICON_SETTINGS,
                         onActionClick = {
@@ -323,6 +337,14 @@ object SettingsMenuHook {
             }
 
             val debugItems = listOf(
+                SwitchItem(
+                    UiText.Settings.EXPERIMENTAL_DEXKIT_LABEL,
+                    UiText.Settings.EXPERIMENTAL_DEXKIT_DESC,
+                    ConfigManager.KEY_ENABLE_EXPERIMENTAL_DEXKIT,
+                    true,
+                    false,
+                    visible = hostCapabilities.supportsStandaloneHotStartSplashRemove,
+                ),
                 SwitchItem(
                     UiText.Settings.DETAILED_LOGGING_LABEL,
                     UiText.Settings.DETAILED_LOGGING_DESC,

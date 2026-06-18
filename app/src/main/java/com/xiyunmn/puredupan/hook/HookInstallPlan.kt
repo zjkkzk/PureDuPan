@@ -125,9 +125,14 @@ internal object HookInstallPlanner {
         }) { cl -> RenewButtonHideHook.hook(cl) },
         HookSpec("SplashInterstitialBlockHook", { context, settings, _ ->
             context.isMain &&
-                context.host.capabilities.supportsHotStartSplashAd &&
                 settings.isSplashInterstitialBlockEnabled
         }) { cl -> SplashInterstitialBlockHook.hook(cl) },
+        HookSpec("HotStartSplashRemoveHook", { context, settings, _ ->
+            context.isMain &&
+                context.host.capabilities.supportsStandaloneHotStartSplashRemove &&
+                context.host.capabilities.supportsHotStartSplashAd &&
+                settings.isHotStartSplashRemoveEnabled
+        }) { cl -> com.xiyunmn.puredupan.hook.feature.ad.hotstart.HotStartSplashRemoveHook.hook(cl) },
         HookSpec("SplashBypassCore", { context, settings, _ ->
             context.isMain && settings.isSplashInterstitialBlockEnabled
         }) { cl -> SplashBypassCore.hook(cl) },

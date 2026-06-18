@@ -11,7 +11,6 @@ internal object HostFeatureAvailabilityRegistry {
 
     private val intlDisabledKeys = setOf(
         ConfigManager.KEY_BLOCK_IN_APP_DIALOG,
-        ConfigManager.KEY_BLOCK_SPLASH_INTERSTITIAL,
         ConfigManager.KEY_BLOCK_UPDATE_DIALOG,
         ConfigManager.KEY_BLOCK_FULL_SCREEN_BACKUP,
         ConfigManager.KEY_BLOCK_SHARE_PUSH_GUIDE,

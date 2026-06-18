@@ -209,4 +209,5 @@ listOf("debug", "beta", "release").forEach { buildType ->
 
 dependencies {
     compileOnly(libs.xposed.api)
+    implementation(libs.dexkit)
 }

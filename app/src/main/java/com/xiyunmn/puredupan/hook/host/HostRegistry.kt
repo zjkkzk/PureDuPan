@@ -17,6 +17,7 @@ internal object HostRegistry {
         ),
         capabilities = HostCapabilities(
             supportsOemPushHook = true,
+            supportsStandaloneHotStartSplashRemove = false,
         ),
     )
 
@@ -28,7 +29,8 @@ internal object HostRegistry {
         attachHookProcessNames = setOf(Constants.BAIDU_DRIVE_INTL_PACKAGE),
         capabilities = HostCapabilities(
             supportsOemPushHook = false,
-            supportsHotStartSplashAd = false,
+            supportsHotStartSplashAd = true,
+            supportsStandaloneHotStartSplashRemove = true,
             supportsUpdateDialogBlock = false,
             supportsSvipIconGuideBlock = false,
             supportsSharePushGuideBlock = false,
