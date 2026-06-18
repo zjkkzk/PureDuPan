@@ -34,7 +34,8 @@ import com.xiyunmn.puredupan.hook.feature.ui.FormalUiEntryHook
 import com.xiyunmn.puredupan.hook.feature.ui.AboutMeGodModeHook
 import com.xiyunmn.puredupan.hook.feature.ui.GameCenterRemoveHook
 import com.xiyunmn.puredupan.hook.feature.ui.GameCenterRuntimeBlockHook
-import com.xiyunmn.puredupan.hook.feature.ui.MemberCardCustomizeHook
+import com.xiyunmn.puredupan.hook.feature.ui.membercard.cn.CnMemberCardCustomizeHook
+import com.xiyunmn.puredupan.hook.feature.ui.membercard.intl.IntlMemberCardCustomizeHook
 import com.xiyunmn.puredupan.hook.feature.ui.NewHomeFabRemoveHook
 import com.xiyunmn.puredupan.hook.feature.ui.RenewButtonHideHook
 import com.xiyunmn.puredupan.hook.feature.ui.SettingsImagePickerResultHook
@@ -207,12 +208,20 @@ internal object HookInstallPlanner {
                         settings.isAboutMeStarSkinTextHidden
                 )
         }) { cl -> AboutMeGodModeHook.hook(cl) },
-        HookSpec("MemberCardCustomizeHook", { context, settings, derived ->
+        HookSpec("CnMemberCardCustomizeHook", { context, settings, derived ->
             context.isMain &&
+                context.host.flavor == com.xiyunmn.puredupan.hook.host.HostFlavor.BAIDU_CN &&
                 context.host.capabilities.supportsMemberCardCustomize &&
                 settings.isMemberCardCustomizeEnabled &&
                 derived.hasMemberCardCustomizeOption
-        }) { cl -> MemberCardCustomizeHook.hook(cl) },
+        }) { cl -> CnMemberCardCustomizeHook.hook(cl) },
+        HookSpec("IntlMemberCardCustomizeHook", { context, settings, derived ->
+            context.isMain &&
+                context.host.flavor == com.xiyunmn.puredupan.hook.host.HostFlavor.BAIDU_INTL &&
+                context.host.capabilities.supportsMemberCardCustomize &&
+                settings.isMemberCardCustomizeEnabled &&
+                derived.hasMemberCardCustomizeOption
+        }) { cl -> IntlMemberCardCustomizeHook.hook(cl) },
         HookSpec("NewHomeFabRemoveHook", { context, settings, _ ->
             context.isMain &&
                 settings.isSharePageCustomizeEnabled &&
@@ -347,10 +356,15 @@ internal object HookInstallPlanner {
                 settings.isMemberCardSizeAdjusted ||
                 settings.isMemberCardOperationHidden ||
                 settings.isMemberCardBenefitHidden ||
+                settings.isMemberCardFirstBenefitHidden ||
+                settings.isMemberCardSecondBenefitHidden ||
+                settings.isMemberCardThirdBenefitHidden ||
                 settings.isMemberCardBenefitBarHidden ||
                 settings.isMemberCardSvipLevelHidden ||
                 settings.isMemberCardSvipStatusHidden ||
                 settings.isMemberCardRenewButtonHidden ||
+                settings.isIntlMemberCardSvipLevelHidden ||
+                settings.isIntlMemberCardUpgradeButtonHidden ||
                 settings.isMemberCardClickRemoved ||
                 settings.isMemberCardBackgroundViewedOnClick,
             hasHomeCustomizeOption = settings.isHomeTopPromotionHidden ||

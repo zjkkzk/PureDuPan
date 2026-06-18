@@ -68,10 +68,15 @@ object ConfigManager {
     const val KEY_MEMBER_CARD_DEFAULT_HEIGHT_PX = "member_card_default_height_px"
     const val KEY_HIDE_MEMBER_CARD_OPERATION = "hide_member_card_operation"
     const val KEY_HIDE_MEMBER_CARD_BENEFIT = "hide_member_card_benefit"
+    const val KEY_HIDE_MEMBER_CARD_FIRST_BENEFIT = "hide_member_card_first_benefit"
+    const val KEY_HIDE_MEMBER_CARD_SECOND_BENEFIT = "hide_member_card_second_benefit"
+    const val KEY_HIDE_MEMBER_CARD_THIRD_BENEFIT = "hide_member_card_third_benefit"
     const val KEY_HIDE_MEMBER_CARD_BENEFIT_BAR = "hide_member_card_benefit_bar"
     const val KEY_HIDE_MEMBER_CARD_SVIP_LEVEL = "hide_member_card_svip_level"
     const val KEY_HIDE_MEMBER_CARD_SVIP_STATUS = "hide_member_card_svip_status"
     const val KEY_HIDE_MEMBER_CARD_RENEW_BUTTON = "hide_member_card_renew_button"
+    const val KEY_HIDE_INTL_MEMBER_CARD_SVIP_LEVEL = "hide_intl_member_card_svip_level"
+    const val KEY_HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON = "hide_intl_member_card_upgrade_button"
     const val KEY_REMOVE_MEMBER_CARD_CLICK = "remove_member_card_click"
     const val KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK = "view_member_card_background_on_click"
     const val KEY_FOLLOW_SYSTEM_NIGHT_MODE = "follow_system_night_mode"
@@ -150,10 +155,15 @@ object ConfigManager {
     val memberCardHeightDp: Int get() = settingsSnapshot.memberCardHeightDp
     val isMemberCardOperationHidden: Boolean get() = settingsSnapshot.isMemberCardOperationHidden
     val isMemberCardBenefitHidden: Boolean get() = settingsSnapshot.isMemberCardBenefitHidden
+    val isMemberCardFirstBenefitHidden: Boolean get() = settingsSnapshot.isMemberCardFirstBenefitHidden
+    val isMemberCardSecondBenefitHidden: Boolean get() = settingsSnapshot.isMemberCardSecondBenefitHidden
+    val isMemberCardThirdBenefitHidden: Boolean get() = settingsSnapshot.isMemberCardThirdBenefitHidden
     val isMemberCardBenefitBarHidden: Boolean get() = settingsSnapshot.isMemberCardBenefitBarHidden
     val isMemberCardSvipLevelHidden: Boolean get() = settingsSnapshot.isMemberCardSvipLevelHidden
     val isMemberCardSvipStatusHidden: Boolean get() = settingsSnapshot.isMemberCardSvipStatusHidden
     val isMemberCardRenewButtonHidden: Boolean get() = settingsSnapshot.isMemberCardRenewButtonHidden
+    val isIntlMemberCardSvipLevelHidden: Boolean get() = settingsSnapshot.isIntlMemberCardSvipLevelHidden
+    val isIntlMemberCardUpgradeButtonHidden: Boolean get() = settingsSnapshot.isIntlMemberCardUpgradeButtonHidden
     val isMemberCardClickRemoved: Boolean get() = settingsSnapshot.isMemberCardClickRemoved
     val isMemberCardBackgroundViewedOnClick: Boolean get() = settingsSnapshot.isMemberCardBackgroundViewedOnClick
     val isFollowSystemNightModeEnabled: Boolean get() = settingsSnapshot.isFollowSystemNightModeEnabled
@@ -343,10 +353,15 @@ object ConfigManager {
                 featureBoolean(KEY_MEMBER_CARD_SIZE_ADJUST, false) ||
                 featureBoolean(KEY_HIDE_MEMBER_CARD_OPERATION, false) ||
                 featureBoolean(KEY_HIDE_MEMBER_CARD_BENEFIT, false) ||
+                featureBoolean(KEY_HIDE_MEMBER_CARD_FIRST_BENEFIT, false) ||
+                featureBoolean(KEY_HIDE_MEMBER_CARD_SECOND_BENEFIT, false) ||
+                featureBoolean(KEY_HIDE_MEMBER_CARD_THIRD_BENEFIT, false) ||
                 featureBoolean(KEY_HIDE_MEMBER_CARD_BENEFIT_BAR, false) ||
                 featureBoolean(KEY_HIDE_MEMBER_CARD_SVIP_LEVEL, false) ||
                 featureBoolean(KEY_HIDE_MEMBER_CARD_SVIP_STATUS, false) ||
                 featureBoolean(KEY_HIDE_MEMBER_CARD_RENEW_BUTTON, false) ||
+                featureBoolean(KEY_HIDE_INTL_MEMBER_CARD_SVIP_LEVEL, false) ||
+                featureBoolean(KEY_HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON, false) ||
                 memberCardClickRemoved ||
                 memberCardBackgroundViewedOnClick
         val hasHomeCustomizeOptionEnabled =
@@ -463,10 +478,18 @@ object ConfigManager {
             },
             isMemberCardOperationHidden = featureBoolean(KEY_HIDE_MEMBER_CARD_OPERATION, false),
             isMemberCardBenefitHidden = featureBoolean(KEY_HIDE_MEMBER_CARD_BENEFIT, false),
+            isMemberCardFirstBenefitHidden = featureBoolean(KEY_HIDE_MEMBER_CARD_FIRST_BENEFIT, false),
+            isMemberCardSecondBenefitHidden = featureBoolean(KEY_HIDE_MEMBER_CARD_SECOND_BENEFIT, false),
+            isMemberCardThirdBenefitHidden = featureBoolean(KEY_HIDE_MEMBER_CARD_THIRD_BENEFIT, false),
             isMemberCardBenefitBarHidden = featureBoolean(KEY_HIDE_MEMBER_CARD_BENEFIT_BAR, false),
             isMemberCardSvipLevelHidden = featureBoolean(KEY_HIDE_MEMBER_CARD_SVIP_LEVEL, false),
             isMemberCardSvipStatusHidden = featureBoolean(KEY_HIDE_MEMBER_CARD_SVIP_STATUS, false),
             isMemberCardRenewButtonHidden = featureBoolean(KEY_HIDE_MEMBER_CARD_RENEW_BUTTON, false),
+            isIntlMemberCardSvipLevelHidden = featureBoolean(KEY_HIDE_INTL_MEMBER_CARD_SVIP_LEVEL, false),
+            isIntlMemberCardUpgradeButtonHidden = featureBoolean(
+                KEY_HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON,
+                false,
+            ),
             isMemberCardClickRemoved = memberCardClickRemoved,
             isMemberCardBackgroundViewedOnClick = memberCardBackgroundViewedOnClick,
             isFollowSystemNightModeEnabled = featureBoolean(KEY_FOLLOW_SYSTEM_NIGHT_MODE, false),

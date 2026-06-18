@@ -50,7 +50,7 @@ internal object HostRegistry {
             supportsAudioCircleAutostartBlock = false,
             supportsIconResourceDownloadBlock = false,
             supportsB2fGuidancePrefetchBlock = false,
-            supportsMemberCardCustomize = false,
+            supportsMemberCardCustomize = true,
         ),
     )
 

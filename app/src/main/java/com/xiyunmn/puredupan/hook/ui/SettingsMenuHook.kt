@@ -27,6 +27,7 @@ import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.Constants
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.host.HostFeatureAvailabilityRegistry
+import com.xiyunmn.puredupan.hook.host.HostFlavor
 import com.xiyunmn.puredupan.hook.host.HostRegistry
 import com.xiyunmn.puredupan.hook.ui.settings.IntSliderControl
 import com.xiyunmn.puredupan.hook.ui.settings.MemberCardBackgroundImageControl
@@ -1734,6 +1735,38 @@ object SettingsMenuHook {
         try {
             val density = context.resources.displayMetrics.density
             val padding = (16 * density).toInt()
+            val isIntlHost =
+                HostRegistry.requireByPackageName(context.packageName).flavor == HostFlavor.BAIDU_INTL
+            val memberCardSvipLevelKey: String? = if (isIntlHost) {
+                ConfigManager.KEY_HIDE_INTL_MEMBER_CARD_SVIP_LEVEL
+            } else {
+                ConfigManager.KEY_HIDE_MEMBER_CARD_SVIP_LEVEL
+            }
+            val memberCardSvipLevelLabel = if (isIntlHost) {
+                UiText.Settings.HIDE_INTL_MEMBER_CARD_SVIP_LEVEL_LABEL
+            } else {
+                UiText.Settings.HIDE_MEMBER_CARD_SVIP_LEVEL_LABEL
+            }
+            val memberCardSvipLevelDesc = if (isIntlHost) {
+                UiText.Settings.HIDE_INTL_MEMBER_CARD_SVIP_LEVEL_DESC
+            } else {
+                UiText.Settings.HIDE_MEMBER_CARD_SVIP_LEVEL_DESC
+            }
+            val memberCardRenewButtonKey: String? = if (isIntlHost) {
+                ConfigManager.KEY_HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON
+            } else {
+                ConfigManager.KEY_HIDE_MEMBER_CARD_RENEW_BUTTON
+            }
+            val memberCardRenewButtonLabel = if (isIntlHost) {
+                UiText.Settings.HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON_LABEL
+            } else {
+                UiText.Settings.HIDE_MEMBER_CARD_RENEW_BUTTON_LABEL
+            }
+            val memberCardRenewButtonDesc = if (isIntlHost) {
+                UiText.Settings.HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON_DESC
+            } else {
+                UiText.Settings.HIDE_MEMBER_CARD_RENEW_BUTTON_DESC
+            }
 
             val root = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
@@ -1840,6 +1873,36 @@ object SettingsMenuHook {
                 true,
                 prefs.getBoolean(ConfigManager.KEY_HIDE_MEMBER_CARD_BENEFIT, false),
             )
+            val firstBenefitRow = createSwitchRow(
+                context,
+                prefs,
+                UiText.Settings.HIDE_MEMBER_CARD_FIRST_BENEFIT_LABEL,
+                UiText.Settings.HIDE_MEMBER_CARD_FIRST_BENEFIT_DESC,
+                null,
+                padding,
+                true,
+                prefs.getBoolean(ConfigManager.KEY_HIDE_MEMBER_CARD_FIRST_BENEFIT, false),
+            )
+            val secondBenefitRow = createSwitchRow(
+                context,
+                prefs,
+                UiText.Settings.HIDE_MEMBER_CARD_SECOND_BENEFIT_LABEL,
+                UiText.Settings.HIDE_MEMBER_CARD_SECOND_BENEFIT_DESC,
+                null,
+                padding,
+                true,
+                prefs.getBoolean(ConfigManager.KEY_HIDE_MEMBER_CARD_SECOND_BENEFIT, false),
+            )
+            val thirdBenefitRow = createSwitchRow(
+                context,
+                prefs,
+                UiText.Settings.HIDE_MEMBER_CARD_THIRD_BENEFIT_LABEL,
+                UiText.Settings.HIDE_MEMBER_CARD_THIRD_BENEFIT_DESC,
+                null,
+                padding,
+                true,
+                prefs.getBoolean(ConfigManager.KEY_HIDE_MEMBER_CARD_THIRD_BENEFIT, false),
+            )
             val benefitBarRow = createSwitchRow(
                 context,
                 prefs,
@@ -1853,12 +1916,12 @@ object SettingsMenuHook {
             val svipLevelRow = createSwitchRow(
                 context,
                 prefs,
-                UiText.Settings.HIDE_MEMBER_CARD_SVIP_LEVEL_LABEL,
-                UiText.Settings.HIDE_MEMBER_CARD_SVIP_LEVEL_DESC,
+                memberCardSvipLevelLabel,
+                memberCardSvipLevelDesc,
                 null,
                 padding,
                 true,
-                prefs.getBoolean(ConfigManager.KEY_HIDE_MEMBER_CARD_SVIP_LEVEL, false),
+                prefs.getBoolean(memberCardSvipLevelKey, false),
             )
             val svipStatusRow = createSwitchRow(
                 context,
@@ -1873,12 +1936,12 @@ object SettingsMenuHook {
             val renewButtonRow = createSwitchRow(
                 context,
                 prefs,
-                UiText.Settings.HIDE_MEMBER_CARD_RENEW_BUTTON_LABEL,
-                UiText.Settings.HIDE_MEMBER_CARD_RENEW_BUTTON_DESC,
+                memberCardRenewButtonLabel,
+                memberCardRenewButtonDesc,
                 null,
                 padding,
                 true,
-                prefs.getBoolean(ConfigManager.KEY_HIDE_MEMBER_CARD_RENEW_BUTTON, false),
+                prefs.getBoolean(memberCardRenewButtonKey, false),
             )
             val removeCardClickRow = createSwitchRow(
                 context,
@@ -1914,19 +1977,33 @@ object SettingsMenuHook {
             root.addView(createDivider(context, padding))
             root.addView(removeCardClickRow)
             root.addView(viewBackgroundOnClickRow)
-            root.addView(createDivider(context, padding))
-            root.addView(createCustomHideWidgetSectionTitle(context, padding))
-            root.addView(operationRow)
-            root.addView(benefitRow)
-            root.addView(benefitBarRow)
-            root.addView(svipLevelRow)
-            root.addView(svipStatusRow)
-            root.addView(renewButtonRow)
+            addTitledSection(
+                root = root,
+                context = context,
+                padding = padding,
+                titleView = createCustomHideWidgetSectionTitle(context, padding),
+                rows = visibleRows(
+                    context,
+                    ConfigManager.KEY_HIDE_MEMBER_CARD_OPERATION to operationRow,
+                    ConfigManager.KEY_HIDE_MEMBER_CARD_BENEFIT to benefitRow,
+                    ConfigManager.KEY_HIDE_MEMBER_CARD_FIRST_BENEFIT to firstBenefitRow,
+                    ConfigManager.KEY_HIDE_MEMBER_CARD_SECOND_BENEFIT to secondBenefitRow,
+                    ConfigManager.KEY_HIDE_MEMBER_CARD_THIRD_BENEFIT to thirdBenefitRow,
+                    ConfigManager.KEY_HIDE_MEMBER_CARD_BENEFIT_BAR to benefitBarRow,
+                    memberCardSvipLevelKey to svipLevelRow,
+                    ConfigManager.KEY_HIDE_MEMBER_CARD_SVIP_STATUS to svipStatusRow,
+                    memberCardRenewButtonKey to renewButtonRow,
+                ),
+                addDividerBefore = true,
+            )
 
             val backgroundSwitch = backgroundImageControl.switch
             val operationSwitch = findSwitchView(operationRow)
             val sizeSwitch = findSwitchView(sizeRow)
             val benefitSwitch = findSwitchView(benefitRow)
+            val firstBenefitSwitch = findSwitchView(firstBenefitRow)
+            val secondBenefitSwitch = findSwitchView(secondBenefitRow)
+            val thirdBenefitSwitch = findSwitchView(thirdBenefitRow)
             val benefitBarSwitch = findSwitchView(benefitBarRow)
             val svipLevelSwitch = findSwitchView(svipLevelRow)
             val svipStatusSwitch = findSwitchView(svipStatusRow)
@@ -1937,6 +2014,9 @@ object SettingsMenuHook {
                 sizeSwitch == null ||
                 operationSwitch == null ||
                 benefitSwitch == null ||
+                firstBenefitSwitch == null ||
+                secondBenefitSwitch == null ||
+                thirdBenefitSwitch == null ||
                 benefitBarSwitch == null ||
                 svipLevelSwitch == null ||
                 svipStatusSwitch == null ||
@@ -1985,6 +2065,10 @@ object SettingsMenuHook {
             }
             updateViewBackgroundClickRow()
 
+            val showFirstBenefit = isFeatureVisible(context, ConfigManager.KEY_HIDE_MEMBER_CARD_FIRST_BENEFIT)
+            val showSecondBenefit = isFeatureVisible(context, ConfigManager.KEY_HIDE_MEMBER_CARD_SECOND_BENEFIT)
+            val showThirdBenefit = isFeatureVisible(context, ConfigManager.KEY_HIDE_MEMBER_CARD_THIRD_BENEFIT)
+
             val dialog = AlertDialog.Builder(context, dialogThemeFor(context))
                 .setTitle(UiText.Settings.MEMBER_CARD_CUSTOMIZE_DIALOG_TITLE)
                 .setView(createDialogScrollContainer(context, root))
@@ -1998,6 +2082,9 @@ object SettingsMenuHook {
                             sizeSwitch.isChecked ||
                             operationSwitch.isChecked ||
                             benefitSwitch.isChecked ||
+                            showFirstBenefit && firstBenefitSwitch.isChecked ||
+                            showSecondBenefit && secondBenefitSwitch.isChecked ||
+                            showThirdBenefit && thirdBenefitSwitch.isChecked ||
                             benefitBarSwitch.isChecked ||
                             svipLevelSwitch.isChecked ||
                             svipStatusSwitch.isChecked ||
@@ -2039,11 +2126,23 @@ object SettingsMenuHook {
                             benefitSwitch.isChecked,
                         )
                         .putBoolean(
+                            ConfigManager.KEY_HIDE_MEMBER_CARD_FIRST_BENEFIT,
+                            showFirstBenefit && firstBenefitSwitch.isChecked,
+                        )
+                        .putBoolean(
+                            ConfigManager.KEY_HIDE_MEMBER_CARD_SECOND_BENEFIT,
+                            showSecondBenefit && secondBenefitSwitch.isChecked,
+                        )
+                        .putBoolean(
+                            ConfigManager.KEY_HIDE_MEMBER_CARD_THIRD_BENEFIT,
+                            showThirdBenefit && thirdBenefitSwitch.isChecked,
+                        )
+                        .putBoolean(
                             ConfigManager.KEY_HIDE_MEMBER_CARD_BENEFIT_BAR,
                             benefitBarSwitch.isChecked,
                         )
                         .putBoolean(
-                            ConfigManager.KEY_HIDE_MEMBER_CARD_SVIP_LEVEL,
+                            memberCardSvipLevelKey,
                             svipLevelSwitch.isChecked,
                         )
                         .putBoolean(
@@ -2051,7 +2150,7 @@ object SettingsMenuHook {
                             svipStatusSwitch.isChecked,
                         )
                         .putBoolean(
-                            ConfigManager.KEY_HIDE_MEMBER_CARD_RENEW_BUTTON,
+                            memberCardRenewButtonKey,
                             renewButtonSwitch.isChecked,
                         )
                         .putBoolean(
@@ -2465,6 +2564,18 @@ object SettingsMenuHook {
         context: Context,
         prefs: android.content.SharedPreferences,
     ): Boolean {
+        val isIntlHost =
+            HostRegistry.requireByPackageName(context.packageName).flavor == HostFlavor.BAIDU_INTL
+        val memberCardSvipLevelKey = if (isIntlHost) {
+            ConfigManager.KEY_HIDE_INTL_MEMBER_CARD_SVIP_LEVEL
+        } else {
+            ConfigManager.KEY_HIDE_MEMBER_CARD_SVIP_LEVEL
+        }
+        val memberCardRenewButtonKey = if (isIntlHost) {
+            ConfigManager.KEY_HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON
+        } else {
+            ConfigManager.KEY_HIDE_MEMBER_CARD_RENEW_BUTTON
+        }
         val hasViewBackgroundClick =
             isFeatureVisible(context, ConfigManager.KEY_REMOVE_MEMBER_CARD_CLICK) &&
                 isFeatureVisible(context, ConfigManager.KEY_REPLACE_MEMBER_CARD_BACKGROUND) &&
@@ -2481,14 +2592,20 @@ object SettingsMenuHook {
             prefs.getBoolean(ConfigManager.KEY_HIDE_MEMBER_CARD_OPERATION, false) ||
             isFeatureVisible(context, ConfigManager.KEY_HIDE_MEMBER_CARD_BENEFIT) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_MEMBER_CARD_BENEFIT, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_MEMBER_CARD_FIRST_BENEFIT) &&
+            prefs.getBoolean(ConfigManager.KEY_HIDE_MEMBER_CARD_FIRST_BENEFIT, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_MEMBER_CARD_SECOND_BENEFIT) &&
+            prefs.getBoolean(ConfigManager.KEY_HIDE_MEMBER_CARD_SECOND_BENEFIT, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_MEMBER_CARD_THIRD_BENEFIT) &&
+            prefs.getBoolean(ConfigManager.KEY_HIDE_MEMBER_CARD_THIRD_BENEFIT, false) ||
             isFeatureVisible(context, ConfigManager.KEY_HIDE_MEMBER_CARD_BENEFIT_BAR) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_MEMBER_CARD_BENEFIT_BAR, false) ||
-            isFeatureVisible(context, ConfigManager.KEY_HIDE_MEMBER_CARD_SVIP_LEVEL) &&
-            prefs.getBoolean(ConfigManager.KEY_HIDE_MEMBER_CARD_SVIP_LEVEL, false) ||
+            isFeatureVisible(context, memberCardSvipLevelKey) &&
+            prefs.getBoolean(memberCardSvipLevelKey, false) ||
             isFeatureVisible(context, ConfigManager.KEY_HIDE_MEMBER_CARD_SVIP_STATUS) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_MEMBER_CARD_SVIP_STATUS, false) ||
-            isFeatureVisible(context, ConfigManager.KEY_HIDE_MEMBER_CARD_RENEW_BUTTON) &&
-            prefs.getBoolean(ConfigManager.KEY_HIDE_MEMBER_CARD_RENEW_BUTTON, false) ||
+            isFeatureVisible(context, memberCardRenewButtonKey) &&
+            prefs.getBoolean(memberCardRenewButtonKey, false) ||
             isFeatureVisible(context, ConfigManager.KEY_REMOVE_MEMBER_CARD_CLICK) &&
             prefs.getBoolean(ConfigManager.KEY_REMOVE_MEMBER_CARD_CLICK, false) ||
             hasViewBackgroundClick

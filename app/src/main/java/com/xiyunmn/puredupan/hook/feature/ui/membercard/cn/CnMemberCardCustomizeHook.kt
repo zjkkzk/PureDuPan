@@ -1,4 +1,4 @@
-package com.xiyunmn.puredupan.hook.feature.ui
+package com.xiyunmn.puredupan.hook.feature.ui.membercard.cn
 
 import android.app.Dialog
 import android.content.ContentResolver
@@ -45,7 +45,7 @@ import kotlin.math.max
 /**
  * Customizes only the VIP card area in AboutMeTopFragmentHeteromo.
  */
-object MemberCardCustomizeHook {
+object CnMemberCardCustomizeHook {
     private const val MEMBER_CARD_ROOT_ID = "cl_aboutme_top"
     private const val MEMBER_CARD_BACKGROUND_ID = "iv_bg"
     private const val MEMBER_CARD_OPERATION_ID = "operation_layout"
@@ -58,6 +58,9 @@ object MemberCardCustomizeHook {
         "tv_tip",
     )
     private const val MEMBER_CARD_BENEFIT_ID = "cl_fifth_card"
+    private const val MEMBER_CARD_FIRST_BENEFIT_ID = "cl_first_card"
+    private const val MEMBER_CARD_SECOND_BENEFIT_ID = "cl_second_card"
+    private const val MEMBER_CARD_THIRD_BENEFIT_ID = "cl_third_card"
     private const val MEMBER_CARD_BENEFIT_DIVIDER_ID = "view_line"
     private const val MEMBER_CARD_BENEFIT_BAR_ID = "ll_root"
     private const val MEMBER_CARD_SVIP_LEVEL_ID = "iv_vip_image"
@@ -235,6 +238,33 @@ object MemberCardCustomizeHook {
             }
         }
 
+        if (snapshot.isMemberCardFirstBenefitHidden) {
+            hideByEntryName(root, resources, packageName, MEMBER_CARD_FIRST_BENEFIT_ID) {
+                XposedCompat.logD("[MemberCardCustomizeHook] member card first benefit hidden")
+            }
+        }
+
+        if (snapshot.isMemberCardSecondBenefitHidden) {
+            hideByEntryName(root, resources, packageName, MEMBER_CARD_SECOND_BENEFIT_ID) {
+                XposedCompat.logD("[MemberCardCustomizeHook] member card second benefit hidden")
+            }
+        }
+
+        if (snapshot.isMemberCardThirdBenefitHidden) {
+            hideByEntryName(root, resources, packageName, MEMBER_CARD_THIRD_BENEFIT_ID) {
+                XposedCompat.logD("[MemberCardCustomizeHook] member card third benefit hidden")
+            }
+        }
+
+        if (
+            snapshot.isMemberCardSecondBenefitHidden &&
+            snapshot.isMemberCardThirdBenefitHidden
+        ) {
+            hideByEntryName(root, resources, packageName, MEMBER_CARD_BENEFIT_DIVIDER_ID) {
+                XposedCompat.logD("[MemberCardCustomizeHook] member card benefit divider hidden")
+            }
+        }
+
         if (snapshot.isMemberCardBenefitBarHidden) {
             hideByEntryName(root, resources, packageName, MEMBER_CARD_BENEFIT_BAR_ID) {
                 XposedCompat.logD("[MemberCardCustomizeHook] member card benefit bar hidden")
@@ -272,9 +302,12 @@ object MemberCardCustomizeHook {
         return snapshot.isMemberCardCustomizeEnabled &&
             (
                 snapshot.isMemberCardBackgroundReplaced ||
-                    snapshot.isMemberCardSizeAdjusted ||
+                snapshot.isMemberCardSizeAdjusted ||
                     snapshot.isMemberCardOperationHidden ||
                     snapshot.isMemberCardBenefitHidden ||
+                    snapshot.isMemberCardFirstBenefitHidden ||
+                    snapshot.isMemberCardSecondBenefitHidden ||
+                    snapshot.isMemberCardThirdBenefitHidden ||
                     snapshot.isMemberCardBenefitBarHidden ||
                     snapshot.isMemberCardSvipLevelHidden ||
                     snapshot.isMemberCardSvipStatusHidden ||
