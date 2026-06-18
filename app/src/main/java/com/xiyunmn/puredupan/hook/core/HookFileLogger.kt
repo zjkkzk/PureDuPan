@@ -220,26 +220,29 @@ internal object HookFileLogger {
 
     private fun logFileForProcess(dir: File): File {
         val name = processName
-        if (name.isBlank() || name == Constants.TARGET_PACKAGE) {
+        if (isMainProcessName(name)) {
             return File(dir, MAIN_LOG_FILE)
         }
-        val suffix = name
-            .removePrefix("${Constants.TARGET_PACKAGE}:")
-            .replace(Regex("[^A-Za-z0-9._-]"), "_")
-            .ifBlank { "unknown" }
+        val suffix = sanitizeProcessSuffix(name)
         return File(dir, "wangpanhook-$suffix.log")
     }
 
     private fun errorLogFileForProcess(dir: File): File {
         val name = processName
-        if (name.isBlank() || name == Constants.TARGET_PACKAGE) {
+        if (isMainProcessName(name)) {
             return File(dir, ERROR_LOG_FILE)
         }
-        val suffix = name
-            .removePrefix("${Constants.TARGET_PACKAGE}:")
-            .replace(Regex("[^A-Za-z0-9._-]"), "_")
-            .ifBlank { "unknown" }
+        val suffix = sanitizeProcessSuffix(name)
         return File(dir, "wangpanhook-$suffix-error.log")
+    }
+
+    private fun isMainProcessName(name: String): Boolean {
+        return name.isBlank() || !name.contains(':')
+    }
+
+    private fun sanitizeProcessSuffix(name: String): String {
+        val suffix = name.substringAfter(':', name)
+        return suffix.replace(Regex("[^A-Za-z0-9._-]"), "_").ifBlank { "unknown" }
     }
 
     private fun formatLine(priority: Int, tag: String, message: String): String {

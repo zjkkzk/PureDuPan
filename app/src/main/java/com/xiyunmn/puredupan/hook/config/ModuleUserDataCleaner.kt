@@ -2,6 +2,7 @@
 
 import android.content.Context
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.host.HostRegistry
 import java.io.File
 
 internal object ModuleUserDataCleaner {
@@ -25,7 +26,7 @@ internal object ModuleUserDataCleaner {
         val deleted = ArrayList<String>()
         val failed = ArrayList<String>()
 
-        deleteSharedPrefs(appCtx, ConfigManager.MODULE_STATE_PREFS_NAME, deleted, failed)
+        deleteHostScopedSharedPrefs(appCtx, deleted, failed)
         deleteOwnedTree(
             parent = appCtx.filesDir,
             name = ABOUT_CACHE_DIR_NAME,
@@ -117,6 +118,21 @@ internal object ModuleUserDataCleaner {
             failed.add(label)
             XposedCompat.logW("[ModuleUserDataCleaner] resolve target failed: $label ${t.message}")
             null
+        }
+    }
+
+    private fun deleteHostScopedSharedPrefs(
+        context: Context,
+        deleted: MutableList<String>,
+        failed: MutableList<String>,
+    ) {
+        for (packageName in HostRegistry.supportedPackageNames) {
+            deleteSharedPrefs(
+                context = context,
+                prefsName = ConfigManager.moduleStatePrefsNameFor(packageName),
+                deleted = deleted,
+                failed = failed,
+            )
         }
     }
 }

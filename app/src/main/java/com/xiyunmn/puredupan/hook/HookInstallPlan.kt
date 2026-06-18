@@ -1,7 +1,6 @@
 ﻿package com.xiyunmn.puredupan.hook
 
 import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
-import com.xiyunmn.puredupan.hook.core.Constants
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.feature.ad.AppStoreReviewBlockHook
 import com.xiyunmn.puredupan.hook.feature.ad.BusinessOpDialogBlockHook
@@ -40,6 +39,7 @@ import com.xiyunmn.puredupan.hook.feature.ui.SettingsImagePickerResultHook
 import com.xiyunmn.puredupan.hook.feature.ui.SystemNightModeSyncHook
 import com.xiyunmn.puredupan.hook.feature.ui.HomeCustomizeHook
 import com.xiyunmn.puredupan.hook.feature.ui.HomeUploadEntryHook
+import com.xiyunmn.puredupan.hook.host.HostProfile
 
 internal data class HookInstallEntry(
     val id: String,
@@ -102,11 +102,13 @@ internal object HookInstallPlanner {
     )
 
     private class PlanContext(
+        val host: HostProfile,
         val processName: String,
     ) {
-        val isMain: Boolean = processName == Constants.TARGET_PACKAGE
-        val isPushService: Boolean = processName == "${Constants.TARGET_PACKAGE}:pushservice"
-        val supportsOemPushHook: Boolean = isMain || isPushService
+        val isMain: Boolean = host.isMainProcess(processName)
+        val isPushService: Boolean = host.isPushServiceProcess(processName)
+        val supportsOemPushHook: Boolean =
+            host.capabilities.supportsOemPushHook && (isMain || isPushService)
     }
 
     private val postAttachSpecs = listOf(
@@ -122,7 +124,9 @@ internal object HookInstallPlanner {
                 settings.isRenewButtonHidden
         }) { cl -> RenewButtonHideHook.hook(cl) },
         HookSpec("SplashInterstitialBlockHook", { context, settings, _ ->
-            context.isMain && settings.isSplashInterstitialBlockEnabled
+            context.isMain &&
+                context.host.capabilities.supportsHotStartSplashAd &&
+                settings.isSplashInterstitialBlockEnabled
         }) { cl -> SplashInterstitialBlockHook.hook(cl) },
         HookSpec("SplashBypassCore", { context, settings, _ ->
             context.isMain && settings.isSplashInterstitialBlockEnabled
@@ -134,22 +138,29 @@ internal object HookInstallPlanner {
             context.isMain && settings.isInAppDialogBlocked
         }) { cl -> LuckyCouponBlockHook.hook(cl) },
         HookSpec("UpdateDialogBlockHook", { context, settings, _ ->
-            context.isMain && settings.isUpdateDialogBlocked
+            context.isMain &&
+                context.host.capabilities.supportsUpdateDialogBlock &&
+                settings.isUpdateDialogBlocked
         }) { cl -> UpdateDialogBlockHook.hook(cl) },
         HookSpec("FullScreenBackupBlockHook", { context, settings, _ ->
             context.isMain && settings.isFullScreenBackupBlocked
         }) { cl -> FullScreenBackupBlockHook.hook(cl) },
         HookSpec("SvipIconGuideBlockHook", { context, settings, _ ->
-            context.isMain && settings.isFullScreenBackupBlocked
+            context.isMain &&
+                context.host.capabilities.supportsSvipIconGuideBlock &&
+                settings.isFullScreenBackupBlocked
         }) { cl -> SvipIconGuideBlockHook.hook(cl) },
         HookSpec("SharePushGuideBlockHook", { context, settings, _ ->
-            context.isMain && settings.isSharePushGuideBlocked
+            context.isMain &&
+                context.host.capabilities.supportsSharePushGuideBlock &&
+                settings.isSharePushGuideBlocked
         }) { cl -> SharePushGuideBlockHook.hook(cl) },
         HookSpec("AppStoreReviewBlockHook", { context, settings, _ ->
             context.isMain && settings.isAppStoreReviewBlocked
         }) { cl -> AppStoreReviewBlockHook.hook(cl) },
         HookSpec("BottomAiTabReplaceHook", { context, settings, _ ->
             context.isMain &&
+                context.host.capabilities.supportsBottomAiTabReplace &&
                 settings.isBottomBarCustomEnabled &&
                 settings.isBottomAiReplaced
         }) { cl -> BottomAiTabReplaceHook.hook(cl) },
@@ -160,6 +171,7 @@ internal object HookInstallPlanner {
         }) { cl -> BottomBarBadgeBlockHook.hook(cl) },
         HookSpec("HomeCustomizeHook", { context, settings, derived ->
             context.isMain &&
+                context.host.capabilities.supportsHomeCustomize &&
                 settings.isHomeCustomizeEnabled &&
                 derived.hasHomeCustomizeOption
         }) { cl -> HomeCustomizeHook.hook(cl) },
@@ -190,6 +202,7 @@ internal object HookInstallPlanner {
         }) { cl -> AboutMeGodModeHook.hook(cl) },
         HookSpec("MemberCardCustomizeHook", { context, settings, derived ->
             context.isMain &&
+                context.host.capabilities.supportsMemberCardCustomize &&
                 settings.isMemberCardCustomizeEnabled &&
                 derived.hasMemberCardCustomizeOption
         }) { cl -> MemberCardCustomizeHook.hook(cl) },
@@ -208,21 +221,25 @@ internal object HookInstallPlanner {
         }) { cl -> BottomBarSimplifyFeature.hook(cl) },
         HookSpec("GarbageCleanServiceRegisterBlockHook", { context, settings, _ ->
             context.isMain &&
+                context.host.capabilities.supportsGarbageCleanServiceOptimize &&
                 settings.isPerformanceOptimizeEnabled &&
                 settings.isGarbageCleanServiceRegisterDisabled
         }) { cl -> GarbageCleanServiceRegisterBlockHook.hook(cl) },
         HookSpec("DatapackSocketRegisterBlockHook", { context, settings, _ ->
             context.isMain &&
+                context.host.capabilities.supportsDatapackSocketOptimize &&
                 settings.isPerformanceOptimizeEnabled &&
                 settings.isDatapackSocketRegisterDisabled
         }) { cl -> DatapackSocketRegisterBlockHook.hook(cl) },
         HookSpec("AigcBackgroundComponentBlockHook", { context, settings, _ ->
             context.isMain &&
+                context.host.capabilities.supportsAigcBackgroundOptimize &&
                 settings.isPerformanceOptimizeEnabled &&
                 settings.isAigcBackgroundComponentDisabled
         }) { cl -> AigcBackgroundComponentBlockHook.hook(cl) },
         HookSpec("DynamicPluginAutoDownloadBlockHook", { context, settings, _ ->
             context.isMain &&
+                context.host.capabilities.supportsDynamicPluginAutoDownloadBlock &&
                 settings.isPerformanceOptimizeEnabled &&
                 settings.isDynamicPluginAutoDownloadDisabled
         }) { cl -> DynamicPluginAutoDownloadBlockHook.hook(cl) },
@@ -233,41 +250,49 @@ internal object HookInstallPlanner {
         }) { cl -> OemPushServiceBlockHook.hook(cl) },
         HookSpec("VideoAdPreloadBlockHook", { context, settings, _ ->
             context.isMain &&
+                context.host.capabilities.supportsVideoAdPreloadBlock &&
                 settings.isPerformanceOptimizeEnabled &&
                 settings.isVideoAdPreloadDisabled
         }) { cl -> VideoAdPreloadBlockHook.hook(cl) },
         HookSpec("AdSdkInitBlockHook", { context, settings, _ ->
             context.isMain &&
+                context.host.capabilities.supportsAdSdkInitBlock &&
                 settings.isPerformanceOptimizeEnabled &&
                 settings.isAdSdkInitDisabled
         }) { cl -> AdSdkInitBlockHook.hook(cl) },
         HookSpec("SwanPreloadBlockHook", { context, settings, _ ->
             context.isMain &&
+                context.host.capabilities.supportsSwanPreloadBlock &&
                 settings.isPerformanceOptimizeEnabled &&
                 settings.isSwanPreloadDisabled
         }) { cl -> SwanPreloadBlockHook.hook(cl) },
         HookSpec("ThumbnailOperatorServiceBlockHook", { context, settings, _ ->
             context.isMain &&
+                context.host.capabilities.supportsThumbnailOperatorServiceBlock &&
                 settings.isPerformanceOptimizeEnabled &&
                 settings.isThumbnailOperatorServiceDisabled
         }) { cl -> ThumbnailOperatorServiceBlockHook.hook(cl) },
         HookSpec("IncentiveBusinessServiceBlockHook", { context, settings, _ ->
             context.isMain &&
+                context.host.capabilities.supportsIncentiveBusinessServiceBlock &&
                 settings.isPerformanceOptimizeEnabled &&
                 settings.isIncentiveBusinessServiceDisabled
         }) { cl -> IncentiveBusinessServiceBlockHook.hook(cl) },
         HookSpec("AudioCircleViewAutostartBlockHook", { context, settings, _ ->
             context.isMain &&
+                context.host.capabilities.supportsAudioCircleAutostartBlock &&
                 settings.isPerformanceOptimizeEnabled &&
                 settings.isMediaBrowserServiceAutostartDisabled
         }) { cl -> AudioCircleViewAutostartBlockHook.hook(cl) },
         HookSpec("IconResourceDownloadBlockHook", { context, settings, _ ->
             context.isMain &&
+                context.host.capabilities.supportsIconResourceDownloadBlock &&
                 settings.isPerformanceOptimizeEnabled &&
                 settings.isIconResourceDownloadDisabled
         }) { cl -> IconResourceDownloadBlockHook.hook(cl) },
         HookSpec("B2fGuidancePrefetchBlockHook", { context, settings, _ ->
             context.isMain &&
+                context.host.capabilities.supportsB2fGuidancePrefetchBlock &&
                 settings.isPerformanceOptimizeEnabled &&
                 settings.isB2fGuidancePrefetchDisabled
         }) { cl -> B2fGuidancePrefetchBlockHook.hook(cl) },
@@ -275,35 +300,28 @@ internal object HookInstallPlanner {
             context.isMain
         }) { cl -> SystemNightModeSyncHook.hook(cl) },
         HookSpec("HomeUploadEntryHook", { context, _, _ ->
-            context.isMain
+            context.isMain && context.host.capabilities.supportsHomeUploadEntry
         }) { cl -> HomeUploadEntryHook.hook(cl) },
     )
 
-    fun shouldHandleProcess(processName: String): Boolean {
-        return isMainProcess(processName) || isPushServiceProcess(processName)
+    fun shouldHandleProcess(host: HostProfile, processName: String): Boolean {
+        return host.shouldHandleProcess(processName)
     }
 
-    fun shouldInstallAttachHook(processName: String): Boolean {
-        return isMainProcess(processName) || isPushServiceProcess(processName)
+    fun shouldInstallAttachHook(host: HostProfile, processName: String): Boolean {
+        return host.shouldInstallAttachHook(processName)
     }
 
-    private fun isMainProcess(processName: String): Boolean {
-        return processName == Constants.TARGET_PACKAGE
-    }
-
-    private fun isPushServiceProcess(processName: String): Boolean {
-        return processName == "${Constants.TARGET_PACKAGE}:pushservice"
-    }
-
-    fun staticPlan(processName: String): HookInstallPlan {
+    fun staticPlan(host: HostProfile, processName: String): HookInstallPlan {
         return HookInstallPlan(processName, "static", emptyList())
     }
 
     fun postAttachPlan(
+        host: HostProfile,
         processName: String,
         settings: SettingsSnapshot,
     ): HookInstallPlan {
-        val context = PlanContext(processName)
+        val context = PlanContext(host, processName)
         val derived = deriveSettings(settings)
         val entries = postAttachSpecs
             .filter { spec -> spec.enabled(context, settings, derived) }

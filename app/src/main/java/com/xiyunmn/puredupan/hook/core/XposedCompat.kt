@@ -24,11 +24,20 @@ object XposedCompat {
     @Volatile
     var module: XposedModule? = null
 
+    @Volatile
+    private var currentPackageName: String? = null
+
     private val installInfoOnce = ConcurrentHashMap.newKeySet<String>()
 
     internal fun setProcessName(name: String) {
         HookFileLogger.setProcessName(name)
     }
+
+    internal fun setCurrentPackageName(name: String) {
+        currentPackageName = name
+    }
+
+    fun currentPackageName(): String? = currentPackageName
 
     internal fun initializeFileLogging(context: Context) {
         HookFileLogger.initialize(context)

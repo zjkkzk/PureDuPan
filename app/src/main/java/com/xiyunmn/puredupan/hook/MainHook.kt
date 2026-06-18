@@ -2,8 +2,9 @@
 
 import android.content.Context
 import com.xiyunmn.puredupan.hook.config.ConfigManager
-import com.xiyunmn.puredupan.hook.core.Constants
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.host.HostProfile
+import com.xiyunmn.puredupan.hook.host.HostRegistry
 import io.github.libxposed.api.XposedModule
 import io.github.libxposed.api.XposedModuleInterface.ModuleLoadedParam
 import io.github.libxposed.api.XposedModuleInterface.PackageLoadedParam
@@ -18,6 +19,7 @@ class MainHook : XposedModule() {
     private val sAttachHookInstalled = AtomicBoolean(false)
     private val sStaticHooksInstalled = AtomicBoolean(false)
     private val sPostAttachStaticHooksInstalled = AtomicBoolean(false)
+    private val activeHost = AtomicReference<HostProfile?>(null)
     private var processName: String = ""
 
     override fun onModuleLoaded(param: ModuleLoadedParam) {
@@ -32,31 +34,36 @@ class MainHook : XposedModule() {
         super.onPackageLoaded(param)
         XposedCompat.log("[MainHook] onPackageLoaded: pkg=${param.packageName}, cl=${param.defaultClassLoader}")
 
-        if (param.packageName != Constants.TARGET_PACKAGE) return
-        if (processName != Constants.TARGET_PACKAGE) return
+        val host = HostRegistry.resolveByPackageName(param.packageName) ?: return
+        XposedCompat.setCurrentPackageName(param.packageName)
+        if (!host.isMainProcess(processName)) return
+        activeHost.compareAndSet(null, host)
     }
 
     override fun onPackageReady(param: PackageReadyParam) {
         super.onPackageReady(param)
         XposedCompat.log("[MainHook] onPackageReady: pkg=${param.packageName}, process=$processName")
 
-        if (param.packageName != Constants.TARGET_PACKAGE) {
+        val host = HostRegistry.resolveByPackageName(param.packageName)
+        if (host == null) {
             XposedCompat.log("[MainHook] onPackageReady: SKIP - non-target package (${param.packageName})")
             return
         }
-        if (!HookInstallPlanner.shouldHandleProcess(processName)) {
+        XposedCompat.setCurrentPackageName(param.packageName)
+        activeHost.set(host)
+        if (!HookInstallPlanner.shouldHandleProcess(host, processName)) {
             XposedCompat.log("[MainHook] onPackageReady: SKIP - non-target process ($processName)")
             return
         }
         val cl = param.classLoader
         XposedCompat.log("[MainHook] onPackageReady: using app classloader=$cl")
 
-        handleLoadPackage(param.packageName, cl)
+        handleLoadPackage(host, cl)
     }
 
-    private fun handleLoadPackage(packageName: String, cl: ClassLoader) {
-        XposedCompat.log("[MainHook] handleLoadPackage: pkg=$packageName, cl=$cl")
-        val staticPlan = HookInstallPlanner.staticPlan(processName)
+    private fun handleLoadPackage(host: HostProfile, cl: ClassLoader) {
+        XposedCompat.log("[MainHook] handleLoadPackage: pkg=${host.packageName}, cl=$cl, host=${host.flavor}")
+        val staticPlan = HookInstallPlanner.staticPlan(host, processName)
         if (staticPlan.isEmpty()) {
             XposedCompat.logD("[MainHook] static hook plan empty for process=$processName, skip")
         } else if (sStaticHooksInstalled.compareAndSet(false, true)) {
@@ -77,7 +84,7 @@ class MainHook : XposedModule() {
             XposedCompat.log("[MainHook] static hooks already installed, skip duplicate install")
         }
 
-        if (!HookInstallPlanner.shouldInstallAttachHook(processName)) {
+        if (!HookInstallPlanner.shouldInstallAttachHook(host, processName)) {
             XposedCompat.logD("[MainHook] Application.attach hook skipped for process=$processName")
             return
         }
@@ -110,6 +117,7 @@ class MainHook : XposedModule() {
                 if (sPostAttachStaticHooksInstalled.compareAndSet(false, true)) {
                     HookInstaller.install(
                         HookInstallPlanner.postAttachPlan(
+                            host = host,
                             processName = processName,
                             settings = ConfigManager.snapshot(),
                         ),

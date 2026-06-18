@@ -1,0 +1,25 @@
+package com.xiyunmn.puredupan.hook.host
+
+internal data class HostCapabilities(
+    val supportsOemPushHook: Boolean = false,
+    val supportsHotStartSplashAd: Boolean = true,
+    val supportsUpdateDialogBlock: Boolean = true,
+    val supportsSvipIconGuideBlock: Boolean = true,
+    val supportsSharePushGuideBlock: Boolean = true,
+    val supportsBottomAiTabReplace: Boolean = true,
+    val supportsHomeCustomize: Boolean = true,
+    val supportsHomeUploadEntry: Boolean = true,
+    val supportsGarbageCleanServiceOptimize: Boolean = true,
+    val supportsDatapackSocketOptimize: Boolean = true,
+    val supportsAigcBackgroundOptimize: Boolean = true,
+    val supportsDynamicPluginAutoDownloadBlock: Boolean = true,
+    val supportsVideoAdPreloadBlock: Boolean = true,
+    val supportsAdSdkInitBlock: Boolean = true,
+    val supportsSwanPreloadBlock: Boolean = true,
+    val supportsThumbnailOperatorServiceBlock: Boolean = true,
+    val supportsIncentiveBusinessServiceBlock: Boolean = true,
+    val supportsAudioCircleAutostartBlock: Boolean = true,
+    val supportsIconResourceDownloadBlock: Boolean = true,
+    val supportsB2fGuidancePrefetchBlock: Boolean = true,
+    val supportsMemberCardCustomize: Boolean = true,
+)

@@ -6,6 +6,8 @@ import com.xiyunmn.puredupan.hook.BuildConfig
 import com.xiyunmn.puredupan.hook.config.model.FeatureAvailabilityState
 import com.xiyunmn.puredupan.hook.config.model.FeatureAvailabilityStatus
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.host.HostFeatureAvailabilityRegistry
+import com.xiyunmn.puredupan.hook.host.HostRegistry
 
 object ConfigManager {
     const val USER_SETTINGS_PREFS_NAME = "wangpan_user_settings"
@@ -88,6 +90,8 @@ object ConfigManager {
 
     @Volatile private var prefs: SharedPreferences? = null
     @Volatile private var appContext: Context? = null
+    @Volatile private var activePrefsName: String? = null
+    @Volatile private var activeModuleStatePrefsName: String? = null
     @Volatile private var featureAvailability: Map<String, Boolean> = emptyMap()
     @Volatile private var settingsSnapshot: SettingsSnapshot = SettingsSnapshot()
     @Volatile private var prefsListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
@@ -176,13 +180,24 @@ object ConfigManager {
         get() = settingsSnapshot.areRestrictedFeaturesUnlocked
 
     fun init(context: Context) {
-        if (prefs != null) return
+        val appCtx = context.applicationContext ?: context
+        val targetPrefsName = namespacedUserSettingsPrefsName(appCtx.packageName)
+        if (prefs != null && activePrefsName == targetPrefsName) return
         synchronized(this) {
-            if (prefs != null) return
-            val appCtx = context.applicationContext ?: context
-            val p = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            if (prefs != null && activePrefsName == targetPrefsName) return
+            prefsListener?.let { listener ->
+                prefs?.unregisterOnSharedPreferenceChangeListener(listener)
+            }
+            prefsListener = null
+            val p = appCtx.getSharedPreferences(targetPrefsName, Context.MODE_PRIVATE)
             appContext = appCtx
             prefs = p
+            activePrefsName = targetPrefsName
+            activeModuleStatePrefsName = namespacedModuleStatePrefsName(appCtx.packageName)
+            applyFeatureAvailabilityInternal(
+                HostFeatureAvailabilityRegistry.featureStatusMapFor(appCtx.packageName),
+            )
+            migrateLegacyPrefsIfNeeded(appCtx, p, targetPrefsName)
             XposedCompat.initializeFileLogging(appCtx)
             ensureUserSettingsVersion(p)
 
@@ -249,12 +264,16 @@ object ConfigManager {
         init(context)
         prefs?.let { return it }
         val appCtx = context.applicationContext ?: context
-        return appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val prefsName = namespacedUserSettingsPrefsName(appCtx.packageName)
+        return appCtx.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
     }
 
     fun getModuleStatePrefs(context: Context): SharedPreferences {
         val appCtx = context.applicationContext ?: context
-        return appCtx.getSharedPreferences(MODULE_STATE_PREFS_NAME, Context.MODE_PRIVATE)
+        return appCtx.getSharedPreferences(
+            namespacedModuleStatePrefsName(appCtx.packageName),
+            Context.MODE_PRIVATE,
+        )
     }
 
     fun getAppContext(): Context? = appContext
@@ -267,6 +286,8 @@ object ConfigManager {
             prefsListener = null
             prefs = null
             appContext = null
+            activePrefsName = null
+            activeModuleStatePrefsName = null
             settingsSnapshot = SettingsSnapshot()
         }
         init(context.applicationContext ?: context)
@@ -294,110 +315,115 @@ object ConfigManager {
         fun featureBoolean(key: String, defaultValue: Boolean = false): Boolean {
             return p.getBoolean(key, defaultValue) && isFeatureAvailable(key)
         }
-        val memberCardBackgroundReplaced = p.getBoolean(
+        val memberCardBackgroundReplaced = featureBoolean(
             KEY_REPLACE_MEMBER_CARD_BACKGROUND,
-            p.getBoolean(KEY_HIDE_MEMBER_CARD_BACKGROUND_LEGACY, false),
+            p.getBoolean(KEY_HIDE_MEMBER_CARD_BACKGROUND_LEGACY, false) &&
+                isFeatureAvailable(KEY_REPLACE_MEMBER_CARD_BACKGROUND),
         )
         val memberCardBackgroundUri = p.getString(KEY_MEMBER_CARD_BACKGROUND_URI, null)
-        val memberCardClickRemoved = p.getBoolean(KEY_REMOVE_MEMBER_CARD_CLICK, false)
+        val memberCardClickRemoved = featureBoolean(KEY_REMOVE_MEMBER_CARD_CLICK, false)
         val memberCardBackgroundViewedOnClick =
             !memberCardClickRemoved &&
                 memberCardBackgroundReplaced &&
                 !memberCardBackgroundUri.isNullOrBlank() &&
-                p.getBoolean(KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK, false)
+                featureBoolean(KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK, false)
         val hasMemberCardOptionEnabled =
             memberCardBackgroundReplaced ||
-                p.getBoolean(KEY_MEMBER_CARD_SIZE_ADJUST, false) ||
-                p.getBoolean(KEY_HIDE_MEMBER_CARD_OPERATION, false) ||
-                p.getBoolean(KEY_HIDE_MEMBER_CARD_BENEFIT, false) ||
-                p.getBoolean(KEY_HIDE_MEMBER_CARD_BENEFIT_BAR, false) ||
-                p.getBoolean(KEY_HIDE_MEMBER_CARD_SVIP_LEVEL, false) ||
-                p.getBoolean(KEY_HIDE_MEMBER_CARD_SVIP_STATUS, false) ||
-                p.getBoolean(KEY_HIDE_MEMBER_CARD_RENEW_BUTTON, false) ||
+                featureBoolean(KEY_MEMBER_CARD_SIZE_ADJUST, false) ||
+                featureBoolean(KEY_HIDE_MEMBER_CARD_OPERATION, false) ||
+                featureBoolean(KEY_HIDE_MEMBER_CARD_BENEFIT, false) ||
+                featureBoolean(KEY_HIDE_MEMBER_CARD_BENEFIT_BAR, false) ||
+                featureBoolean(KEY_HIDE_MEMBER_CARD_SVIP_LEVEL, false) ||
+                featureBoolean(KEY_HIDE_MEMBER_CARD_SVIP_STATUS, false) ||
+                featureBoolean(KEY_HIDE_MEMBER_CARD_RENEW_BUTTON, false) ||
                 memberCardClickRemoved ||
                 memberCardBackgroundViewedOnClick
         val hasHomeCustomizeOptionEnabled =
-            readHomeTopPromotionHidden(p) ||
-                p.getBoolean(KEY_HIDE_HOME_SEARCH_PLACEHOLDER, false) ||
-                p.getBoolean(KEY_HIDE_HOME_SEARCH_AIGC_ICON, false) ||
-                p.getBoolean(KEY_HIDE_HOME_FEED_TIP, false) ||
-                p.getBoolean(KEY_HIDE_HOME_MEMORIES_SECTION, false) ||
-                p.getBoolean(KEY_HIDE_HOME_SAVE_SECTION, false) ||
-                p.getBoolean(KEY_HIDE_HOME_RECENT_SECTION, false)
+            featureBoolean(KEY_HIDE_HOME_TOP_PROMOTION, readHomeTopPromotionHidden(p)) ||
+                featureBoolean(KEY_HIDE_HOME_SEARCH_PLACEHOLDER, false) ||
+                featureBoolean(KEY_HIDE_HOME_SEARCH_AIGC_ICON, false) ||
+                featureBoolean(KEY_HIDE_HOME_FEED_TIP, false) ||
+                featureBoolean(KEY_HIDE_HOME_MEMORIES_SECTION, false) ||
+                featureBoolean(KEY_HIDE_HOME_SAVE_SECTION, false) ||
+                featureBoolean(KEY_HIDE_HOME_RECENT_SECTION, false)
         val hasSharePageOptionEnabled =
-            p.getBoolean(KEY_REMOVE_HOME_FAB, false)
+            featureBoolean(KEY_REMOVE_HOME_FAB, false)
         val hasMyPageOptionEnabled =
-            p.getBoolean(KEY_HIDE_RENEW_BUTTON, false) ||
-                p.getBoolean(KEY_REMOVE_GAME_CENTER, false) ||
-                p.getBoolean(KEY_REMOVE_ABOUT_ME_BANNER, false) ||
-                p.getBoolean(KEY_REMOVE_MY_SERVICE, false) ||
-                p.getBoolean(KEY_HIDE_ABOUT_ME_COIN_CENTER_BUBBLE, false) ||
-                p.getBoolean(KEY_HIDE_ABOUT_ME_SIGN_IN_DOT, false) ||
-                p.getBoolean(KEY_HIDE_ABOUT_ME_AI_COIN_ASSET, false) ||
-                p.getBoolean(KEY_HIDE_ABOUT_ME_MANAGE_SPACE_TEXT, false) ||
-                p.getBoolean(KEY_HIDE_ABOUT_ME_REWARD_TEXT, false) ||
-                p.getBoolean(KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT, false) ||
-                p.getBoolean(KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, false)
+            featureBoolean(KEY_HIDE_RENEW_BUTTON, false) ||
+                featureBoolean(KEY_REMOVE_GAME_CENTER, false) ||
+                featureBoolean(KEY_REMOVE_ABOUT_ME_BANNER, false) ||
+                featureBoolean(KEY_REMOVE_MY_SERVICE, false) ||
+                featureBoolean(KEY_HIDE_ABOUT_ME_COIN_CENTER_BUBBLE, false) ||
+                featureBoolean(KEY_HIDE_ABOUT_ME_SIGN_IN_DOT, false) ||
+                featureBoolean(KEY_HIDE_ABOUT_ME_AI_COIN_ASSET, false) ||
+                featureBoolean(KEY_HIDE_ABOUT_ME_MANAGE_SPACE_TEXT, false) ||
+                featureBoolean(KEY_HIDE_ABOUT_ME_REWARD_TEXT, false) ||
+                featureBoolean(KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT, false) ||
+                featureBoolean(KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, false)
         val hasBottomBarOptionEnabled =
-            p.getBoolean(KEY_REPLACE_BOTTOM_AI, false) ||
-                p.getBoolean(KEY_BLOCK_BOTTOM_BADGE, false) ||
-                p.getBoolean(KEY_HIDE_TAB_FILE, false) ||
-                p.getBoolean(KEY_HIDE_TAB_SHARE, false) ||
-                p.getBoolean(KEY_HIDE_TAB_VIP, false) ||
-                p.getBoolean(KEY_HIDE_TAB_HOME, false) ||
-                p.getBoolean(KEY_HIDE_TAB_MINE, false)
+            featureBoolean(KEY_REPLACE_BOTTOM_AI, false) ||
+                featureBoolean(KEY_BLOCK_BOTTOM_BADGE, false) ||
+                featureBoolean(KEY_HIDE_TAB_FILE, false) ||
+                featureBoolean(KEY_HIDE_TAB_SHARE, false) ||
+                featureBoolean(KEY_HIDE_TAB_VIP, false) ||
+                featureBoolean(KEY_HIDE_TAB_HOME, false) ||
+                featureBoolean(KEY_HIDE_TAB_MINE, false)
         val hasPerformanceOptionEnabled =
-            p.getBoolean(KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER, false) ||
-                p.getBoolean(KEY_DISABLE_DATAPACK_SOCKET_REGISTER, false) ||
-                p.getBoolean(KEY_DISABLE_AIGC_BACKGROUND_COMPONENT, false) ||
-                p.getBoolean(KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD, false) ||
-                p.getBoolean(KEY_DISABLE_OEM_PUSH_SERVICE, false) ||
-                p.getBoolean(KEY_DISABLE_VIDEO_AD_PRELOAD, false) ||
-                p.getBoolean(KEY_DISABLE_AD_SDK_INIT, false) ||
-                p.getBoolean(KEY_DISABLE_SWAN_PRELOAD, false) ||
-                p.getBoolean(KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE, false) ||
-                p.getBoolean(KEY_DISABLE_INCENTIVE_BUSINESS_SERVICE, false) ||
-                p.getBoolean(KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART, false) ||
-                p.getBoolean(KEY_DISABLE_ICON_RESOURCE_DOWNLOAD, false) ||
-                p.getBoolean(KEY_DISABLE_B2F_GUIDANCE_PREFETCH, false)
+            featureBoolean(KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER, false) ||
+                featureBoolean(KEY_DISABLE_DATAPACK_SOCKET_REGISTER, false) ||
+                featureBoolean(KEY_DISABLE_AIGC_BACKGROUND_COMPONENT, false) ||
+                featureBoolean(KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD, false) ||
+                featureBoolean(KEY_DISABLE_OEM_PUSH_SERVICE, false) ||
+                featureBoolean(KEY_DISABLE_VIDEO_AD_PRELOAD, false) ||
+                featureBoolean(KEY_DISABLE_AD_SDK_INIT, false) ||
+                featureBoolean(KEY_DISABLE_SWAN_PRELOAD, false) ||
+                featureBoolean(KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE, false) ||
+                featureBoolean(KEY_DISABLE_INCENTIVE_BUSINESS_SERVICE, false) ||
+                featureBoolean(KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART, false) ||
+                featureBoolean(KEY_DISABLE_ICON_RESOURCE_DOWNLOAD, false) ||
+                featureBoolean(KEY_DISABLE_B2F_GUIDANCE_PREFETCH, false)
 
         return SettingsSnapshot(
             isDetailedLoggingEnabled = featureBoolean(KEY_ENABLE_DETAILED_LOGGING),
-            isSplashInterstitialBlockEnabled = p.getBoolean(KEY_BLOCK_SPLASH_INTERSTITIAL, false),
-            isInAppDialogBlocked = p.getBoolean(KEY_BLOCK_IN_APP_DIALOG, false),
-            isUpdateDialogBlocked = p.getBoolean(KEY_BLOCK_UPDATE_DIALOG, false),
-            isFullScreenBackupBlocked = p.getBoolean(KEY_BLOCK_FULL_SCREEN_BACKUP, false),
-            isSharePushGuideBlocked = p.getBoolean(KEY_BLOCK_SHARE_PUSH_GUIDE, false),
-            isAppStoreReviewBlocked = p.getBoolean(KEY_BLOCK_APP_STORE_REVIEW, false),
-            isBottomAiReplaced = p.getBoolean(KEY_REPLACE_BOTTOM_AI, false),
+            isSplashInterstitialBlockEnabled = featureBoolean(KEY_BLOCK_SPLASH_INTERSTITIAL, false),
+            isInAppDialogBlocked = featureBoolean(KEY_BLOCK_IN_APP_DIALOG, false),
+            isUpdateDialogBlocked = featureBoolean(KEY_BLOCK_UPDATE_DIALOG, false),
+            isFullScreenBackupBlocked = featureBoolean(KEY_BLOCK_FULL_SCREEN_BACKUP, false),
+            isSharePushGuideBlocked = featureBoolean(KEY_BLOCK_SHARE_PUSH_GUIDE, false),
+            isAppStoreReviewBlocked = featureBoolean(KEY_BLOCK_APP_STORE_REVIEW, false),
+            isBottomAiReplaced = featureBoolean(KEY_REPLACE_BOTTOM_AI, false),
             isHomeCustomizeEnabled = p.getBoolean(KEY_HOME_CUSTOMIZE, hasHomeCustomizeOptionEnabled),
-            isHomeTopPromotionHidden = readHomeTopPromotionHidden(p),
-            isHomeSearchPlaceholderHidden = p.getBoolean(KEY_HIDE_HOME_SEARCH_PLACEHOLDER, false),
-            isHomeSearchAigcIconHidden = p.getBoolean(KEY_HIDE_HOME_SEARCH_AIGC_ICON, false),
-            isHomeFeedTipHidden = p.getBoolean(KEY_HIDE_HOME_FEED_TIP, false),
-            isHomeMemoriesSectionHidden = p.getBoolean(KEY_HIDE_HOME_MEMORIES_SECTION, false),
-            isHomeSaveSectionHidden = p.getBoolean(KEY_HIDE_HOME_SAVE_SECTION, false),
-            isHomeRecentSectionHidden = p.getBoolean(KEY_HIDE_HOME_RECENT_SECTION, false),
+            isHomeTopPromotionHidden = featureBoolean(KEY_HIDE_HOME_TOP_PROMOTION, readHomeTopPromotionHidden(p)),
+            isHomeSearchPlaceholderHidden = featureBoolean(KEY_HIDE_HOME_SEARCH_PLACEHOLDER, false),
+            isHomeSearchAigcIconHidden = featureBoolean(KEY_HIDE_HOME_SEARCH_AIGC_ICON, false),
+            isHomeFeedTipHidden = featureBoolean(KEY_HIDE_HOME_FEED_TIP, false),
+            isHomeMemoriesSectionHidden = featureBoolean(KEY_HIDE_HOME_MEMORIES_SECTION, false),
+            isHomeSaveSectionHidden = featureBoolean(KEY_HIDE_HOME_SAVE_SECTION, false),
+            isHomeRecentSectionHidden = featureBoolean(KEY_HIDE_HOME_RECENT_SECTION, false),
             isSharePageCustomizeEnabled = p.getBoolean(KEY_SHARE_PAGE_CUSTOMIZE, hasSharePageOptionEnabled),
             isMyPageCustomizeEnabled = p.getBoolean(KEY_MY_PAGE_CUSTOMIZE, hasMyPageOptionEnabled),
-            isGameCenterRemoved = p.getBoolean(KEY_REMOVE_GAME_CENTER, false),
-            isAboutMeBannerRemoved = p.getBoolean(KEY_REMOVE_ABOUT_ME_BANNER, false),
-            isMyServiceRemoved = p.getBoolean(KEY_REMOVE_MY_SERVICE, false),
-            isAboutMeCoinCenterBubbleHidden = p.getBoolean(KEY_HIDE_ABOUT_ME_COIN_CENTER_BUBBLE, false),
-            isAboutMeSignInDotHidden = p.getBoolean(KEY_HIDE_ABOUT_ME_SIGN_IN_DOT, false),
-            isAboutMeManageSpaceTextHidden = p.getBoolean(KEY_HIDE_ABOUT_ME_MANAGE_SPACE_TEXT, false),
-            isAboutMeRewardTextHidden = p.getBoolean(KEY_HIDE_ABOUT_ME_REWARD_TEXT, false),
-            isAboutMeAccountExitTextHidden = p.getBoolean(KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT, false),
-            isAboutMeStarSkinTextHidden = p.getBoolean(KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, false),
-            isHomeFabRemoved = p.getBoolean(KEY_REMOVE_HOME_FAB, false),
-            isRenewButtonHidden = p.getBoolean(KEY_HIDE_RENEW_BUTTON, false),
-            isBottomBarBadgeBlocked = p.getBoolean(KEY_BLOCK_BOTTOM_BADGE, false),
-            isAlbumBackupBarBlocked = p.getBoolean(KEY_BLOCK_ALBUM_BACKUP_BAR, false),
-            isAboutMeAiCoinAssetHidden = p.getBoolean(KEY_HIDE_ABOUT_ME_AI_COIN_ASSET, false),
+            isGameCenterRemoved = featureBoolean(KEY_REMOVE_GAME_CENTER, false),
+            isAboutMeBannerRemoved = featureBoolean(KEY_REMOVE_ABOUT_ME_BANNER, false),
+            isMyServiceRemoved = featureBoolean(KEY_REMOVE_MY_SERVICE, false),
+            isAboutMeCoinCenterBubbleHidden = featureBoolean(KEY_HIDE_ABOUT_ME_COIN_CENTER_BUBBLE, false),
+            isAboutMeSignInDotHidden = featureBoolean(KEY_HIDE_ABOUT_ME_SIGN_IN_DOT, false),
+            isAboutMeManageSpaceTextHidden = featureBoolean(KEY_HIDE_ABOUT_ME_MANAGE_SPACE_TEXT, false),
+            isAboutMeRewardTextHidden = featureBoolean(KEY_HIDE_ABOUT_ME_REWARD_TEXT, false),
+            isAboutMeAccountExitTextHidden = featureBoolean(KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT, false),
+            isAboutMeStarSkinTextHidden = featureBoolean(KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, false),
+            isHomeFabRemoved = featureBoolean(KEY_REMOVE_HOME_FAB, false),
+            isRenewButtonHidden = featureBoolean(KEY_HIDE_RENEW_BUTTON, false),
+            isBottomBarBadgeBlocked = featureBoolean(KEY_BLOCK_BOTTOM_BADGE, false),
+            isAlbumBackupBarBlocked = featureBoolean(KEY_BLOCK_ALBUM_BACKUP_BAR, false),
+            isAboutMeAiCoinAssetHidden = featureBoolean(KEY_HIDE_ABOUT_ME_AI_COIN_ASSET, false),
             isMemberCardCustomizeEnabled = p.getBoolean(KEY_MEMBER_CARD_CUSTOMIZE, hasMemberCardOptionEnabled),
             isMemberCardBackgroundReplaced = memberCardBackgroundReplaced,
             memberCardBackgroundUri = memberCardBackgroundUri,
-            memberCardBackgroundBlurRadius = p.getInt(KEY_MEMBER_CARD_BACKGROUND_BLUR_RADIUS, 0),
+            memberCardBackgroundBlurRadius = if (isFeatureAvailable(KEY_MEMBER_CARD_BACKGROUND_BLUR_RADIUS)) {
+                p.getInt(KEY_MEMBER_CARD_BACKGROUND_BLUR_RADIUS, 0)
+            } else {
+                0
+            },
             memberCardBackgroundScalePercent = p.getInt(KEY_MEMBER_CARD_BACKGROUND_SCALE_PERCENT, 100)
                 .coerceIn(100, 300),
             memberCardBackgroundRotationDegrees = p.getInt(KEY_MEMBER_CARD_BACKGROUND_ROTATION_DEGREES, 0)
@@ -406,18 +432,26 @@ object ConfigManager {
                 .coerceIn(-1000, 1000),
             memberCardBackgroundOffsetYPermille = p.getInt(KEY_MEMBER_CARD_BACKGROUND_OFFSET_Y_PERMILLE, 0)
                 .coerceIn(-1000, 1000),
-            isMemberCardSizeAdjusted = p.getBoolean(KEY_MEMBER_CARD_SIZE_ADJUST, false),
-            memberCardWidthDp = p.getInt(KEY_MEMBER_CARD_SIZE_WIDTH_DP, 0),
-            memberCardHeightDp = p.getInt(KEY_MEMBER_CARD_SIZE_HEIGHT_DP, 0),
-            isMemberCardOperationHidden = p.getBoolean(KEY_HIDE_MEMBER_CARD_OPERATION, false),
-            isMemberCardBenefitHidden = p.getBoolean(KEY_HIDE_MEMBER_CARD_BENEFIT, false),
-            isMemberCardBenefitBarHidden = p.getBoolean(KEY_HIDE_MEMBER_CARD_BENEFIT_BAR, false),
-            isMemberCardSvipLevelHidden = p.getBoolean(KEY_HIDE_MEMBER_CARD_SVIP_LEVEL, false),
-            isMemberCardSvipStatusHidden = p.getBoolean(KEY_HIDE_MEMBER_CARD_SVIP_STATUS, false),
-            isMemberCardRenewButtonHidden = p.getBoolean(KEY_HIDE_MEMBER_CARD_RENEW_BUTTON, false),
+            isMemberCardSizeAdjusted = featureBoolean(KEY_MEMBER_CARD_SIZE_ADJUST, false),
+            memberCardWidthDp = if (isFeatureAvailable(KEY_MEMBER_CARD_SIZE_WIDTH_DP)) {
+                p.getInt(KEY_MEMBER_CARD_SIZE_WIDTH_DP, 0)
+            } else {
+                0
+            },
+            memberCardHeightDp = if (isFeatureAvailable(KEY_MEMBER_CARD_SIZE_HEIGHT_DP)) {
+                p.getInt(KEY_MEMBER_CARD_SIZE_HEIGHT_DP, 0)
+            } else {
+                0
+            },
+            isMemberCardOperationHidden = featureBoolean(KEY_HIDE_MEMBER_CARD_OPERATION, false),
+            isMemberCardBenefitHidden = featureBoolean(KEY_HIDE_MEMBER_CARD_BENEFIT, false),
+            isMemberCardBenefitBarHidden = featureBoolean(KEY_HIDE_MEMBER_CARD_BENEFIT_BAR, false),
+            isMemberCardSvipLevelHidden = featureBoolean(KEY_HIDE_MEMBER_CARD_SVIP_LEVEL, false),
+            isMemberCardSvipStatusHidden = featureBoolean(KEY_HIDE_MEMBER_CARD_SVIP_STATUS, false),
+            isMemberCardRenewButtonHidden = featureBoolean(KEY_HIDE_MEMBER_CARD_RENEW_BUTTON, false),
             isMemberCardClickRemoved = memberCardClickRemoved,
             isMemberCardBackgroundViewedOnClick = memberCardBackgroundViewedOnClick,
-            isFollowSystemNightModeEnabled = p.getBoolean(KEY_FOLLOW_SYSTEM_NIGHT_MODE, false),
+            isFollowSystemNightModeEnabled = featureBoolean(KEY_FOLLOW_SYSTEM_NIGHT_MODE, false),
             isPerformanceOptimizeEnabled = p.getBoolean(KEY_PERFORMANCE_OPTIMIZE, hasPerformanceOptionEnabled),
             isGarbageCleanServiceRegisterDisabled = featureBoolean(
                 KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER,
@@ -472,11 +506,11 @@ object ConfigManager {
                 false,
             ),
             isBottomBarCustomEnabled = p.getBoolean(KEY_CUSTOM_BOTTOM_BAR, hasBottomBarOptionEnabled),
-            isBottomBarTabFileHidden = p.getBoolean(KEY_HIDE_TAB_FILE, false),
-            isBottomBarTabShareHidden = p.getBoolean(KEY_HIDE_TAB_SHARE, false),
-            isBottomBarTabVipHidden = p.getBoolean(KEY_HIDE_TAB_VIP, false),
-            isBottomBarTabHomeHidden = p.getBoolean(KEY_HIDE_TAB_HOME, false),
-            isBottomBarTabMineHidden = p.getBoolean(KEY_HIDE_TAB_MINE, false),
+            isBottomBarTabFileHidden = featureBoolean(KEY_HIDE_TAB_FILE, false),
+            isBottomBarTabShareHidden = featureBoolean(KEY_HIDE_TAB_SHARE, false),
+            isBottomBarTabVipHidden = featureBoolean(KEY_HIDE_TAB_VIP, false),
+            isBottomBarTabHomeHidden = featureBoolean(KEY_HIDE_TAB_HOME, false),
+            isBottomBarTabMineHidden = featureBoolean(KEY_HIDE_TAB_MINE, false),
             areRestrictedFeaturesUnlocked = p.getBoolean(KEY_RESTRICTED_FEATURES_UNLOCKED, false),
         )
     }
@@ -494,14 +528,19 @@ object ConfigManager {
         featureStatusMap: Map<String, FeatureAvailabilityStatus>,
         refreshRuntime: Boolean = false,
     ) {
-        if (featureStatusMap.isEmpty()) return
-        featureAvailability = featureStatusMap.mapValues { (_, status) ->
-            status.state != FeatureAvailabilityState.DISABLED
-        }
+        applyFeatureAvailabilityInternal(featureStatusMap)
 
         if (refreshRuntime) {
             val snapshot = refreshUserSettingsSnapshot(getPrefs(context))
             logSettingsSnapshot("featureAvailability", snapshot)
+        }
+    }
+
+    private fun applyFeatureAvailabilityInternal(
+        featureStatusMap: Map<String, FeatureAvailabilityStatus>,
+    ) {
+        featureAvailability = featureStatusMap.mapValues { (_, status) ->
+            status.state != FeatureAvailabilityState.DISABLED
         }
     }
 
@@ -572,5 +611,60 @@ object ConfigManager {
             logSettingsSnapshot("resetUserSettings", snapshot)
         }
         return success
+    }
+
+    fun userSettingsPrefsNameFor(packageName: String): String {
+        return namespacedUserSettingsPrefsName(packageName)
+    }
+
+    fun moduleStatePrefsNameFor(packageName: String): String {
+        return namespacedModuleStatePrefsName(packageName)
+    }
+
+    private fun namespacedUserSettingsPrefsName(packageName: String): String {
+        return "${USER_SETTINGS_PREFS_NAME}_${sanitizePackageName(packageName)}"
+    }
+
+    private fun namespacedModuleStatePrefsName(packageName: String): String {
+        return "${MODULE_STATE_PREFS_NAME}_${sanitizePackageName(packageName)}"
+    }
+
+    private fun sanitizePackageName(packageName: String): String {
+        val fallbackPackageName = HostRegistry.resolveByPackageName(packageName)?.packageName
+            ?: packageName
+        val effectivePackageName = packageName.ifBlank { fallbackPackageName.ifBlank { "unknown" } }
+        return effectivePackageName
+            .replace(':', '_')
+            .replace('.', '_')
+    }
+
+    private fun migrateLegacyPrefsIfNeeded(
+        context: Context,
+        namespacedPrefs: SharedPreferences,
+        targetPrefsName: String,
+    ) {
+        if (namespacedPrefs.all.isNotEmpty()) return
+        if (targetPrefsName == PREFS_NAME) return
+        val legacyPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val legacyAll = legacyPrefs.all
+        if (legacyAll.isEmpty()) return
+
+        val editor = namespacedPrefs.edit()
+        for ((key, value) in legacyAll) {
+            when (value) {
+                is Boolean -> editor.putBoolean(key, value)
+                is Int -> editor.putInt(key, value)
+                is Long -> editor.putLong(key, value)
+                is Float -> editor.putFloat(key, value)
+                is String -> editor.putString(key, value)
+                is Set<*> -> {
+                    @Suppress("UNCHECKED_CAST")
+                    editor.putStringSet(key, value.filterIsInstance<String>().toSet())
+                }
+            }
+        }
+        if (editor.commit()) {
+            XposedCompat.log("[ConfigManager] migrated legacy prefs to $targetPrefsName")
+        }
     }
 }

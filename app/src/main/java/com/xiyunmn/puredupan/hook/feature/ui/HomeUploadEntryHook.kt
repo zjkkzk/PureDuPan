@@ -1,57 +1,22 @@
 package com.xiyunmn.puredupan.hook.feature.ui
 
-import android.view.View
 import com.xiyunmn.puredupan.hook.core.XposedCompat
-import com.xiyunmn.puredupan.hook.core.HookState
-import com.xiyunmn.puredupan.hook.ui.SettingsMenuHook
+import com.xiyunmn.puredupan.hook.feature.ui.entry.cn.CnHomeTitleBarModuleEntryHook
+import com.xiyunmn.puredupan.hook.feature.ui.entry.intl.IntlHomeTitleBarModuleEntryHook
+import com.xiyunmn.puredupan.hook.host.HostFlavor
+import com.xiyunmn.puredupan.hook.host.HostRegistry
 
 object HomeUploadEntryHook {
-    private val hookState = HookState()
-
     internal fun hook(cl: ClassLoader) {
-        val mod = XposedCompat.module ?: return
-        if (!hookState.markInstalled()) return
-
-        try {
-            val fragmentClass = XposedCompat.findClassOrNull(
-                "com.baidu.netdisk.home25ai.fragment.HomeSearchboxFragment", cl
-            )
-            if (fragmentClass == null) {
-                hookState.reset()
-                return
-            }
-
-            val onCreateViewMethod = XposedCompat.findMethodOrNull(
-                fragmentClass, "onCreateView",
-                android.view.LayoutInflater::class.java,
-                android.view.ViewGroup::class.java,
-                android.os.Bundle::class.java
-            )
-            if (onCreateViewMethod == null) {
-                hookState.reset()
-                return
-            }
-
-            mod.hook(onCreateViewMethod).intercept { chain ->
-                val result = chain.proceed()
-                try {
-                    val rootView = result as? View ?: return@intercept result
-                    val uploadEntry = rootView.findViewById<View>(
-                        rootView.context.resources.getIdentifier(
-                            "upload_file_entry", "id", "com.baidu.netdisk"
-                        )
-                    )
-                    uploadEntry?.setOnLongClickListener {
-                        SettingsMenuHook.showModuleSettingsDialog(it.context, cl)
-                        true
-                    }
-                } catch (_: Throwable) {}
-                result
-            }
-        } catch (e: Exception) {
-            hookState.reset()
-            throw e
+        when (resolveHostFlavor()) {
+            HostFlavor.BAIDU_INTL -> IntlHomeTitleBarModuleEntryHook.hook(cl)
+            HostFlavor.BAIDU_CN -> CnHomeTitleBarModuleEntryHook.hook(cl)
         }
     }
 
+    private fun resolveHostFlavor(): HostFlavor {
+        val packageName = XposedCompat.currentPackageName()
+        return HostRegistry.resolveByPackageName(packageName.orEmpty())?.flavor
+            ?: HostFlavor.BAIDU_CN
+    }
 }

@@ -26,6 +26,8 @@ import android.widget.Toast
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.Constants
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.host.HostFeatureAvailabilityRegistry
+import com.xiyunmn.puredupan.hook.host.HostRegistry
 import com.xiyunmn.puredupan.hook.ui.settings.IntSliderControl
 import com.xiyunmn.puredupan.hook.ui.settings.MemberCardBackgroundImageControl
 import com.xiyunmn.puredupan.hook.ui.settings.SettingGroup
@@ -131,14 +133,19 @@ object SettingsMenuHook {
     ) {
         try {
             val prefs = ConfigManager.getPrefs(context)
+            ConfigManager.applyFeatureAvailability(
+                context = context,
+                featureStatusMap = HostFeatureAvailabilityRegistry.featureStatusMapFor(context.packageName),
+                refreshRuntime = true,
+            )
             val density = context.resources.displayMetrics.density
             val padding = (20 * density).toInt()
-            val homeCustomizeDefault = hasAnyHomeCustomizeOptionEnabled(prefs)
-            val sharePageCustomizeDefault = hasAnySharePageCustomizeOptionEnabled(prefs)
-            val myPageCustomizeDefault = hasAnyMyPageCustomizeOptionEnabled(prefs)
-            val memberCardCustomizeDefault = hasAnyMemberCardCustomizeOptionEnabled(prefs)
-            val bottomBarCustomizeDefault = hasAnyBottomBarCustomizeOptionEnabled(prefs)
-            val performanceOptimizeDefault = hasAnyPerformanceOptimizeOptionEnabled(prefs)
+            val homeCustomizeDefault = hasAnyHomeCustomizeOptionEnabled(context, prefs)
+            val sharePageCustomizeDefault = hasAnySharePageCustomizeOptionEnabled(context, prefs)
+            val myPageCustomizeDefault = hasAnyMyPageCustomizeOptionEnabled(context, prefs)
+            val memberCardCustomizeDefault = hasAnyMemberCardCustomizeOptionEnabled(context, prefs)
+            val bottomBarCustomizeDefault = hasAnyBottomBarCustomizeOptionEnabled(context, prefs)
+            val performanceOptimizeDefault = hasAnyPerformanceOptimizeOptionEnabled(context, prefs)
 
             val root = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
@@ -155,8 +162,9 @@ object SettingsMenuHook {
                         UiText.Settings.BLOCK_SPLASH_INTERSTITIAL_LABEL,
                         UiText.Settings.BLOCK_SPLASH_INTERSTITIAL_DESC,
                         ConfigManager.KEY_BLOCK_SPLASH_INTERSTITIAL,
-                        true,
+                        hostCapabilities(context).supportsHotStartSplashAd,
                         false,
+                        visible = isFeatureVisible(context, ConfigManager.KEY_BLOCK_SPLASH_INTERSTITIAL),
                     )
                 )
             }
@@ -168,13 +176,15 @@ object SettingsMenuHook {
                     ConfigManager.KEY_BLOCK_IN_APP_DIALOG,
                     true,
                     false,
+                    visible = isFeatureVisible(context, ConfigManager.KEY_BLOCK_IN_APP_DIALOG),
                 ),
                 SwitchItem(
                     UiText.Settings.BLOCK_UPDATE_DIALOG_LABEL,
                     UiText.Settings.BLOCK_UPDATE_DIALOG_DESC,
                     ConfigManager.KEY_BLOCK_UPDATE_DIALOG,
-                    true,
+                    hostCapabilities(context).supportsUpdateDialogBlock,
                     false,
+                    visible = isFeatureVisible(context, ConfigManager.KEY_BLOCK_UPDATE_DIALOG),
                 ),
                 SwitchItem(
                     UiText.Settings.BLOCK_FULL_SCREEN_BACKUP_LABEL,
@@ -182,6 +192,7 @@ object SettingsMenuHook {
                     ConfigManager.KEY_BLOCK_FULL_SCREEN_BACKUP,
                     true,
                     false,
+                    visible = isFeatureVisible(context, ConfigManager.KEY_BLOCK_FULL_SCREEN_BACKUP),
                 ),
                 SwitchItem(
                     UiText.Settings.BLOCK_APP_STORE_REVIEW_LABEL,
@@ -189,13 +200,15 @@ object SettingsMenuHook {
                     ConfigManager.KEY_BLOCK_APP_STORE_REVIEW,
                     true,
                     false,
+                    visible = isFeatureVisible(context, ConfigManager.KEY_BLOCK_APP_STORE_REVIEW),
                 ),
                 SwitchItem(
                     UiText.Settings.BLOCK_SHARE_PUSH_GUIDE_LABEL,
                     UiText.Settings.BLOCK_SHARE_PUSH_GUIDE_DESC,
                     ConfigManager.KEY_BLOCK_SHARE_PUSH_GUIDE,
-                    true,
+                    hostCapabilities(context).supportsSharePushGuideBlock,
                     false,
+                    visible = isFeatureVisible(context, ConfigManager.KEY_BLOCK_SHARE_PUSH_GUIDE),
                 )
             ))
 
@@ -209,12 +222,14 @@ object SettingsMenuHook {
                         UiText.Settings.HOME_CUSTOMIZE_LABEL,
                         UiText.Settings.HOME_CUSTOMIZE_DESC,
                         ConfigManager.KEY_HOME_CUSTOMIZE,
-                        true,
+                        hostCapabilities(context).supportsHomeCustomize,
                         homeCustomizeDefault,
                         UiText.Settings.ACTION_ICON_SETTINGS,
-                    ) {
-                        showHomeCustomizeDialog(context, prefs)
-                    },
+                        onActionClick = {
+                            showHomeCustomizeDialog(context, prefs)
+                        },
+                        visible = isFeatureVisible(context, ConfigManager.KEY_HOME_CUSTOMIZE),
+                    ),
                     SwitchItem(
                         UiText.Settings.SHARE_PAGE_CUSTOMIZE_LABEL,
                         UiText.Settings.SHARE_PAGE_CUSTOMIZE_DESC,
@@ -222,9 +237,11 @@ object SettingsMenuHook {
                         true,
                         sharePageCustomizeDefault,
                         UiText.Settings.ACTION_ICON_SETTINGS,
-                    ) {
-                        showSharePageCustomizeDialog(context, prefs)
-                    },
+                        onActionClick = {
+                            showSharePageCustomizeDialog(context, prefs)
+                        },
+                        visible = isFeatureVisible(context, ConfigManager.KEY_SHARE_PAGE_CUSTOMIZE),
+                    ),
                     SwitchItem(
                         UiText.Settings.MY_PAGE_CUSTOMIZE_LABEL,
                         UiText.Settings.MY_PAGE_CUSTOMIZE_DESC,
@@ -232,19 +249,22 @@ object SettingsMenuHook {
                         true,
                         myPageCustomizeDefault,
                         UiText.Settings.ACTION_ICON_SETTINGS,
-                    ) {
-                        showMyPageCustomizeDialog(context, prefs)
-                    },
+                        onActionClick = {
+                            showMyPageCustomizeDialog(context, prefs)
+                        },
+                        visible = isFeatureVisible(context, ConfigManager.KEY_MY_PAGE_CUSTOMIZE),
+                    ),
                     SwitchItem(
                         UiText.Settings.MEMBER_CARD_CUSTOMIZE_LABEL,
                         UiText.Settings.MEMBER_CARD_CUSTOMIZE_DESC,
                         ConfigManager.KEY_MEMBER_CARD_CUSTOMIZE,
-                        true,
+                        hostCapabilities(context).supportsMemberCardCustomize,
                         memberCardCustomizeDefault,
                         UiText.Settings.ACTION_ICON_SETTINGS,
                         onActionClick = {
                             showMemberCardCustomizeDialog(context, prefs)
                         },
+                        visible = isFeatureVisible(context, ConfigManager.KEY_MEMBER_CARD_CUSTOMIZE),
                     ),
                     SwitchItem(
                         UiText.Settings.CUSTOM_BOTTOM_BAR_LABEL,
@@ -253,9 +273,11 @@ object SettingsMenuHook {
                         true,
                         bottomBarCustomizeDefault,
                         UiText.Settings.ACTION_ICON_SETTINGS,
-                    ) {
-                        showBottomBarDialog(context, prefs)
-                    },
+                        onActionClick = {
+                            showBottomBarDialog(context, prefs)
+                        },
+                        visible = isFeatureVisible(context, ConfigManager.KEY_CUSTOM_BOTTOM_BAR),
+                    ),
                 ))
             }
 
@@ -266,6 +288,7 @@ object SettingsMenuHook {
                     ConfigManager.KEY_BLOCK_ALBUM_BACKUP_BAR,
                     true,
                     false,
+                    visible = isFeatureVisible(context, ConfigManager.KEY_BLOCK_ALBUM_BACKUP_BAR),
                 )
             )
 
@@ -277,6 +300,7 @@ object SettingsMenuHook {
                     ConfigManager.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
                     true,
                     false,
+                    visible = isFeatureVisible(context, ConfigManager.KEY_FOLLOW_SYSTEM_NIGHT_MODE),
                 ),
             )
 
@@ -293,6 +317,7 @@ object SettingsMenuHook {
                         onActionClick = {
                             showPerformanceOptimizeDialog(context, prefs)
                         },
+                        visible = isFeatureVisible(context, ConfigManager.KEY_PERFORMANCE_OPTIMIZE),
                     )
                 )
             }
@@ -347,8 +372,13 @@ object SettingsMenuHook {
                 }
             }
 
-            groups.forEachIndexed { index, group ->
-                if (index > 0) {
+            var hasRenderedGroup = false
+            groups.forEach { group ->
+                val visibleItems = group.items.filter { it.visible }
+                if (visibleItems.isEmpty()) {
+                    return@forEach
+                }
+                if (hasRenderedGroup) {
                     val gap = View(context)
                     gap.layoutParams = LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -369,7 +399,7 @@ object SettingsMenuHook {
                 }
                 root.addView(headerLabel)
 
-                group.items.forEach { item ->
+                visibleItems.forEach { item ->
                     val support = supportOf(item)
                     val finalLabel = if (!support.supported) {
                         UiText.Settings.withUnsupportedSuffix(item.label)
@@ -401,6 +431,7 @@ object SettingsMenuHook {
                     )
                     root.addView(rowView)
                 }
+                hasRenderedGroup = true
             }
 
             // About section
@@ -616,8 +647,16 @@ object SettingsMenuHook {
                 true,
                 prefs.getBoolean(ConfigManager.KEY_REMOVE_HOME_FAB, false),
             )
-            root.addView(createCustomHideWidgetSectionTitle(context, padding))
-            root.addView(fabRow)
+            addTitledSection(
+                root = root,
+                context = context,
+                padding = padding,
+                titleView = createCustomHideWidgetSectionTitle(context, padding),
+                rows = visibleRows(
+                    context,
+                    ConfigManager.KEY_REMOVE_HOME_FAB to fabRow,
+                ),
+            )
 
             val fabSwitch = findSwitchView(fabRow)
             if (fabSwitch == null) {
@@ -681,23 +720,19 @@ object SettingsMenuHook {
                 prefs.getBoolean(ConfigManager.KEY_REPLACE_BOTTOM_AI, false),
             )
             val replaceAiSwitch = findSwitchView(replaceAiRow)
-            root.addView(replaceAiRow)
+            val showReplaceAi = isFeatureVisible(context, ConfigManager.KEY_REPLACE_BOTTOM_AI)
+            if (showReplaceAi) {
+                root.addView(replaceAiRow)
+            }
             val badgeRow = createSwitchRow(
                 context, prefs, UiText.Settings.BLOCK_BOTTOM_BADGE_LABEL,
                 UiText.Settings.BLOCK_BOTTOM_BADGE_DESC, null, padding, true,
                 prefs.getBoolean(ConfigManager.KEY_BLOCK_BOTTOM_BADGE, false),
             )
-            root.addView(badgeRow)
-            root.addView(createDivider(context, padding))
-            root.addView(TextView(context).apply {
-                text = UiText.Settings.BOTTOM_BAR_TAB_SECTION_TITLE
-                textSize = 12.5f
-                letterSpacing = 0.04f
-                setTextColor(tokens.accent)
-                typeface = Typeface.DEFAULT_BOLD
-                includeFontPadding = false
-                setPadding(0, (padding * 0.45f).toInt(), 0, (padding * 0.2f).toInt())
-            })
+            val showBottomBadge = isFeatureVisible(context, ConfigManager.KEY_BLOCK_BOTTOM_BADGE)
+            if (showBottomBadge) {
+                root.addView(badgeRow)
+            }
 
             val homeRow = createSwitchRow(
                 context, prefs, UiText.Settings.BOTTOM_BAR_HIDE_TAB_HOME_LABEL,
@@ -720,11 +755,34 @@ object SettingsMenuHook {
                 null, null, padding, true, initialSelection.hideMine,
             )
 
-            root.addView(homeRow)
-            root.addView(fileRow)
-            root.addView(shareRow)
-            root.addView(vipRow)
-            root.addView(mineRow)
+            val showHideHome = isFeatureVisible(context, ConfigManager.KEY_HIDE_TAB_HOME)
+            val showHideFile = isFeatureVisible(context, ConfigManager.KEY_HIDE_TAB_FILE)
+            val showHideShare = isFeatureVisible(context, ConfigManager.KEY_HIDE_TAB_SHARE)
+            val showHideVip = isFeatureVisible(context, ConfigManager.KEY_HIDE_TAB_VIP)
+            val showHideMine = isFeatureVisible(context, ConfigManager.KEY_HIDE_TAB_MINE)
+            addTitledSection(
+                root = root,
+                context = context,
+                padding = padding,
+                titleView = TextView(context).apply {
+                    text = UiText.Settings.BOTTOM_BAR_TAB_SECTION_TITLE
+                    textSize = 12.5f
+                    letterSpacing = 0.04f
+                    setTextColor(tokens.accent)
+                    typeface = Typeface.DEFAULT_BOLD
+                    includeFontPadding = false
+                    setPadding(0, (padding * 0.45f).toInt(), 0, (padding * 0.2f).toInt())
+                },
+                rows = visibleRows(
+                    context,
+                    ConfigManager.KEY_HIDE_TAB_HOME to homeRow,
+                    ConfigManager.KEY_HIDE_TAB_FILE to fileRow,
+                    ConfigManager.KEY_HIDE_TAB_SHARE to shareRow,
+                    ConfigManager.KEY_HIDE_TAB_VIP to vipRow,
+                    ConfigManager.KEY_HIDE_TAB_MINE to mineRow,
+                ),
+                addDividerBefore = root.childCount > 0,
+            )
 
             val homeSwitch = findSwitchView(homeRow)
             val fileSwitch = findSwitchView(fileRow)
@@ -749,11 +807,11 @@ object SettingsMenuHook {
             dialog.setOnShowListener {
                 dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
                     val rawSelection = ConfigManager.BottomBarTabSelection(
-                        hideHome = homeSwitch.isChecked,
-                        hideFile = fileSwitch.isChecked,
-                        hideShare = shareSwitch.isChecked,
-                        hideVip = vipSwitch.isChecked,
-                        hideMine = mineSwitch.isChecked,
+                        hideHome = showHideHome && homeSwitch.isChecked,
+                        hideFile = showHideFile && fileSwitch.isChecked,
+                        hideShare = showHideShare && shareSwitch.isChecked,
+                        hideVip = showHideVip && vipSwitch.isChecked,
+                        hideMine = showHideMine && mineSwitch.isChecked,
                     )
                     if (!rawSelection.hasVisibleTab()) {
                         Toast.makeText(
@@ -765,8 +823,8 @@ object SettingsMenuHook {
                     }
                     val normalized = ConfigManager.normalizeBottomBarSelection(rawSelection)
                     val hasEnabledBottomBarOption =
-                        replaceAiSwitch.isChecked ||
-                            badgeSwitch.isChecked ||
+                        (showReplaceAi && replaceAiSwitch.isChecked) ||
+                            (showBottomBadge && badgeSwitch.isChecked) ||
                             normalized.hideHome ||
                             normalized.hideFile ||
                             normalized.hideShare ||
@@ -820,7 +878,7 @@ object SettingsMenuHook {
                 UiText.Settings.DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER_DESC,
                 null,
                 padding,
-                true,
+                hostCapabilities(context).supportsGarbageCleanServiceOptimize,
                 prefs.getBoolean(ConfigManager.KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER, false),
             )
             val datapackSocketRow = createSwitchRow(
@@ -830,7 +888,7 @@ object SettingsMenuHook {
                 UiText.Settings.DISABLE_DATAPACK_SOCKET_REGISTER_DESC,
                 null,
                 padding,
-                true,
+                hostCapabilities(context).supportsDatapackSocketOptimize,
                 prefs.getBoolean(ConfigManager.KEY_DISABLE_DATAPACK_SOCKET_REGISTER, false),
             )
             val aigcBackgroundComponentRow = createSwitchRow(
@@ -840,7 +898,7 @@ object SettingsMenuHook {
                 UiText.Settings.DISABLE_AIGC_BACKGROUND_COMPONENT_DESC,
                 null,
                 padding,
-                true,
+                hostCapabilities(context).supportsAigcBackgroundOptimize,
                 prefs.getBoolean(ConfigManager.KEY_DISABLE_AIGC_BACKGROUND_COMPONENT, false),
             )
             val dynamicPluginAutoDownloadRow = createSwitchRow(
@@ -850,7 +908,7 @@ object SettingsMenuHook {
                 UiText.Settings.DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD_DESC,
                 null,
                 padding,
-                true,
+                hostCapabilities(context).supportsDynamicPluginAutoDownloadBlock,
                 prefs.getBoolean(ConfigManager.KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD, false),
             )
             val oemPushServiceRow = createSwitchRow(
@@ -860,7 +918,7 @@ object SettingsMenuHook {
                 UiText.Settings.DISABLE_OEM_PUSH_SERVICE_DESC,
                 null,
                 padding,
-                true,
+                hostCapabilities(context).supportsOemPushHook,
                 prefs.getBoolean(ConfigManager.KEY_DISABLE_OEM_PUSH_SERVICE, false),
             )
             val videoAdPreloadRow = createSwitchRow(
@@ -870,7 +928,7 @@ object SettingsMenuHook {
                 UiText.Settings.DISABLE_VIDEO_AD_PRELOAD_DESC,
                 null,
                 padding,
-                true,
+                hostCapabilities(context).supportsVideoAdPreloadBlock,
                 prefs.getBoolean(ConfigManager.KEY_DISABLE_VIDEO_AD_PRELOAD, false),
             )
             val adSdkInitRow = createSwitchRow(
@@ -880,7 +938,7 @@ object SettingsMenuHook {
                 UiText.Settings.DISABLE_AD_SDK_INIT_DESC,
                 null,
                 padding,
-                true,
+                hostCapabilities(context).supportsAdSdkInitBlock,
                 prefs.getBoolean(ConfigManager.KEY_DISABLE_AD_SDK_INIT, false),
             )
             val swanPreloadRow = createSwitchRow(
@@ -890,7 +948,7 @@ object SettingsMenuHook {
                 UiText.Settings.DISABLE_SWAN_PRELOAD_DESC,
                 null,
                 padding,
-                true,
+                hostCapabilities(context).supportsSwanPreloadBlock,
                 prefs.getBoolean(ConfigManager.KEY_DISABLE_SWAN_PRELOAD, false),
             )
             val thumbnailOperatorServiceRow = createSwitchRow(
@@ -900,7 +958,7 @@ object SettingsMenuHook {
                 UiText.Settings.DISABLE_THUMBNAIL_OPERATOR_SERVICE_DESC,
                 null,
                 padding,
-                true,
+                hostCapabilities(context).supportsThumbnailOperatorServiceBlock,
                 prefs.getBoolean(ConfigManager.KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE, false),
             )
             val incentiveBusinessServiceRow = createSwitchRow(
@@ -910,7 +968,7 @@ object SettingsMenuHook {
                 UiText.Settings.DISABLE_INCENTIVE_BUSINESS_SERVICE_DESC,
                 null,
                 padding,
-                true,
+                hostCapabilities(context).supportsIncentiveBusinessServiceBlock,
                 prefs.getBoolean(ConfigManager.KEY_DISABLE_INCENTIVE_BUSINESS_SERVICE, false),
             )
             val mediaBrowserServiceAutostartRow = createSwitchRow(
@@ -920,7 +978,7 @@ object SettingsMenuHook {
                 UiText.Settings.DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART_DESC,
                 null,
                 padding,
-                true,
+                hostCapabilities(context).supportsAudioCircleAutostartBlock,
                 prefs.getBoolean(ConfigManager.KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART, false),
             )
             val iconResourceDownloadRow = createSwitchRow(
@@ -930,7 +988,7 @@ object SettingsMenuHook {
                 UiText.Settings.DISABLE_ICON_RESOURCE_DOWNLOAD_DESC,
                 null,
                 padding,
-                true,
+                hostCapabilities(context).supportsIconResourceDownloadBlock,
                 prefs.getBoolean(ConfigManager.KEY_DISABLE_ICON_RESOURCE_DOWNLOAD, false),
             )
             val b2fGuidancePrefetchRow = createSwitchRow(
@@ -940,53 +998,77 @@ object SettingsMenuHook {
                 UiText.Settings.DISABLE_B2F_GUIDANCE_PREFETCH_DESC,
                 null,
                 padding,
-                true,
+                hostCapabilities(context).supportsB2fGuidancePrefetchBlock,
                 prefs.getBoolean(ConfigManager.KEY_DISABLE_B2F_GUIDANCE_PREFETCH, false),
             )
-            root.addView(
-                createPerformanceSectionTitle(
+            addTitledSection(
+                root = root,
+                context = context,
+                padding = padding,
+                titleView = createPerformanceSectionTitle(
                     context,
                     padding,
                     UiText.Settings.PERFORMANCE_GROUP_POST_INIT,
-                )
+                ),
+                rows = visibleRows(
+                    context,
+                    ConfigManager.KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER to garbageCleanRow,
+                    ConfigManager.KEY_DISABLE_DATAPACK_SOCKET_REGISTER to datapackSocketRow,
+                    ConfigManager.KEY_DISABLE_AIGC_BACKGROUND_COMPONENT to aigcBackgroundComponentRow,
+                ),
             )
-            root.addView(garbageCleanRow)
-            root.addView(datapackSocketRow)
-            root.addView(aigcBackgroundComponentRow)
 
-            root.addView(
-                createPerformanceSectionTitle(
+            addTitledSection(
+                root = root,
+                context = context,
+                padding = padding,
+                titleView = createPerformanceSectionTitle(
                     context,
                     padding,
                     UiText.Settings.PERFORMANCE_GROUP_STARTUP_PREFETCH,
-                )
+                ),
+                rows = visibleRows(
+                    context,
+                    ConfigManager.KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD to dynamicPluginAutoDownloadRow,
+                    ConfigManager.KEY_DISABLE_SWAN_PRELOAD to swanPreloadRow,
+                    ConfigManager.KEY_DISABLE_ICON_RESOURCE_DOWNLOAD to iconResourceDownloadRow,
+                    ConfigManager.KEY_DISABLE_B2F_GUIDANCE_PREFETCH to b2fGuidancePrefetchRow,
+                ),
             )
-            root.addView(dynamicPluginAutoDownloadRow)
-            root.addView(swanPreloadRow)
-            root.addView(iconResourceDownloadRow)
-            root.addView(b2fGuidancePrefetchRow)
 
-            root.addView(
-                createPerformanceSectionTitle(
+            addTitledSection(
+                root = root,
+                context = context,
+                padding = padding,
+                titleView = createPerformanceSectionTitle(
                     context,
                     padding,
                     UiText.Settings.PERFORMANCE_GROUP_RUNTIME_SERVICE,
-                )
+                ),
+                rows = visibleRows(
+                    context,
+                    ConfigManager.KEY_DISABLE_OEM_PUSH_SERVICE to oemPushServiceRow,
+                    ConfigManager.KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE to thumbnailOperatorServiceRow,
+                    ConfigManager.KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART to mediaBrowserServiceAutostartRow,
+                ),
             )
-            root.addView(oemPushServiceRow)
-            root.addView(thumbnailOperatorServiceRow)
-            root.addView(mediaBrowserServiceAutostartRow)
 
-            root.addView(
-                createPerformanceSectionTitle(
+            addTitledSection(
+                root = root,
+                context = context,
+                padding = padding,
+                titleView = createPerformanceSectionTitle(
                     context,
                     padding,
                     UiText.Settings.PERFORMANCE_GROUP_AD_INCENTIVE,
-                )
+                ),
+                rows = visibleRows(
+                    context,
+                    ConfigManager.KEY_DISABLE_AD_SDK_INIT to adSdkInitRow,
+                    ConfigManager.KEY_DISABLE_VIDEO_AD_PRELOAD to videoAdPreloadRow,
+                    ConfigManager.KEY_DISABLE_INCENTIVE_BUSINESS_SERVICE to incentiveBusinessServiceRow,
+                ),
             )
-            root.addView(adSdkInitRow)
-            root.addView(videoAdPreloadRow)
-            root.addView(incentiveBusinessServiceRow)
 
             val garbageCleanSwitch = findSwitchView(garbageCleanRow)
             val datapackSocketSwitch = findSwitchView(datapackSocketRow)
@@ -1135,9 +1217,13 @@ object SettingsMenuHook {
                 true,
                 ConfigManager.readHomeTopPromotionHidden(prefs),
             )
-            root.addView(topPromotionRow)
-            root.addView(createDivider(context, padding))
-            root.addView(createCustomHideWidgetSectionTitle(context, padding))
+            addVisibleRows(
+                root,
+                visibleRows(
+                    context,
+                    ConfigManager.KEY_HIDE_HOME_TOP_PROMOTION to topPromotionRow,
+                ),
+            )
 
             val placeholderRow = createSwitchRow(
                 context,
@@ -1170,11 +1256,19 @@ object SettingsMenuHook {
                 prefs.getBoolean(ConfigManager.KEY_HIDE_HOME_FEED_TIP, false),
             )
 
-            root.addView(placeholderRow)
-            root.addView(aigcIconRow)
-            root.addView(feedTipRow)
-            root.addView(createDivider(context, padding))
-            root.addView(createCustomHideSectionSectionTitle(context, padding))
+            addTitledSection(
+                root = root,
+                context = context,
+                padding = padding,
+                titleView = createCustomHideWidgetSectionTitle(context, padding),
+                rows = visibleRows(
+                    context,
+                    ConfigManager.KEY_HIDE_HOME_SEARCH_PLACEHOLDER to placeholderRow,
+                    ConfigManager.KEY_HIDE_HOME_SEARCH_AIGC_ICON to aigcIconRow,
+                    ConfigManager.KEY_HIDE_HOME_FEED_TIP to feedTipRow,
+                ),
+                addDividerBefore = root.childCount > 0,
+            )
 
             val memoriesSectionRow = createSwitchRow(
                 context,
@@ -1207,9 +1301,19 @@ object SettingsMenuHook {
                 prefs.getBoolean(ConfigManager.KEY_HIDE_HOME_RECENT_SECTION, false),
             )
 
-            root.addView(memoriesSectionRow)
-            root.addView(saveSectionRow)
-            root.addView(recentSectionRow)
+            addTitledSection(
+                root = root,
+                context = context,
+                padding = padding,
+                titleView = createCustomHideSectionSectionTitle(context, padding),
+                rows = visibleRows(
+                    context,
+                    ConfigManager.KEY_HIDE_HOME_MEMORIES_SECTION to memoriesSectionRow,
+                    ConfigManager.KEY_HIDE_HOME_SAVE_SECTION to saveSectionRow,
+                    ConfigManager.KEY_HIDE_HOME_RECENT_SECTION to recentSectionRow,
+                ),
+                addDividerBefore = root.childCount > 0,
+            )
 
             val topPromotionSwitch = findSwitchView(topPromotionRow)
             val placeholderSwitch = findSwitchView(placeholderRow)
@@ -1240,12 +1344,19 @@ object SettingsMenuHook {
             dialog.setOnShowListener {
                 dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
                     val hasEnabledHomeOption =
-                        topPromotionSwitch.isChecked ||
+                        isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_TOP_PROMOTION) &&
+                            topPromotionSwitch.isChecked ||
+                            isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_SEARCH_PLACEHOLDER) &&
                             placeholderSwitch.isChecked ||
+                            isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_SEARCH_AIGC_ICON) &&
                             aigcIconSwitch.isChecked ||
+                            isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_FEED_TIP) &&
                             feedTipSwitch.isChecked ||
+                            isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_MEMORIES_SECTION) &&
                             memoriesSectionSwitch.isChecked ||
+                            isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_SAVE_SECTION) &&
                             saveSectionSwitch.isChecked ||
+                            isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_RECENT_SECTION) &&
                             recentSectionSwitch.isChecked
                     prefs.edit()
                         .putBoolean(ConfigManager.KEY_HOME_CUSTOMIZE, hasEnabledHomeOption)
@@ -1411,19 +1522,36 @@ object SettingsMenuHook {
                 prefs.getBoolean(ConfigManager.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, false),
             )
 
-            root.addView(createCustomHideWidgetSectionTitle(context, padding))
-            root.addView(renewRow)
-            root.addView(gameCenterRow)
-            root.addView(bannerRow)
-            root.addView(serviceRow)
-            root.addView(coinCenterBubbleRow)
-            root.addView(signInDotRow)
-            root.addView(aiCoinAssetRow)
-            root.addView(createCustomHideTextWidgetSectionTitle(context, padding))
-            root.addView(manageSpaceTextRow)
-            root.addView(rewardTextRow)
-            root.addView(accountExitTextRow)
-            root.addView(starSkinTextRow)
+            addTitledSection(
+                root = root,
+                context = context,
+                padding = padding,
+                titleView = createCustomHideWidgetSectionTitle(context, padding),
+                rows = visibleRows(
+                    context,
+                    ConfigManager.KEY_HIDE_RENEW_BUTTON to renewRow,
+                    ConfigManager.KEY_REMOVE_GAME_CENTER to gameCenterRow,
+                    ConfigManager.KEY_REMOVE_ABOUT_ME_BANNER to bannerRow,
+                    ConfigManager.KEY_REMOVE_MY_SERVICE to serviceRow,
+                    ConfigManager.KEY_HIDE_ABOUT_ME_COIN_CENTER_BUBBLE to coinCenterBubbleRow,
+                    ConfigManager.KEY_HIDE_ABOUT_ME_SIGN_IN_DOT to signInDotRow,
+                    ConfigManager.KEY_HIDE_ABOUT_ME_AI_COIN_ASSET to aiCoinAssetRow,
+                ),
+            )
+            addTitledSection(
+                root = root,
+                context = context,
+                padding = padding,
+                titleView = createCustomHideTextWidgetSectionTitle(context, padding),
+                rows = visibleRows(
+                    context,
+                    ConfigManager.KEY_HIDE_ABOUT_ME_MANAGE_SPACE_TEXT to manageSpaceTextRow,
+                    ConfigManager.KEY_HIDE_ABOUT_ME_REWARD_TEXT to rewardTextRow,
+                    ConfigManager.KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT to accountExitTextRow,
+                    ConfigManager.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT to starSkinTextRow,
+                ),
+                addDividerBefore = root.childCount > 0,
+            )
 
             val renewSwitch = findSwitchView(renewRow)
             val gameCenterSwitch = findSwitchView(gameCenterRow)
@@ -1462,16 +1590,27 @@ object SettingsMenuHook {
             dialog.setOnShowListener {
                 dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setOnClickListener {
                     val hasEnabledMyPageOption =
-                        renewSwitch.isChecked ||
+                        isFeatureVisible(context, ConfigManager.KEY_HIDE_RENEW_BUTTON) &&
+                            renewSwitch.isChecked ||
+                            isFeatureVisible(context, ConfigManager.KEY_REMOVE_GAME_CENTER) &&
                             gameCenterSwitch.isChecked ||
+                            isFeatureVisible(context, ConfigManager.KEY_REMOVE_ABOUT_ME_BANNER) &&
                             bannerSwitch.isChecked ||
+                            isFeatureVisible(context, ConfigManager.KEY_REMOVE_MY_SERVICE) &&
                             serviceSwitch.isChecked ||
+                            isFeatureVisible(context, ConfigManager.KEY_HIDE_ABOUT_ME_COIN_CENTER_BUBBLE) &&
                             coinCenterBubbleSwitch.isChecked ||
+                            isFeatureVisible(context, ConfigManager.KEY_HIDE_ABOUT_ME_SIGN_IN_DOT) &&
                             signInDotSwitch.isChecked ||
+                            isFeatureVisible(context, ConfigManager.KEY_HIDE_ABOUT_ME_AI_COIN_ASSET) &&
                             aiCoinAssetSwitch.isChecked ||
+                            isFeatureVisible(context, ConfigManager.KEY_HIDE_ABOUT_ME_MANAGE_SPACE_TEXT) &&
                             manageSpaceTextSwitch.isChecked ||
+                            isFeatureVisible(context, ConfigManager.KEY_HIDE_ABOUT_ME_REWARD_TEXT) &&
                             rewardTextSwitch.isChecked ||
+                            isFeatureVisible(context, ConfigManager.KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT) &&
                             accountExitTextSwitch.isChecked ||
+                            isFeatureVisible(context, ConfigManager.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT) &&
                             starSkinTextSwitch.isChecked
                     prefs.edit()
                         .putBoolean(ConfigManager.KEY_MY_PAGE_CUSTOMIZE, hasEnabledMyPageOption)
@@ -2138,6 +2277,45 @@ object SettingsMenuHook {
         )
     }
 
+    private fun hostCapabilities(context: Context) =
+        HostRegistry.requireByPackageName(context.packageName).capabilities
+
+    private fun isFeatureVisible(context: Context, featureKey: String?): Boolean {
+        if (featureKey.isNullOrBlank()) return true
+        return ConfigManager.isFeatureAvailable(featureKey)
+    }
+
+    private fun visibleRows(
+        context: Context,
+        vararg rows: Pair<String?, View>,
+    ): List<View> {
+        return rows.filter { (featureKey, _) -> isFeatureVisible(context, featureKey) }
+            .map { (_, view) -> view }
+    }
+
+    private fun addVisibleRows(
+        root: LinearLayout,
+        rows: List<View>,
+    ) {
+        rows.forEach(root::addView)
+    }
+
+    private fun addTitledSection(
+        root: LinearLayout,
+        context: Context,
+        padding: Int,
+        titleView: View,
+        rows: List<View>,
+        addDividerBefore: Boolean = false,
+    ) {
+        if (rows.isEmpty()) return
+        if (addDividerBefore) {
+            root.addView(createDivider(context, padding))
+        }
+        root.addView(titleView)
+        addVisibleRows(root, rows)
+    }
+
     private fun restartHostApp(context: Context) {
         try {
             val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
@@ -2206,86 +2384,143 @@ object SettingsMenuHook {
     }
 
     private fun hasAnyMemberCardCustomizeOptionEnabled(
+        context: Context,
         prefs: android.content.SharedPreferences,
     ): Boolean {
         val hasViewBackgroundClick =
-            !prefs.getBoolean(ConfigManager.KEY_REMOVE_MEMBER_CARD_CLICK, false) &&
+            isFeatureVisible(context, ConfigManager.KEY_REMOVE_MEMBER_CARD_CLICK) &&
+                isFeatureVisible(context, ConfigManager.KEY_REPLACE_MEMBER_CARD_BACKGROUND) &&
+                !prefs.getBoolean(ConfigManager.KEY_REMOVE_MEMBER_CARD_CLICK, false) &&
                 prefs.getBoolean(ConfigManager.KEY_REPLACE_MEMBER_CARD_BACKGROUND, false) &&
                 !prefs.getString(ConfigManager.KEY_MEMBER_CARD_BACKGROUND_URI, null).isNullOrBlank() &&
+                isFeatureVisible(context, ConfigManager.KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK) &&
                 prefs.getBoolean(ConfigManager.KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK, false)
-        return prefs.getBoolean(ConfigManager.KEY_REPLACE_MEMBER_CARD_BACKGROUND, false) ||
+        return isFeatureVisible(context, ConfigManager.KEY_REPLACE_MEMBER_CARD_BACKGROUND) &&
+            prefs.getBoolean(ConfigManager.KEY_REPLACE_MEMBER_CARD_BACKGROUND, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_MEMBER_CARD_SIZE_ADJUST) &&
             prefs.getBoolean(ConfigManager.KEY_MEMBER_CARD_SIZE_ADJUST, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_MEMBER_CARD_OPERATION) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_MEMBER_CARD_OPERATION, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_MEMBER_CARD_BENEFIT) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_MEMBER_CARD_BENEFIT, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_MEMBER_CARD_BENEFIT_BAR) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_MEMBER_CARD_BENEFIT_BAR, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_MEMBER_CARD_SVIP_LEVEL) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_MEMBER_CARD_SVIP_LEVEL, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_MEMBER_CARD_SVIP_STATUS) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_MEMBER_CARD_SVIP_STATUS, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_MEMBER_CARD_RENEW_BUTTON) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_MEMBER_CARD_RENEW_BUTTON, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_REMOVE_MEMBER_CARD_CLICK) &&
             prefs.getBoolean(ConfigManager.KEY_REMOVE_MEMBER_CARD_CLICK, false) ||
             hasViewBackgroundClick
     }
 
     private fun hasAnyHomeCustomizeOptionEnabled(
+        context: Context,
         prefs: android.content.SharedPreferences,
     ): Boolean {
-        return ConfigManager.readHomeTopPromotionHidden(prefs) ||
+        return isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_TOP_PROMOTION) &&
+            ConfigManager.readHomeTopPromotionHidden(prefs) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_SEARCH_PLACEHOLDER) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_HOME_SEARCH_PLACEHOLDER, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_SEARCH_AIGC_ICON) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_HOME_SEARCH_AIGC_ICON, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_FEED_TIP) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_HOME_FEED_TIP, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_MEMORIES_SECTION) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_HOME_MEMORIES_SECTION, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_SAVE_SECTION) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_HOME_SAVE_SECTION, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_HOME_RECENT_SECTION) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_HOME_RECENT_SECTION, false)
     }
 
     private fun hasAnySharePageCustomizeOptionEnabled(
+        context: Context,
         prefs: android.content.SharedPreferences,
     ): Boolean {
-        return prefs.getBoolean(ConfigManager.KEY_REMOVE_HOME_FAB, false)
+        return isFeatureVisible(context, ConfigManager.KEY_REMOVE_HOME_FAB) &&
+            prefs.getBoolean(ConfigManager.KEY_REMOVE_HOME_FAB, false)
     }
 
     private fun hasAnyMyPageCustomizeOptionEnabled(
+        context: Context,
         prefs: android.content.SharedPreferences,
     ): Boolean {
-        return prefs.getBoolean(ConfigManager.KEY_HIDE_RENEW_BUTTON, false) ||
+        return isFeatureVisible(context, ConfigManager.KEY_HIDE_RENEW_BUTTON) &&
+            prefs.getBoolean(ConfigManager.KEY_HIDE_RENEW_BUTTON, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_REMOVE_GAME_CENTER) &&
             prefs.getBoolean(ConfigManager.KEY_REMOVE_GAME_CENTER, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_REMOVE_ABOUT_ME_BANNER) &&
             prefs.getBoolean(ConfigManager.KEY_REMOVE_ABOUT_ME_BANNER, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_REMOVE_MY_SERVICE) &&
             prefs.getBoolean(ConfigManager.KEY_REMOVE_MY_SERVICE, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_ABOUT_ME_COIN_CENTER_BUBBLE) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_ABOUT_ME_COIN_CENTER_BUBBLE, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_ABOUT_ME_SIGN_IN_DOT) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_ABOUT_ME_SIGN_IN_DOT, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_ABOUT_ME_AI_COIN_ASSET) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_ABOUT_ME_AI_COIN_ASSET, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_ABOUT_ME_MANAGE_SPACE_TEXT) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_ABOUT_ME_MANAGE_SPACE_TEXT, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_ABOUT_ME_REWARD_TEXT) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_ABOUT_ME_REWARD_TEXT, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT, false)
     }
 
     private fun hasAnyBottomBarCustomizeOptionEnabled(
+        context: Context,
         prefs: android.content.SharedPreferences,
     ): Boolean {
-        return prefs.getBoolean(ConfigManager.KEY_REPLACE_BOTTOM_AI, false) ||
+        return isFeatureVisible(context, ConfigManager.KEY_REPLACE_BOTTOM_AI) &&
+            prefs.getBoolean(ConfigManager.KEY_REPLACE_BOTTOM_AI, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_BLOCK_BOTTOM_BADGE) &&
             prefs.getBoolean(ConfigManager.KEY_BLOCK_BOTTOM_BADGE, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_TAB_FILE) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_TAB_FILE, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_TAB_SHARE) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_TAB_SHARE, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_TAB_VIP) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_TAB_VIP, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_TAB_HOME) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_TAB_HOME, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_HIDE_TAB_MINE) &&
             prefs.getBoolean(ConfigManager.KEY_HIDE_TAB_MINE, false)
     }
 
     private fun hasAnyPerformanceOptimizeOptionEnabled(
+        context: Context,
         prefs: android.content.SharedPreferences,
     ): Boolean {
-        return prefs.getBoolean(ConfigManager.KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER, false) ||
+        return isFeatureVisible(context, ConfigManager.KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER) &&
+            prefs.getBoolean(ConfigManager.KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_DISABLE_DATAPACK_SOCKET_REGISTER) &&
             prefs.getBoolean(ConfigManager.KEY_DISABLE_DATAPACK_SOCKET_REGISTER, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_DISABLE_AIGC_BACKGROUND_COMPONENT) &&
             prefs.getBoolean(ConfigManager.KEY_DISABLE_AIGC_BACKGROUND_COMPONENT, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD) &&
             prefs.getBoolean(ConfigManager.KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_DISABLE_OEM_PUSH_SERVICE) &&
             prefs.getBoolean(ConfigManager.KEY_DISABLE_OEM_PUSH_SERVICE, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_DISABLE_VIDEO_AD_PRELOAD) &&
             prefs.getBoolean(ConfigManager.KEY_DISABLE_VIDEO_AD_PRELOAD, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_DISABLE_AD_SDK_INIT) &&
             prefs.getBoolean(ConfigManager.KEY_DISABLE_AD_SDK_INIT, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_DISABLE_SWAN_PRELOAD) &&
             prefs.getBoolean(ConfigManager.KEY_DISABLE_SWAN_PRELOAD, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE) &&
             prefs.getBoolean(ConfigManager.KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_DISABLE_INCENTIVE_BUSINESS_SERVICE) &&
             prefs.getBoolean(ConfigManager.KEY_DISABLE_INCENTIVE_BUSINESS_SERVICE, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART) &&
             prefs.getBoolean(ConfigManager.KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_DISABLE_ICON_RESOURCE_DOWNLOAD) &&
             prefs.getBoolean(ConfigManager.KEY_DISABLE_ICON_RESOURCE_DOWNLOAD, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_DISABLE_B2F_GUIDANCE_PREFETCH) &&
             prefs.getBoolean(ConfigManager.KEY_DISABLE_B2F_GUIDANCE_PREFETCH, false)
     }
 

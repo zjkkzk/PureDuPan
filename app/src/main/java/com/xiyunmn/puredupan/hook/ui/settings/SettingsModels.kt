@@ -13,6 +13,7 @@ internal data class SwitchItem(
     val linkedPrefKeys: List<String> = emptyList(),
     val showSwitch: Boolean = true,
     val onActionClick: (() -> Unit)? = null,
+    val visible: Boolean = true,
 )
 
 internal data class SettingGroup(
