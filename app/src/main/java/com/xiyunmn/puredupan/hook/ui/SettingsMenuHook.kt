@@ -1045,15 +1045,15 @@ object SettingsMenuHook {
                 hostCapabilities(context).supportsB2fGuidancePrefetchBlock,
                 prefs.getBoolean(ConfigManager.KEY_DISABLE_B2F_GUIDANCE_PREFETCH, false),
             )
-            val intlOfflinePackageSyncDelayRow = createSwitchRow(
+            val intlOfflinePackageInitBlockRow = createSwitchRow(
                 context,
                 prefs,
-                UiText.Settings.DELAY_INTL_OFFLINE_PACKAGE_SYNC_LABEL,
-                UiText.Settings.DELAY_INTL_OFFLINE_PACKAGE_SYNC_DESC,
+                UiText.Settings.BLOCK_INTL_OFFLINE_PACKAGE_INIT_LABEL,
+                UiText.Settings.BLOCK_INTL_OFFLINE_PACKAGE_INIT_DESC,
                 null,
                 padding,
-                hostCapabilities(context).supportsIntlOfflinePackageSyncDelay,
-                prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC, false),
+                hostCapabilities(context).supportsIntlOfflinePackageInitBlock,
+                prefs.getBoolean(ConfigManager.KEY_BLOCK_INTL_OFFLINE_PACKAGE_INIT, false),
             )
             val intlFeedPreloadDelayRow = createSwitchRow(
                 context,
@@ -1096,7 +1096,7 @@ object SettingsMenuHook {
                 ),
                 rows = visibleRows(
                     context,
-                    ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC to intlOfflinePackageSyncDelayRow,
+                    ConfigManager.KEY_BLOCK_INTL_OFFLINE_PACKAGE_INIT to intlOfflinePackageInitBlockRow,
                     ConfigManager.KEY_DELAY_INTL_FEED_PRELOAD to intlFeedPreloadDelayRow,
                     ConfigManager.KEY_DELAY_INTL_TASK_SCORE_REFRESH to intlTaskScoreRefreshDelayRow,
                     ConfigManager.KEY_BLOCK_INTL_STORY_DOUYIN_INIT to intlStoryDouyinInitBlockRow,
@@ -1184,7 +1184,7 @@ object SettingsMenuHook {
             val mediaBrowserServiceAutostartSwitch = findSwitchView(mediaBrowserServiceAutostartRow)
             val iconResourceDownloadSwitch = findSwitchView(iconResourceDownloadRow)
             val b2fGuidancePrefetchSwitch = findSwitchView(b2fGuidancePrefetchRow)
-            val intlOfflinePackageSyncDelaySwitch = findSwitchView(intlOfflinePackageSyncDelayRow)
+            val intlOfflinePackageInitBlockSwitch = findSwitchView(intlOfflinePackageInitBlockRow)
             val intlFeedPreloadDelaySwitch = findSwitchView(intlFeedPreloadDelayRow)
             val intlTaskScoreRefreshDelaySwitch = findSwitchView(intlTaskScoreRefreshDelayRow)
             val intlStoryDouyinInitBlockSwitch = findSwitchView(intlStoryDouyinInitBlockRow)
@@ -1202,7 +1202,7 @@ object SettingsMenuHook {
                 mediaBrowserServiceAutostartSwitch == null ||
                 iconResourceDownloadSwitch == null ||
                 b2fGuidancePrefetchSwitch == null ||
-                intlOfflinePackageSyncDelaySwitch == null ||
+                intlOfflinePackageInitBlockSwitch == null ||
                 intlFeedPreloadDelaySwitch == null ||
                 intlTaskScoreRefreshDelaySwitch == null ||
                 intlStoryDouyinInitBlockSwitch == null
@@ -1233,7 +1233,7 @@ object SettingsMenuHook {
                             mediaBrowserServiceAutostartSwitch.isChecked ||
                             iconResourceDownloadSwitch.isChecked ||
                             b2fGuidancePrefetchSwitch.isChecked ||
-                            intlOfflinePackageSyncDelaySwitch.isChecked ||
+                            intlOfflinePackageInitBlockSwitch.isChecked ||
                             intlFeedPreloadDelaySwitch.isChecked ||
                             intlTaskScoreRefreshDelaySwitch.isChecked ||
                             intlStoryDouyinInitBlockSwitch.isChecked
@@ -1292,8 +1292,8 @@ object SettingsMenuHook {
                             b2fGuidancePrefetchSwitch.isChecked,
                         )
                         .putBoolean(
-                            ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC,
-                            intlOfflinePackageSyncDelaySwitch.isChecked,
+                            ConfigManager.KEY_BLOCK_INTL_OFFLINE_PACKAGE_INIT,
+                            intlOfflinePackageInitBlockSwitch.isChecked,
                         )
                         .putBoolean(
                             ConfigManager.KEY_DELAY_INTL_FEED_PRELOAD,
@@ -2817,8 +2817,8 @@ object SettingsMenuHook {
             prefs.getBoolean(ConfigManager.KEY_DISABLE_ICON_RESOURCE_DOWNLOAD, false) ||
             isFeatureVisible(context, ConfigManager.KEY_DISABLE_B2F_GUIDANCE_PREFETCH) &&
             prefs.getBoolean(ConfigManager.KEY_DISABLE_B2F_GUIDANCE_PREFETCH, false) ||
-            isFeatureVisible(context, ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC) &&
-            prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_BLOCK_INTL_OFFLINE_PACKAGE_INIT) &&
+            prefs.getBoolean(ConfigManager.KEY_BLOCK_INTL_OFFLINE_PACKAGE_INIT, false) ||
             isFeatureVisible(context, ConfigManager.KEY_DELAY_INTL_FEED_PRELOAD) &&
             prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_FEED_PRELOAD, false) ||
             isFeatureVisible(context, ConfigManager.KEY_DELAY_INTL_TASK_SCORE_REFRESH) &&

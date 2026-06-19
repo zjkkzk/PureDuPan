@@ -1,25 +1,19 @@
 package com.xiyunmn.puredupan.hook.feature.performance.intl
 
-import android.app.Activity
-import android.os.Handler
-import android.os.Looper
 import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import java.lang.reflect.Method
 
-internal object IntlOfflinePackageSyncDelayHook {
+internal object IntlOfflinePackageInitBlockHook {
     private const val DYNAMIC_CONTEXT_CLASS_NAME =
         "rubik.generate.context.bd_netdisk_com_baidu_netdisk_dynamic.DynamicContext"
     private const val FAST_WEB_VIEW_CLIENT_CLASS_NAME = "com.baidu.netdisk.webview.FastWebViewClient"
     private const val OFFLINE_H5_PACKAGE_ACTIVITY_CLASS_NAME =
         "com.baidu.netdisk.ui.webview.OfflineH5PackageActivity"
-    private const val MAIN_ACTIVITY_CLASS_NAME = "com.baidu.netdisk.ui.MainActivity"
     private const val START_SYNC_METHOD_NAME = "startSyncOfflinePackages"
-    private const val HOME_STABLE_RESTORE_DELAY_MS = 2500L
 
     private val hookState = HookState()
-    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
     private val lock = Any()
 
     @Volatile private var startSyncMethod: Method? = null
@@ -28,11 +22,10 @@ internal object IntlOfflinePackageSyncDelayHook {
     @Volatile private var restoring = false
     @Volatile private var skipCount = 0
     @Volatile private var restoreCount = 0
-    @Volatile private var homeStableRestoreScheduled = false
 
     internal fun hook(cl: ClassLoader) {
         if (!isEnabled()) {
-            XposedCompat.log("[IntlOfflinePackageSyncDelayHook] skipped: config disabled")
+            XposedCompat.log("[IntlOfflinePackageInitBlockHook] skipped: config disabled")
             return
         }
         val mod = XposedCompat.module ?: return
@@ -42,13 +35,13 @@ internal object IntlOfflinePackageSyncDelayHook {
             val syncMethod = resolveStartSyncMethod(cl)
             if (syncMethod == null) {
                 hookState.reset()
-                XposedCompat.log("[IntlOfflinePackageSyncDelayHook] start sync method NOT FOUND")
+                XposedCompat.log("[IntlOfflinePackageInitBlockHook] start sync method NOT FOUND")
                 return
             }
             startSyncMethod = syncMethod
 
             mod.hook(syncMethod).intercept { chain ->
-                if (!shouldSkipStartupSync()) {
+                if (!shouldBlockStartupInit()) {
                     return@intercept chain.proceed()
                 }
 
@@ -57,35 +50,34 @@ internal object IntlOfflinePackageSyncDelayHook {
                     skipCount++
                 }
                 XposedCompat.log(
-                    "[IntlOfflinePackageSyncDelayHook] skipped startup H5 offline package sync: " +
+                    "[IntlOfflinePackageInitBlockHook] blocked startup H5 offline package init: " +
                         "${syncMethod.declaringClass.name}.${syncMethod.name}, skipCount=$skipCount",
                 )
                 null
             }
 
             val h5HookCount = hookH5RestoreSignals(cl)
-            val homeHooked = hookHomeStableRestoreSignal(cl)
             XposedCompat.log(
-                "[IntlOfflinePackageSyncDelayHook] hooks INSTALLED: sync=${syncMethod.declaringClass.name}.${syncMethod.name}, " +
-                    "h5Signals=$h5HookCount, homeStable=$homeHooked",
+                "[IntlOfflinePackageInitBlockHook] hooks INSTALLED: " +
+                    "sync=${syncMethod.declaringClass.name}.${syncMethod.name}, h5Signals=$h5HookCount",
             )
         } catch (t: Throwable) {
             hookState.reset()
-            XposedCompat.log("[IntlOfflinePackageSyncDelayHook] install FAILED: ${t.message}")
+            XposedCompat.log("[IntlOfflinePackageInitBlockHook] install FAILED: ${t.message}")
             XposedCompat.log(t)
         }
     }
 
     private fun resolveStartSyncMethod(cl: ClassLoader): Method? {
-        // Prefer the Rubik generated context. The provider implementation class is a short
-        // obfuscated name in the intl host, so relying on it would not survive version changes.
+        // Rubik generated context keeps a semantic class and method name; the provider
+        // implementation behind it is obfuscated and should not be hooked directly.
         val contextClass = XposedCompat.findClassOrNull(DYNAMIC_CONTEXT_CLASS_NAME, cl)
         return contextClass?.let {
             XposedCompat.findMethodOrNull(it, START_SYNC_METHOD_NAME)
         }
     }
 
-    private fun shouldSkipStartupSync(): Boolean {
+    private fun shouldBlockStartupInit(): Boolean {
         if (!isEnabled()) return false
         if (restoring || restored) return false
         return true
@@ -100,87 +92,55 @@ internal object IntlOfflinePackageSyncDelayHook {
                 if (constructor.parameterTypes.size < 3) continue
                 constructor.isAccessible = true
                 mod.hook(constructor).intercept { chain ->
-                    val result = chain.proceed()
-                    restoreIfPending("fast_webview_client:${constructor.parameterTypes.joinToString { it.simpleName }}")
-                    result
+                    restoreForH5Entry("fast_webview_client:${constructor.parameterTypes.joinToString { it.simpleName }}")
+                    chain.proceed()
                 }
                 installed++
             }
-        } ?: XposedCompat.log("[IntlOfflinePackageSyncDelayHook] FastWebViewClient class NOT FOUND")
+        } ?: XposedCompat.log("[IntlOfflinePackageInitBlockHook] FastWebViewClient class NOT FOUND")
 
         XposedCompat.findClassOrNull(OFFLINE_H5_PACKAGE_ACTIVITY_CLASS_NAME, cl)?.let { activityClass ->
             listOf("initFragment", "onResume").forEach { methodName ->
                 XposedCompat.findMethodOrNull(activityClass, methodName)?.let { method ->
                     mod.hook(method).intercept { chain ->
-                        restoreIfPending("offline_h5_activity:$methodName")
+                        restoreForH5Entry("offline_h5_activity:$methodName")
                         chain.proceed()
                     }
                     installed++
                 }
             }
-        } ?: XposedCompat.log("[IntlOfflinePackageSyncDelayHook] OfflineH5PackageActivity class NOT FOUND")
+        } ?: XposedCompat.log("[IntlOfflinePackageInitBlockHook] OfflineH5PackageActivity class NOT FOUND")
 
         return installed
     }
 
-    private fun hookHomeStableRestoreSignal(cl: ClassLoader): Boolean {
-        val mod = XposedCompat.module ?: return false
-        val mainActivityClass = XposedCompat.findClassOrNull(MAIN_ACTIVITY_CLASS_NAME, cl) ?: run {
-            XposedCompat.log("[IntlOfflinePackageSyncDelayHook] MainActivity class NOT FOUND")
-            return false
-        }
-        val focusMethod = XposedCompat.findMethodOrNull(
-            mainActivityClass,
-            "onWindowFocusChanged",
-            Boolean::class.javaPrimitiveType!!,
-        ) ?: run {
-            XposedCompat.log("[IntlOfflinePackageSyncDelayHook] MainActivity.onWindowFocusChanged NOT FOUND")
-            return false
-        }
-
-        mod.hook(focusMethod).intercept { chain ->
-            val result = chain.proceed()
-            val activity = chain.thisObject as? Activity
-            val hasFocus = chain.args.firstOrNull() as? Boolean ?: false
-            if (hasFocus && activity?.javaClass?.name == MAIN_ACTIVITY_CLASS_NAME) {
-                scheduleHomeStableRestore()
-            }
-            result
-        }
-        return true
-    }
-
-    private fun scheduleHomeStableRestore() {
-        if (!isEnabled() || restored || homeStableRestoreScheduled) return
-        synchronized(lock) {
-            if (restored || homeStableRestoreScheduled) return
-            homeStableRestoreScheduled = true
-        }
-        mainHandler.postDelayed({
-            homeStableRestoreScheduled = false
-            restoreIfPending("home_stable")
-        }, HOME_STABLE_RESTORE_DELAY_MS)
-        XposedCompat.logD("[IntlOfflinePackageSyncDelayHook] home stable restore scheduled")
-    }
-
-    private fun restoreIfPending(reason: String) {
+    private fun restoreForH5Entry(reason: String) {
         if (!isEnabled()) return
         val method = startSyncMethod ?: run {
-            XposedCompat.logW("[IntlOfflinePackageSyncDelayHook] restore skipped: startSyncMethod missing, reason=$reason")
+            XposedCompat.logW("[IntlOfflinePackageInitBlockHook] restore skipped: startSyncMethod missing, reason=$reason")
             return
         }
 
-        synchronized(lock) {
-            if (!skipped || restored) return
+        val shouldInvoke = synchronized(lock) {
+            if (restored) return
             restored = true
+            if (!skipped) {
+                XposedCompat.log(
+                    "[IntlOfflinePackageInitBlockHook] H5 entry reached before startup block: " +
+                        "future init allowed, reason=$reason",
+                )
+                return
+            }
             restoreCount++
+            true
         }
+        if (!shouldInvoke) return
 
         try {
             restoring = true
             method.invoke(null)
             XposedCompat.log(
-                "[IntlOfflinePackageSyncDelayHook] restored H5 offline package sync: " +
+                "[IntlOfflinePackageInitBlockHook] restored H5 offline package init: " +
                     "reason=$reason, restoreCount=$restoreCount",
             )
         } catch (t: Throwable) {
@@ -189,7 +149,7 @@ internal object IntlOfflinePackageSyncDelayHook {
                 restoreCount--
             }
             XposedCompat.logW(
-                "[IntlOfflinePackageSyncDelayHook] restore FAILED: reason=$reason, msg=${t.message}",
+                "[IntlOfflinePackageInitBlockHook] restore FAILED: reason=$reason, msg=${t.message}",
             )
             XposedCompat.log(t)
         } finally {
@@ -198,5 +158,5 @@ internal object IntlOfflinePackageSyncDelayHook {
     }
 
     private fun isEnabled(): Boolean =
-        ConfigManager.isPerformanceOptimizeEnabled && ConfigManager.isIntlOfflinePackageSyncDelayed
+        ConfigManager.isPerformanceOptimizeEnabled && ConfigManager.isIntlOfflinePackageInitBlocked
 }

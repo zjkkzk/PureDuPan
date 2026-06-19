@@ -19,7 +19,7 @@ import com.xiyunmn.puredupan.hook.feature.performance.IconResourceDownloadBlockH
 import com.xiyunmn.puredupan.hook.feature.performance.IncentiveBusinessServiceBlockHook
 import com.xiyunmn.puredupan.hook.feature.performance.AudioCircleViewAutostartBlockHook
 import com.xiyunmn.puredupan.hook.feature.performance.intl.IntlFeedPreloadDelayHook
-import com.xiyunmn.puredupan.hook.feature.performance.intl.IntlOfflinePackageSyncDelayHook
+import com.xiyunmn.puredupan.hook.feature.performance.intl.IntlOfflinePackageInitBlockHook
 import com.xiyunmn.puredupan.hook.feature.performance.intl.IntlStoryDouyinInitBlockHook
 import com.xiyunmn.puredupan.hook.feature.performance.intl.IntlTaskScoreRefreshDelayHook
 import com.xiyunmn.puredupan.hook.feature.performance.OemPushServiceBlockHook
@@ -321,13 +321,13 @@ internal object HookInstallPlanner {
                 settings.isPerformanceOptimizeEnabled &&
                 settings.isB2fGuidancePrefetchDisabled
         }) { cl -> B2fGuidancePrefetchBlockHook.hook(cl) },
-        HookSpec("IntlOfflinePackageSyncDelayHook", { context, settings, _ ->
+        HookSpec("IntlOfflinePackageInitBlockHook", { context, settings, _ ->
             context.isMain &&
                 context.host.flavor == com.xiyunmn.puredupan.hook.host.HostFlavor.BAIDU_INTL &&
-                context.host.capabilities.supportsIntlOfflinePackageSyncDelay &&
+                context.host.capabilities.supportsIntlOfflinePackageInitBlock &&
                 settings.isPerformanceOptimizeEnabled &&
-                settings.isIntlOfflinePackageSyncDelayed
-        }) { cl -> IntlOfflinePackageSyncDelayHook.hook(cl) },
+                settings.isIntlOfflinePackageInitBlocked
+        }) { cl -> IntlOfflinePackageInitBlockHook.hook(cl) },
         HookSpec("IntlFeedPreloadDelayHook", { context, settings, _ ->
             context.isMain &&
                 context.host.flavor == com.xiyunmn.puredupan.hook.host.HostFlavor.BAIDU_INTL &&

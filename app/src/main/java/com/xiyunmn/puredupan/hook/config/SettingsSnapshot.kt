@@ -84,7 +84,7 @@ data class SettingsSnapshot(
     val isMediaBrowserServiceAutostartDisabled: Boolean = false,
     val isIconResourceDownloadDisabled: Boolean = false,
     val isB2fGuidancePrefetchDisabled: Boolean = false,
-    val isIntlOfflinePackageSyncDelayed: Boolean = false,
+    val isIntlOfflinePackageInitBlocked: Boolean = false,
     val isIntlFeedPreloadDelayed: Boolean = false,
     val isIntlTaskScoreRefreshDelayed: Boolean = false,
     val isIntlStoryDouyinInitBlocked: Boolean = false,

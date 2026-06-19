@@ -50,7 +50,7 @@ internal object HostRegistry {
             supportsAudioCircleAutostartBlock = false,
             supportsIconResourceDownloadBlock = false,
             supportsB2fGuidancePrefetchBlock = false,
-            supportsIntlOfflinePackageSyncDelay = true,
+            supportsIntlOfflinePackageInitBlock = true,
             supportsIntlFeedPreloadDelay = true,
             supportsIntlTaskScoreRefreshDelay = true,
             supportsIntlStoryDouyinInitBlock = true,

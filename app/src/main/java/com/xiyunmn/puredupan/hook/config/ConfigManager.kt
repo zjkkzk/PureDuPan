@@ -94,7 +94,7 @@ object ConfigManager {
     const val KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART = "disable_media_browser_service_autostart"
     const val KEY_DISABLE_ICON_RESOURCE_DOWNLOAD = "disable_icon_resource_download"
     const val KEY_DISABLE_B2F_GUIDANCE_PREFETCH = "disable_b2f_guidance_prefetch"
-    const val KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC = "delay_intl_offline_package_sync"
+    const val KEY_BLOCK_INTL_OFFLINE_PACKAGE_INIT = "block_intl_offline_package_init"
     const val KEY_DELAY_INTL_FEED_PRELOAD = "delay_intl_feed_preload"
     const val KEY_DELAY_INTL_TASK_SCORE_REFRESH = "delay_intl_task_score_refresh"
     const val KEY_BLOCK_INTL_STORY_DOUYIN_INIT = "block_intl_story_douyin_init"
@@ -201,8 +201,8 @@ object ConfigManager {
         get() = settingsSnapshot.isIconResourceDownloadDisabled
     val isB2fGuidancePrefetchDisabled: Boolean
         get() = settingsSnapshot.isB2fGuidancePrefetchDisabled
-    val isIntlOfflinePackageSyncDelayed: Boolean
-        get() = settingsSnapshot.isIntlOfflinePackageSyncDelayed
+    val isIntlOfflinePackageInitBlocked: Boolean
+        get() = settingsSnapshot.isIntlOfflinePackageInitBlocked
     val isIntlFeedPreloadDelayed: Boolean
         get() = settingsSnapshot.isIntlFeedPreloadDelayed
     val isIntlTaskScoreRefreshDelayed: Boolean
@@ -423,7 +423,7 @@ object ConfigManager {
                 featureBoolean(KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART, false) ||
                 featureBoolean(KEY_DISABLE_ICON_RESOURCE_DOWNLOAD, false) ||
                 featureBoolean(KEY_DISABLE_B2F_GUIDANCE_PREFETCH, false) ||
-                featureBoolean(KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC, false) ||
+                featureBoolean(KEY_BLOCK_INTL_OFFLINE_PACKAGE_INIT, false) ||
                 featureBoolean(KEY_DELAY_INTL_FEED_PRELOAD, false) ||
                 featureBoolean(KEY_DELAY_INTL_TASK_SCORE_REFRESH, false) ||
                 featureBoolean(KEY_BLOCK_INTL_STORY_DOUYIN_INIT, false)
@@ -566,8 +566,8 @@ object ConfigManager {
                 KEY_DISABLE_B2F_GUIDANCE_PREFETCH,
                 false,
             ),
-            isIntlOfflinePackageSyncDelayed = featureBoolean(
-                KEY_DELAY_INTL_OFFLINE_PACKAGE_SYNC,
+            isIntlOfflinePackageInitBlocked = featureBoolean(
+                KEY_BLOCK_INTL_OFFLINE_PACKAGE_INIT,
                 false,
             ),
             isIntlFeedPreloadDelayed = featureBoolean(
