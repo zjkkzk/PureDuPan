@@ -101,6 +101,8 @@ object ConfigManager {
     const val KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET = "delay_intl_non_core_diff_socket"
     const val KEY_DELAY_INTL_FLOAT_VIEW_STARTUP = "delay_intl_float_view_startup"
     const val KEY_BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW = "block_intl_audio_circle_startup_show"
+    const val KEY_BLOCK_INTL_AIGC_WIDGET_BACKGROUND = "block_intl_aigc_widget_background"
+    const val KEY_BLOCK_INTL_ALBUM_AI_INIT = "block_intl_album_ai_init"
     const val KEY_PERFORMANCE_OPTIMIZE = "performance_optimize"
     const val KEY_RESTRICTED_FEATURES_UNLOCKED = "restricted_features_unlocked"
     const val KEY_DISCLAIMER_ACCEPTED = "disclaimer_accepted"
@@ -218,6 +220,10 @@ object ConfigManager {
         get() = settingsSnapshot.isIntlFloatViewStartupDelayed
     val isIntlAudioCircleStartupShowBlocked: Boolean
         get() = settingsSnapshot.isIntlAudioCircleStartupShowBlocked
+    val isIntlAigcWidgetBackgroundBlocked: Boolean
+        get() = settingsSnapshot.isIntlAigcWidgetBackgroundBlocked
+    val isIntlAlbumAiInitBlocked: Boolean
+        get() = settingsSnapshot.isIntlAlbumAiInitBlocked
     val areRestrictedFeaturesUnlocked: Boolean
         get() = settingsSnapshot.areRestrictedFeaturesUnlocked
 
@@ -438,7 +444,9 @@ object ConfigManager {
                 featureBoolean(KEY_BLOCK_INTL_STORY_DOUYIN_INIT, false) ||
                 featureBoolean(KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET, false) ||
                 featureBoolean(KEY_DELAY_INTL_FLOAT_VIEW_STARTUP, false) ||
-                featureBoolean(KEY_BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW, false)
+                featureBoolean(KEY_BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW, false) ||
+                featureBoolean(KEY_BLOCK_INTL_AIGC_WIDGET_BACKGROUND, false) ||
+                featureBoolean(KEY_BLOCK_INTL_ALBUM_AI_INIT, false)
 
         return SettingsSnapshot(
             isDetailedLoggingEnabled = featureBoolean(KEY_ENABLE_DETAILED_LOGGING),
@@ -604,6 +612,14 @@ object ConfigManager {
             ),
             isIntlAudioCircleStartupShowBlocked = featureBoolean(
                 KEY_BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW,
+                false,
+            ),
+            isIntlAigcWidgetBackgroundBlocked = featureBoolean(
+                KEY_BLOCK_INTL_AIGC_WIDGET_BACKGROUND,
+                false,
+            ),
+            isIntlAlbumAiInitBlocked = featureBoolean(
+                KEY_BLOCK_INTL_ALBUM_AI_INIT,
                 false,
             ),
             isBottomBarCustomEnabled = p.getBoolean(KEY_CUSTOM_BOTTOM_BAR, hasBottomBarOptionEnabled),

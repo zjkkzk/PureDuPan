@@ -91,6 +91,8 @@ data class SettingsSnapshot(
     val isIntlNonCoreDiffSocketDelayed: Boolean = false,
     val isIntlFloatViewStartupDelayed: Boolean = false,
     val isIntlAudioCircleStartupShowBlocked: Boolean = false,
+    val isIntlAigcWidgetBackgroundBlocked: Boolean = false,
+    val isIntlAlbumAiInitBlocked: Boolean = false,
 
     // Bottom bar customization
     val isBottomBarCustomEnabled: Boolean = false,

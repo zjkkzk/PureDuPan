@@ -1,0 +1,386 @@
+package com.xiyunmn.puredupan.hook.feature.performance.intl
+
+import android.app.Activity
+import android.app.Application
+import android.content.Context
+import android.os.Bundle
+import com.xiyunmn.puredupan.hook.config.ConfigManager
+import com.xiyunmn.puredupan.hook.core.HookState
+import com.xiyunmn.puredupan.hook.core.XposedCompat
+import java.lang.reflect.Method
+import java.lang.reflect.Modifier
+import org.luckypray.dexkit.DexKitBridge
+import org.luckypray.dexkit.query.FindMethod
+import org.luckypray.dexkit.query.matchers.ClassMatcher
+import org.luckypray.dexkit.query.matchers.MethodMatcher
+
+internal object IntlAlbumAiInitBlockHook {
+    private const val ALBUM_CONTEXT_CLASS_NAME =
+        "rubik.generate.context.bd_netdisk_com_baidu_netdisk_service_album.AlbumContext"
+    private const val ALBUM_COMPANION_CLASS_NAME =
+        "rubik.generate.context.bd_netdisk_com_baidu_netdisk_service_album.AlbumContext\$Companion"
+    private const val ALBUM_AGGREGATE_CLASS_NAME =
+        "rubik.generate.aggregate.bd_netdisk_com_baidu_netdisk_service_album.AlbumAggregate"
+    private const val INIT_ALBUM_SERVICE_METHOD_NAME = "initAlbumService"
+
+    private val albumAiEntryMethodNames = setOf(
+        "startAiPanelActivity",
+        "startAiSearchActivity",
+        "getImagePreviewNlpActivityIntent",
+        "jumpAiLabActivity",
+        "showShareDialog",
+    )
+
+    private val albumAiEntryActivityClassNames = listOf(
+        "com.baidu.netdisk.service.album.preview.ui.view.AiPanelActivity",
+        "com.baidu.netdisk.service.album.preview.ui.view.AiSearchActivity",
+        "com.baidu.netdisk.service.album.nlp.ui.view.ImagePreviewNlpActivity",
+        "com.baidu.netdisk.cloudimage.ailab.AiLabRouterActivity",
+        "com.mars.united.aigc.i2i.ui.view.AigcI2IActivity",
+    )
+
+    private val albumSemanticTokens = listOf(
+        "initAlbumService",
+        "startAiPanelActivity",
+        "startAiSearchActivity",
+        "getImagePreviewNlpActivityIntent",
+        "jumpAiLabActivity",
+        "showShareDialog",
+    )
+
+    private data class StableInitFallback(
+        val method: Method,
+        val receiver: Any?,
+    )
+
+    private data class DexMethodCandidate(
+        val className: String,
+        val methodName: String,
+        val returnTypeName: String,
+        val paramTypeNames: List<String>,
+        val isConstructor: Boolean,
+        val modifiers: Int,
+    )
+
+    private val hookState = HookState()
+    private val lock = Any()
+
+    @Volatile private var directInitMethod: Method? = null
+    @Volatile private var stableInitFallback: StableInitFallback? = null
+    @Volatile private var pendingApplication: Application? = null
+    @Volatile private var skipped = false
+    @Volatile private var restored = false
+    @Volatile private var restoring = false
+    @Volatile private var skipCount = 0
+    @Volatile private var restoreCount = 0
+
+    internal fun hook(cl: ClassLoader) {
+        if (!isEnabled()) {
+            XposedCompat.log("[IntlAlbumAiInitBlockHook] skipped: config disabled")
+            return
+        }
+        if (!hookState.markInstalled()) return
+
+        try {
+            directInitMethod = resolveDirectAlbumAiInitMethod(cl)
+
+            val stableInitHooks = hookStableInitMethods(cl)
+            val directHooked = directInitMethod?.let { hookDirectInitMethod(it) } == true
+            if (stableInitHooks == 0 && !directHooked) {
+                hookState.reset()
+                XposedCompat.log("[IntlAlbumAiInitBlockHook] album AI init methods NOT FOUND")
+                return
+            }
+
+            val entryMethodHooks = hookAlbumAiEntryMethods(cl)
+            val entryActivityHooks = hookAlbumAiEntryActivities(cl)
+            XposedCompat.log(
+                "[IntlAlbumAiInitBlockHook] hooks INSTALLED: " +
+                    "direct=${directInitMethod?.let { "${it.declaringClass.name}.${it.name}" } ?: "missing"}, " +
+                    "stableInit=$stableInitHooks, entryMethods=$entryMethodHooks, " +
+                    "entryActivities=$entryActivityHooks",
+            )
+        } catch (t: Throwable) {
+            hookState.reset()
+            XposedCompat.log("[IntlAlbumAiInitBlockHook] install FAILED: ${t.message}")
+            XposedCompat.log(t)
+        }
+    }
+
+    private fun hookStableInitMethods(cl: ClassLoader): Int {
+        var installed = 0
+        installed += hookNamedInitMethods(ALBUM_CONTEXT_CLASS_NAME, cl)
+        installed += hookNamedInitMethods(ALBUM_COMPANION_CLASS_NAME, cl)
+        installed += hookNamedInitMethods(ALBUM_AGGREGATE_CLASS_NAME, cl)
+        return installed
+    }
+
+    private fun hookNamedInitMethods(className: String, cl: ClassLoader): Int {
+        val mod = XposedCompat.module ?: return 0
+        val clazz = XposedCompat.findClassOrNull(className, cl) ?: run {
+            XposedCompat.logD("[IntlAlbumAiInitBlockHook] class NOT FOUND: $className")
+            return 0
+        }
+
+        var installed = 0
+        for (method in clazz.declaredMethods) {
+            if (method.name != INIT_ALBUM_SERVICE_METHOD_NAME) continue
+            if (method.returnType != Void.TYPE) continue
+            if (method.parameterTypes.size != 1) continue
+            if (!Application::class.java.isAssignableFrom(method.parameterTypes[0])) continue
+            method.isAccessible = true
+            mod.hook(method).intercept { chain ->
+                val application = chain.args.firstOrNull() as? Application
+                if (application == null || !shouldBlockInit()) {
+                    return@intercept chain.proceed()
+                }
+
+                synchronized(lock) {
+                    stableInitFallback = StableInitFallback(method, chain.thisObject)
+                    pendingApplication = application
+                    skipped = true
+                    skipCount++
+                }
+                XposedCompat.log(
+                    "[IntlAlbumAiInitBlockHook] blocked stable album AI init: " +
+                        "${method.declaringClass.name}.${method.name}, skipCount=$skipCount",
+                )
+                null
+            }
+            installed++
+        }
+        return installed
+    }
+
+    private fun hookDirectInitMethod(method: Method): Boolean {
+        val mod = XposedCompat.module ?: return false
+        mod.hook(method).intercept { chain ->
+            val application = chain.args.firstOrNull() as? Application
+            if (application == null || !shouldBlockInit()) {
+                return@intercept chain.proceed()
+            }
+
+            synchronized(lock) {
+                pendingApplication = application
+                skipped = true
+                skipCount++
+            }
+            XposedCompat.log(
+                "[IntlAlbumAiInitBlockHook] blocked direct album AI init: " +
+                    "${method.declaringClass.name}.${method.name}, skipCount=$skipCount",
+            )
+            null
+        }
+        return true
+    }
+
+    private fun shouldBlockInit(): Boolean {
+        if (!isEnabled()) return false
+        if (restoring || restored) return false
+        return true
+    }
+
+    private fun hookAlbumAiEntryMethods(cl: ClassLoader): Int {
+        var installed = 0
+        installed += hookNamedEntryMethods(ALBUM_CONTEXT_CLASS_NAME, cl)
+        installed += hookNamedEntryMethods(ALBUM_COMPANION_CLASS_NAME, cl)
+        installed += hookNamedEntryMethods(ALBUM_AGGREGATE_CLASS_NAME, cl)
+        return installed
+    }
+
+    private fun hookNamedEntryMethods(className: String, cl: ClassLoader): Int {
+        val mod = XposedCompat.module ?: return 0
+        val clazz = XposedCompat.findClassOrNull(className, cl) ?: run {
+            XposedCompat.logD("[IntlAlbumAiInitBlockHook] entry class NOT FOUND: $className")
+            return 0
+        }
+
+        var installed = 0
+        for (method in clazz.declaredMethods) {
+            if (method.name !in albumAiEntryMethodNames) continue
+            method.isAccessible = true
+            mod.hook(method).intercept { chain ->
+                val fallbackApplication = findApplicationFromArgs(chain.args)
+                restoreIfPending("album_entry:${method.name}/${method.parameterTypes.size}", fallbackApplication)
+                chain.proceed()
+            }
+            installed++
+        }
+        return installed
+    }
+
+    private fun hookAlbumAiEntryActivities(cl: ClassLoader): Int {
+        var installed = 0
+        for (className in albumAiEntryActivityClassNames) {
+            val activityClass = XposedCompat.findClassOrNull(className, cl) ?: continue
+            if (hookActivityOnCreate(activityClass, "activity:onCreate:$className")) installed++
+            if (hookActivityOnResume(activityClass, "activity:onResume:$className")) installed++
+        }
+        return installed
+    }
+
+    private fun hookActivityOnCreate(activityClass: Class<*>, reason: String): Boolean {
+        val mod = XposedCompat.module ?: return false
+        val method = XposedCompat.findMethodOrNull(activityClass, "onCreate", Bundle::class.java) ?: return false
+        mod.hook(method).intercept { chain ->
+            val activity = chain.thisObject as? Activity
+            restoreIfPending(reason, activity?.application)
+            chain.proceed()
+        }
+        return true
+    }
+
+    private fun hookActivityOnResume(activityClass: Class<*>, reason: String): Boolean {
+        val mod = XposedCompat.module ?: return false
+        val method = XposedCompat.findMethodOrNull(activityClass, "onResume") ?: return false
+        mod.hook(method).intercept { chain ->
+            val activity = chain.thisObject as? Activity
+            restoreIfPending(reason, activity?.application)
+            chain.proceed()
+        }
+        return true
+    }
+
+    private fun restoreIfPending(reason: String, fallbackApplication: Application?) {
+        if (!isEnabled()) return
+        val application = synchronized(lock) {
+            if (!skipped || restored) return
+            val pending = pendingApplication ?: fallbackApplication ?: return
+            restored = true
+            restoreCount++
+            pending
+        }
+
+        try {
+            restoring = true
+            val direct = directInitMethod
+            if (direct != null) {
+                direct.invoke(null, application)
+                XposedCompat.log(
+                    "[IntlAlbumAiInitBlockHook] restored direct album AI init: " +
+                        "reason=$reason, restoreCount=$restoreCount",
+                )
+                return
+            }
+
+            val fallback = stableInitFallback ?: run {
+                XposedCompat.logW("[IntlAlbumAiInitBlockHook] restore skipped: init method missing, reason=$reason")
+                return
+            }
+            fallback.method.invoke(fallback.receiver, application)
+            XposedCompat.log(
+                "[IntlAlbumAiInitBlockHook] restored stable album AI init: " +
+                    "reason=$reason, restoreCount=$restoreCount",
+            )
+        } catch (t: Throwable) {
+            synchronized(lock) {
+                restored = false
+                restoreCount--
+            }
+            XposedCompat.logW(
+                "[IntlAlbumAiInitBlockHook] restore FAILED: reason=$reason, msg=${t.message}",
+            )
+            XposedCompat.log(t)
+        } finally {
+            restoring = false
+        }
+    }
+
+    private fun findApplicationFromArgs(args: Iterable<Any?>): Application? {
+        for (arg in args) {
+            when (arg) {
+                is Application -> return arg
+                is Activity -> return arg.application
+                is Context -> {
+                    val appContext = arg.applicationContext
+                    if (appContext is Application) return appContext
+                }
+            }
+        }
+        return null
+    }
+
+    private fun resolveDirectAlbumAiInitMethod(cl: ClassLoader): Method? {
+        val result = runCatching {
+            DexKitBridge.create(cl, false).use { bridge ->
+                bridge.setThreadNum(1)
+                bridge.findMethod(
+                    FindMethod.create()
+                        .excludePackages("rubik.generate")
+                        .matcher(
+                            MethodMatcher.create()
+                                .modifiers(Modifier.STATIC)
+                                .returnType(Void.TYPE)
+                                .paramTypes(Application::class.java)
+                                .declaredClass(
+                                    ClassMatcher.create()
+                                        .usingStrings(albumSemanticTokens),
+                                ),
+                        ),
+                ).map { methodData ->
+                    DexMethodCandidate(
+                        className = methodData.className,
+                        methodName = methodData.name,
+                        returnTypeName = methodData.returnTypeName,
+                        paramTypeNames = methodData.paramTypeNames,
+                        isConstructor = methodData.isConstructor,
+                        modifiers = methodData.modifiers,
+                    )
+                }
+            }
+        }.onFailure {
+            XposedCompat.log("[IntlAlbumAiInitBlockHook] DexKit resolve FAILED: ${it.message}")
+            XposedCompat.log(it)
+        }.getOrNull().orEmpty()
+
+        val candidates = result.mapNotNull { methodData ->
+            val clazz = XposedCompat.findClassOrNull(methodData.className, cl) ?: return@mapNotNull null
+            if (!isExpectedAlbumAiComponentClass(clazz)) return@mapNotNull null
+            if (methodData.isConstructor) return@mapNotNull null
+            if (methodData.returnTypeName != "void") return@mapNotNull null
+            if (methodData.paramTypeNames != listOf("android.app.Application")) return@mapNotNull null
+            if (!Modifier.isStatic(methodData.modifiers)) return@mapNotNull null
+            val method = clazz.declaredMethods.firstOrNull { method ->
+                method.name == methodData.methodName &&
+                    Modifier.isStatic(method.modifiers) &&
+                    method.returnType == Void.TYPE &&
+                    method.parameterTypes.size == 1 &&
+                    Application::class.java.isAssignableFrom(method.parameterTypes[0])
+            } ?: return@mapNotNull null
+            method.apply { isAccessible = true }
+        }
+
+        if (candidates.size != 1) {
+            XposedCompat.logW(
+                "[IntlAlbumAiInitBlockHook] ambiguous direct album AI init method: " +
+                    candidates.joinToString { "${it.declaringClass.name}.${it.name}" },
+            )
+            return null
+        }
+
+        val method = candidates.single()
+        XposedCompat.log(
+            "[IntlAlbumAiInitBlockHook] resolved direct album AI init: " +
+                "${method.declaringClass.name}.${method.name}",
+        )
+        return method
+    }
+
+    private fun isExpectedAlbumAiComponentClass(clazz: Class<*>): Boolean {
+        val tokens = metadataTokens(clazz)
+        return albumSemanticTokens.all { token -> token in tokens }
+    }
+
+    private fun metadataTokens(clazz: Class<*>): Set<String> {
+        val metadata = clazz.declaredAnnotations.firstOrNull {
+            it.annotationClass.java.name == "kotlin.Metadata"
+        } ?: return emptySet()
+        val d2 = runCatching {
+            metadata.annotationClass.java.getDeclaredMethod("d2").invoke(metadata) as? Array<*>
+        }.getOrNull() ?: return emptySet()
+        return d2.filterIsInstance<String>().toSet()
+    }
+
+    private fun isEnabled(): Boolean =
+        ConfigManager.isPerformanceOptimizeEnabled && ConfigManager.isIntlAlbumAiInitBlocked
+}

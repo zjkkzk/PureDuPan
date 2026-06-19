@@ -57,6 +57,8 @@ internal object HostRegistry {
             supportsIntlNonCoreDiffSocketDelay = true,
             supportsIntlFloatViewStartupDelay = true,
             supportsIntlAudioCircleStartupShowBlock = true,
+            supportsIntlAigcWidgetBackgroundBlock = true,
+            supportsIntlAlbumAiInitBlock = true,
             supportsMemberCardCustomize = true,
         ),
     )

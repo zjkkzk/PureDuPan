@@ -30,5 +30,7 @@ internal data class HostCapabilities(
     val supportsIntlNonCoreDiffSocketDelay: Boolean = false,
     val supportsIntlFloatViewStartupDelay: Boolean = false,
     val supportsIntlAudioCircleStartupShowBlock: Boolean = false,
+    val supportsIntlAigcWidgetBackgroundBlock: Boolean = false,
+    val supportsIntlAlbumAiInitBlock: Boolean = false,
     val supportsMemberCardCustomize: Boolean = true,
 )

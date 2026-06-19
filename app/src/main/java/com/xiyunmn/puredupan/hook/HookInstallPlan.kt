@@ -18,6 +18,8 @@ import com.xiyunmn.puredupan.hook.feature.performance.GarbageCleanServiceRegiste
 import com.xiyunmn.puredupan.hook.feature.performance.IconResourceDownloadBlockHook
 import com.xiyunmn.puredupan.hook.feature.performance.IncentiveBusinessServiceBlockHook
 import com.xiyunmn.puredupan.hook.feature.performance.AudioCircleViewAutostartBlockHook
+import com.xiyunmn.puredupan.hook.feature.performance.intl.IntlAigcWidgetBackgroundBlockHook
+import com.xiyunmn.puredupan.hook.feature.performance.intl.IntlAlbumAiInitBlockHook
 import com.xiyunmn.puredupan.hook.feature.performance.intl.IntlAudioCircleStartupShowBlockHook
 import com.xiyunmn.puredupan.hook.feature.performance.intl.IntlFeedPreloadDelayHook
 import com.xiyunmn.puredupan.hook.feature.performance.intl.IntlFloatViewStartupDelayHook
@@ -373,6 +375,20 @@ internal object HookInstallPlanner {
                 settings.isPerformanceOptimizeEnabled &&
                 settings.isIntlAudioCircleStartupShowBlocked
         }) { cl -> IntlAudioCircleStartupShowBlockHook.hook(cl) },
+        HookSpec("IntlAigcWidgetBackgroundBlockHook", { context, settings, _ ->
+            context.isMain &&
+                context.host.flavor == com.xiyunmn.puredupan.hook.host.HostFlavor.BAIDU_INTL &&
+                context.host.capabilities.supportsIntlAigcWidgetBackgroundBlock &&
+                settings.isPerformanceOptimizeEnabled &&
+                settings.isIntlAigcWidgetBackgroundBlocked
+        }) { cl -> IntlAigcWidgetBackgroundBlockHook.hook(cl) },
+        HookSpec("IntlAlbumAiInitBlockHook", { context, settings, _ ->
+            context.isMain &&
+                context.host.flavor == com.xiyunmn.puredupan.hook.host.HostFlavor.BAIDU_INTL &&
+                context.host.capabilities.supportsIntlAlbumAiInitBlock &&
+                settings.isPerformanceOptimizeEnabled &&
+                settings.isIntlAlbumAiInitBlocked
+        }) { cl -> IntlAlbumAiInitBlockHook.hook(cl) },
         HookSpec("SystemNightModeSyncHook", { context, _, _ ->
             context.isMain
         }) { cl -> SystemNightModeSyncHook.hook(cl) },
