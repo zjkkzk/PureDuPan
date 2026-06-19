@@ -10,11 +10,11 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.util.HashMap
-import kotlin.jvm.functions.Function1
 
 internal object IntlNonCoreDiffSocketDelayHook {
     private const val SOCKET_MANAGER_CLASS_NAME = "com.baidu.netdisk.socket.____"
     private const val MAIN_ACTIVITY_CLASS_NAME = "com.baidu.netdisk.ui.MainActivity"
+    private const val KOTLIN_FUNCTION1_CLASS_NAME = "kotlin.jvm.functions.Function1"
     private const val HOME_STABLE_RESTORE_DELAY_MS = 2500L
 
     private const val CLOUD_FILE_DIFF_ACTION = "cloudfile_diff_action"
@@ -173,12 +173,16 @@ internal object IntlNonCoreDiffSocketDelayHook {
                 method.returnType == Void.TYPE &&
                 method.parameterTypes.size == 2 &&
                 method.parameterTypes[0] == String::class.java &&
-                Function1::class.java.isAssignableFrom(method.parameterTypes[1])
+                method.parameterTypes[1].name == KOTLIN_FUNCTION1_CLASS_NAME
         }
-        if (candidates.size != 1) {
+        if (candidates.isEmpty()) {
+            XposedCompat.logW("[IntlNonCoreDiffSocketDelayHook] socket register method candidate not found")
+            return null
+        }
+        if (candidates.size > 1) {
             XposedCompat.logW(
                 "[IntlNonCoreDiffSocketDelayHook] ambiguous socket register method: " +
-                    candidates.joinToString { it.name },
+                    candidates.joinToString { "${it.name}(${it.parameterTypes.joinToString { type -> type.name }})" },
             )
             return null
         }
