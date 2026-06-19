@@ -82,7 +82,12 @@ internal object IntlAlbumAiInitBlockHook {
         if (!hookState.markInstalled()) return
 
         try {
-            directInitMethod = resolveDirectAlbumAiInitMethod(cl)
+            directInitMethod = if (ConfigManager.isExperimentalDexKitEnabled) {
+                resolveDirectAlbumAiInitMethod(cl)
+            } else {
+                XposedCompat.logD("[IntlAlbumAiInitBlockHook] direct DexKit resolve skipped: config disabled")
+                null
+            }
 
             val stableInitHooks = hookStableInitMethods(cl)
             val directHooked = directInitMethod?.let { hookDirectInitMethod(it) } == true
@@ -332,6 +337,11 @@ internal object IntlAlbumAiInitBlockHook {
             XposedCompat.log("[IntlAlbumAiInitBlockHook] DexKit resolve FAILED: ${it.message}")
             XposedCompat.log(it)
         }.getOrNull().orEmpty()
+
+        if (result.isEmpty()) {
+            XposedCompat.logD("[IntlAlbumAiInitBlockHook] direct album AI init candidate not found")
+            return null
+        }
 
         val candidates = result.mapNotNull { methodData ->
             val clazz = XposedCompat.findClassOrNull(methodData.className, cl) ?: return@mapNotNull null

@@ -9,6 +9,7 @@ import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
+import java.util.HashMap
 import kotlin.jvm.functions.Function1
 
 internal object IntlNonCoreDiffSocketDelayHook {
@@ -193,7 +194,30 @@ internal object IntlNonCoreDiffSocketDelayHook {
             CLOUD_VIDEO_DIFF_ACTION,
             SEARCH_DIFF_ACTION,
         )
-        val stringConstants = clazz.declaredFields.mapNotNull { field ->
+        val stringConstants = staticStringConstants(clazz)
+        if (!stringConstants.containsAll(requiredActions)) {
+            XposedCompat.logW(
+                "[IntlNonCoreDiffSocketDelayHook] socket manager action constants mismatch: " +
+                    "missing=${requiredActions - stringConstants}",
+            )
+            return false
+        }
+
+        if (!hasActionCallbackMapField(clazz)) {
+            XposedCompat.logW("[IntlNonCoreDiffSocketDelayHook] socket manager action map field missing")
+            return false
+        }
+
+        val metadataTokens = metadataTokens(clazz)
+        if ("mSocketActionHashMap" !in metadataTokens) {
+            XposedCompat.logD("[IntlNonCoreDiffSocketDelayHook] socket manager metadata token missing: mSocketActionHashMap")
+        }
+
+        return true
+    }
+
+    private fun staticStringConstants(clazz: Class<*>): Set<String> =
+        clazz.declaredFields.mapNotNull { field ->
             runCatching {
                 if (field.type == String::class.java && Modifier.isStatic(field.modifiers)) {
                     field.isAccessible = true
@@ -203,14 +227,12 @@ internal object IntlNonCoreDiffSocketDelayHook {
                 }
             }.getOrNull()
         }.toSet()
-        if (!stringConstants.containsAll(requiredActions)) return false
 
-        val metadataTokens = metadataTokens(clazz)
-        return metadataTokens.contains("mSocketActionHashMap") &&
-            metadataTokens.contains("CLOUD_IMAGE_DIFF_ACTION") &&
-            metadataTokens.contains("CLOUD_VIDEO_DIFF_ACTION") &&
-            metadataTokens.contains("SEARCH_DIFF_ACTION")
-    }
+    private fun hasActionCallbackMapField(clazz: Class<*>): Boolean =
+        clazz.declaredFields.any { field ->
+            HashMap::class.java.isAssignableFrom(field.type) &&
+                !Modifier.isStatic(field.modifiers)
+        }
 
     private fun metadataTokens(clazz: Class<*>): Set<String> {
         val metadata = clazz.declaredAnnotations.firstOrNull {
