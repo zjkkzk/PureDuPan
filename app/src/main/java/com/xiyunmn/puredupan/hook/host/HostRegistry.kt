@@ -56,6 +56,7 @@ internal object HostRegistry {
             supportsIntlStoryDouyinInitBlock = true,
             supportsIntlNonCoreDiffSocketDelay = true,
             supportsIntlFloatViewStartupDelay = true,
+            supportsIntlAudioCircleStartupShowBlock = true,
             supportsMemberCardCustomize = true,
         ),
     )

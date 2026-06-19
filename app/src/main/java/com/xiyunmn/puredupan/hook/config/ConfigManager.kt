@@ -100,6 +100,7 @@ object ConfigManager {
     const val KEY_BLOCK_INTL_STORY_DOUYIN_INIT = "block_intl_story_douyin_init"
     const val KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET = "delay_intl_non_core_diff_socket"
     const val KEY_DELAY_INTL_FLOAT_VIEW_STARTUP = "delay_intl_float_view_startup"
+    const val KEY_BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW = "block_intl_audio_circle_startup_show"
     const val KEY_PERFORMANCE_OPTIMIZE = "performance_optimize"
     const val KEY_RESTRICTED_FEATURES_UNLOCKED = "restricted_features_unlocked"
     const val KEY_DISCLAIMER_ACCEPTED = "disclaimer_accepted"
@@ -215,6 +216,8 @@ object ConfigManager {
         get() = settingsSnapshot.isIntlNonCoreDiffSocketDelayed
     val isIntlFloatViewStartupDelayed: Boolean
         get() = settingsSnapshot.isIntlFloatViewStartupDelayed
+    val isIntlAudioCircleStartupShowBlocked: Boolean
+        get() = settingsSnapshot.isIntlAudioCircleStartupShowBlocked
     val areRestrictedFeaturesUnlocked: Boolean
         get() = settingsSnapshot.areRestrictedFeaturesUnlocked
 
@@ -434,7 +437,8 @@ object ConfigManager {
                 featureBoolean(KEY_DELAY_INTL_TASK_SCORE_REFRESH, false) ||
                 featureBoolean(KEY_BLOCK_INTL_STORY_DOUYIN_INIT, false) ||
                 featureBoolean(KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET, false) ||
-                featureBoolean(KEY_DELAY_INTL_FLOAT_VIEW_STARTUP, false)
+                featureBoolean(KEY_DELAY_INTL_FLOAT_VIEW_STARTUP, false) ||
+                featureBoolean(KEY_BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW, false)
 
         return SettingsSnapshot(
             isDetailedLoggingEnabled = featureBoolean(KEY_ENABLE_DETAILED_LOGGING),
@@ -596,6 +600,10 @@ object ConfigManager {
             ),
             isIntlFloatViewStartupDelayed = featureBoolean(
                 KEY_DELAY_INTL_FLOAT_VIEW_STARTUP,
+                false,
+            ),
+            isIntlAudioCircleStartupShowBlocked = featureBoolean(
+                KEY_BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW,
                 false,
             ),
             isBottomBarCustomEnabled = p.getBoolean(KEY_CUSTOM_BOTTOM_BAR, hasBottomBarOptionEnabled),

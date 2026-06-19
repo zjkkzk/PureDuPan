@@ -90,6 +90,7 @@ data class SettingsSnapshot(
     val isIntlStoryDouyinInitBlocked: Boolean = false,
     val isIntlNonCoreDiffSocketDelayed: Boolean = false,
     val isIntlFloatViewStartupDelayed: Boolean = false,
+    val isIntlAudioCircleStartupShowBlocked: Boolean = false,
 
     // Bottom bar customization
     val isBottomBarCustomEnabled: Boolean = false,

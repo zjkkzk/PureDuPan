@@ -25,6 +25,7 @@ internal object HostFeatureAvailabilityRegistry {
         ConfigManager.KEY_BLOCK_INTL_STORY_DOUYIN_INIT,
         ConfigManager.KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET,
         ConfigManager.KEY_DELAY_INTL_FLOAT_VIEW_STARTUP,
+        ConfigManager.KEY_BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW,
     )
 
     private val intlDisabledKeys = setOf(

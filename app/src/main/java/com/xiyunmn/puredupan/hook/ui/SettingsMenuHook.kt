@@ -1105,6 +1105,16 @@ object SettingsMenuHook {
                 hostCapabilities(context).supportsIntlFloatViewStartupDelay,
                 prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_FLOAT_VIEW_STARTUP, false),
             )
+            val intlAudioCircleStartupShowBlockRow = createSwitchRow(
+                context,
+                prefs,
+                UiText.Settings.BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW_LABEL,
+                UiText.Settings.BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW_DESC,
+                null,
+                padding,
+                hostCapabilities(context).supportsIntlAudioCircleStartupShowBlock,
+                prefs.getBoolean(ConfigManager.KEY_BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW, false),
+            )
             addTitledSection(
                 root = root,
                 context = context,
@@ -1122,6 +1132,7 @@ object SettingsMenuHook {
                     ConfigManager.KEY_BLOCK_INTL_STORY_DOUYIN_INIT to intlStoryDouyinInitBlockRow,
                     ConfigManager.KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET to intlNonCoreDiffSocketDelayRow,
                     ConfigManager.KEY_DELAY_INTL_FLOAT_VIEW_STARTUP to intlFloatViewStartupDelayRow,
+                    ConfigManager.KEY_BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW to intlAudioCircleStartupShowBlockRow,
                 ),
             )
             addTitledSection(
@@ -1212,6 +1223,7 @@ object SettingsMenuHook {
             val intlStoryDouyinInitBlockSwitch = findSwitchView(intlStoryDouyinInitBlockRow)
             val intlNonCoreDiffSocketDelaySwitch = findSwitchView(intlNonCoreDiffSocketDelayRow)
             val intlFloatViewStartupDelaySwitch = findSwitchView(intlFloatViewStartupDelayRow)
+            val intlAudioCircleStartupShowBlockSwitch = findSwitchView(intlAudioCircleStartupShowBlockRow)
             if (
                 garbageCleanSwitch == null ||
                 datapackSocketSwitch == null ||
@@ -1231,7 +1243,8 @@ object SettingsMenuHook {
                 intlTaskScoreRefreshDelaySwitch == null ||
                 intlStoryDouyinInitBlockSwitch == null ||
                 intlNonCoreDiffSocketDelaySwitch == null ||
-                intlFloatViewStartupDelaySwitch == null
+                intlFloatViewStartupDelaySwitch == null ||
+                intlAudioCircleStartupShowBlockSwitch == null
             ) {
                 XposedCompat.logW("[SettingsMenuHook] showPerformanceOptimizeDialog failed: switch view missing")
                 return
@@ -1264,7 +1277,8 @@ object SettingsMenuHook {
                             intlTaskScoreRefreshDelaySwitch.isChecked ||
                             intlStoryDouyinInitBlockSwitch.isChecked ||
                             intlNonCoreDiffSocketDelaySwitch.isChecked ||
-                            intlFloatViewStartupDelaySwitch.isChecked
+                            intlFloatViewStartupDelaySwitch.isChecked ||
+                            intlAudioCircleStartupShowBlockSwitch.isChecked
                     prefs.edit()
                         .putBoolean(ConfigManager.KEY_PERFORMANCE_OPTIMIZE, hasEnabledPerformanceOption)
                         .putBoolean(
@@ -1342,6 +1356,10 @@ object SettingsMenuHook {
                         .putBoolean(
                             ConfigManager.KEY_DELAY_INTL_FLOAT_VIEW_STARTUP,
                             intlFloatViewStartupDelaySwitch.isChecked,
+                        )
+                        .putBoolean(
+                            ConfigManager.KEY_BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW,
+                            intlAudioCircleStartupShowBlockSwitch.isChecked,
                         )
                         .apply()
                     Toast.makeText(
@@ -2864,7 +2882,9 @@ object SettingsMenuHook {
             isFeatureVisible(context, ConfigManager.KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET) &&
             prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET, false) ||
             isFeatureVisible(context, ConfigManager.KEY_DELAY_INTL_FLOAT_VIEW_STARTUP) &&
-            prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_FLOAT_VIEW_STARTUP, false)
+            prefs.getBoolean(ConfigManager.KEY_DELAY_INTL_FLOAT_VIEW_STARTUP, false) ||
+            isFeatureVisible(context, ConfigManager.KEY_BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW) &&
+            prefs.getBoolean(ConfigManager.KEY_BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW, false)
     }
 
     private fun createMemberCardBackgroundImageRow(

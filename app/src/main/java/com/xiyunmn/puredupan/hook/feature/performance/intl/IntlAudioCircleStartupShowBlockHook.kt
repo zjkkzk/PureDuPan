@@ -1,0 +1,270 @@
+package com.xiyunmn.puredupan.hook.feature.performance.intl
+
+import android.app.Activity
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
+import com.xiyunmn.puredupan.hook.config.ConfigManager
+import com.xiyunmn.puredupan.hook.core.HookState
+import com.xiyunmn.puredupan.hook.core.XposedCompat
+import java.lang.reflect.Method
+
+internal object IntlAudioCircleStartupShowBlockHook {
+    private const val AUDIO_API_CLASS_NAME = "com.baidu.netdisk.audio.main.provider.MAudioApi"
+    private const val AUDIO_PLAYER_ACTIVITY_CLASS_NAME = "com.baidu.netdisk.audio.ui.AudioPlayerActivity"
+    private const val MAIN_ACTIVITY_CLASS_NAME = "com.baidu.netdisk.ui.MainActivity"
+    private const val HOME_STABLE_DELAY_MS = 2500L
+    private const val MAX_STARTUP_WINDOW_MS = 30_000L
+
+    private data class AudioState(
+        val sourceKnown: Boolean,
+        val hasPlayingSource: Boolean,
+        val activeKnown: Boolean,
+        val isAudioCircleActive: Boolean,
+    )
+
+    private val hookState = HookState()
+    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
+    private val lock = Any()
+    private val processStartElapsed = SystemClock.elapsedRealtime()
+
+    @Volatile private var getPlayingAudiosMethod: Method? = null
+    @Volatile private var isAudioCircleActiveMethod: Method? = null
+    @Volatile private var homeStableReached = false
+    @Volatile private var audioEntryReached = false
+    @Volatile private var homeStableScheduled = false
+    @Volatile private var blockedCount = 0
+    @Volatile private var allowedCount = 0
+
+    internal fun hook(cl: ClassLoader) {
+        if (!isEnabled()) {
+            XposedCompat.log("[IntlAudioCircleStartupShowBlockHook] skipped: config disabled")
+            return
+        }
+        val mod = XposedCompat.module ?: return
+        if (!hookState.markInstalled()) return
+
+        try {
+            val apiClass = XposedCompat.findClassOrNull(AUDIO_API_CLASS_NAME, cl)
+            if (apiClass == null) {
+                hookState.reset()
+                XposedCompat.log("[IntlAudioCircleStartupShowBlockHook] MAudioApi class NOT FOUND")
+                return
+            }
+            getPlayingAudiosMethod = XposedCompat.findMethodOrNull(apiClass, "getPlayingAudios")
+            isAudioCircleActiveMethod =
+                XposedCompat.findMethodOrNull(apiClass, "isAudioCircleViewManagerAudioActive")
+            if (getPlayingAudiosMethod == null || isAudioCircleActiveMethod == null) {
+                hookState.reset()
+                XposedCompat.log("[IntlAudioCircleStartupShowBlockHook] audio state methods NOT FOUND")
+                return
+            }
+
+            val showHooks = hookShowAudioCircleMethods(apiClass)
+            val entryHooks = hookAudioEntrySignals(cl, apiClass)
+            val homeHooked = hookHomeStableSignal(cl)
+            if (showHooks == 0) {
+                hookState.reset()
+                XposedCompat.log("[IntlAudioCircleStartupShowBlockHook] show methods NOT FOUND")
+                return
+            }
+
+            XposedCompat.log(
+                "[IntlAudioCircleStartupShowBlockHook] hooks INSTALLED: " +
+                    "showHooks=$showHooks, entryHooks=$entryHooks, homeStable=$homeHooked",
+            )
+        } catch (t: Throwable) {
+            hookState.reset()
+            XposedCompat.log("[IntlAudioCircleStartupShowBlockHook] install FAILED: ${t.message}")
+            XposedCompat.log(t)
+        }
+    }
+
+    private fun hookShowAudioCircleMethods(apiClass: Class<*>): Int {
+        val mod = XposedCompat.module ?: return 0
+        var installed = 0
+        for (method in apiClass.declaredMethods) {
+            if (method.name != "showAudioCircleViewManagerAudio") continue
+            method.isAccessible = true
+            mod.hook(method).intercept { chain ->
+                val receiver = chain.thisObject
+                val activity = chain.args.firstOrNull() as? Activity
+                val methodLabel = "${method.name}/${method.parameterTypes.size}"
+                if (receiver == null || !shouldBlockStartupShow(receiver, activity, methodLabel)) {
+                    return@intercept chain.proceed()
+                }
+
+                synchronized(lock) {
+                    blockedCount++
+                }
+                XposedCompat.log(
+                    "[IntlAudioCircleStartupShowBlockHook] blocked startup audio circle show: " +
+                        "method=$methodLabel, activity=${activity?.javaClass?.name}, " +
+                        "blockedCount=$blockedCount",
+                )
+                null
+            }
+            installed++
+        }
+        return installed
+    }
+
+    private fun hookAudioEntrySignals(cl: ClassLoader, apiClass: Class<*>): Int {
+        val mod = XposedCompat.module ?: return 0
+        var installed = 0
+
+        for (method in apiClass.declaredMethods) {
+            if (method.name != "startAudioPlayerActivity") continue
+            method.isAccessible = true
+            mod.hook(method).intercept { chain ->
+                markAudioEntryReached("api:${method.name}/${method.parameterTypes.size}")
+                chain.proceed()
+            }
+            installed++
+        }
+
+        val playerClass = XposedCompat.findClassOrNull(AUDIO_PLAYER_ACTIVITY_CLASS_NAME, cl)
+        if (playerClass != null) {
+            XposedCompat.findMethodOrNull(playerClass, "onCreate", Bundle::class.java)?.let { method ->
+                mod.hook(method).intercept { chain ->
+                    markAudioEntryReached("activity:onCreate")
+                    chain.proceed()
+                }
+                installed++
+            }
+            XposedCompat.findMethodOrNull(playerClass, "onResume")?.let { method ->
+                mod.hook(method).intercept { chain ->
+                    markAudioEntryReached("activity:onResume")
+                    chain.proceed()
+                }
+                installed++
+            }
+        } else {
+            XposedCompat.log("[IntlAudioCircleStartupShowBlockHook] AudioPlayerActivity class NOT FOUND")
+        }
+
+        return installed
+    }
+
+    private fun hookHomeStableSignal(cl: ClassLoader): Boolean {
+        val mod = XposedCompat.module ?: return false
+        val mainActivityClass = XposedCompat.findClassOrNull(MAIN_ACTIVITY_CLASS_NAME, cl) ?: run {
+            XposedCompat.log("[IntlAudioCircleStartupShowBlockHook] MainActivity class NOT FOUND")
+            return false
+        }
+        val focusMethod = XposedCompat.findMethodOrNull(
+            mainActivityClass,
+            "onWindowFocusChanged",
+            Boolean::class.javaPrimitiveType!!,
+        ) ?: run {
+            XposedCompat.log("[IntlAudioCircleStartupShowBlockHook] MainActivity.onWindowFocusChanged NOT FOUND")
+            return false
+        }
+
+        mod.hook(focusMethod).intercept { chain ->
+            val result = chain.proceed()
+            val activity = chain.thisObject as? Activity
+            val hasFocus = chain.args.firstOrNull() as? Boolean ?: false
+            if (hasFocus && activity?.javaClass?.name == MAIN_ACTIVITY_CLASS_NAME) {
+                scheduleHomeStable()
+            }
+            result
+        }
+        return true
+    }
+
+    private fun shouldBlockStartupShow(receiver: Any, activity: Activity?, methodLabel: String): Boolean {
+        if (!isEnabled()) return false
+        if (!isInStartupWindow()) return false
+        if (audioEntryReached) return allowShow(methodLabel, "audio_entry_reached")
+        if (activity?.javaClass?.name == AUDIO_PLAYER_ACTIVITY_CLASS_NAME) {
+            return allowShow(methodLabel, "audio_player_activity")
+        }
+
+        val state = readAudioState(receiver)
+        if (!state.sourceKnown || !state.activeKnown) {
+            return allowShow(methodLabel, "audio_state_unknown")
+        }
+        if (state.hasPlayingSource || state.isAudioCircleActive) {
+            return allowShow(
+                methodLabel,
+                "active_or_has_source:source=${state.hasPlayingSource},active=${state.isAudioCircleActive}",
+            )
+        }
+        return true
+    }
+
+    private fun readAudioState(receiver: Any): AudioState {
+        val sourceMethod = getPlayingAudiosMethod
+        val activeMethod = isAudioCircleActiveMethod
+        val playingSource = runCatching {
+            sourceMethod?.invoke(receiver)
+        }.getOrElse { t ->
+            XposedCompat.logW("[IntlAudioCircleStartupShowBlockHook] getPlayingAudios failed: ${t.message}")
+            return AudioState(
+                sourceKnown = false,
+                hasPlayingSource = false,
+                activeKnown = false,
+                isAudioCircleActive = false,
+            )
+        }
+        val active = runCatching {
+            activeMethod?.invoke(receiver) as? Boolean
+        }.getOrElse { t ->
+            XposedCompat.logW(
+                "[IntlAudioCircleStartupShowBlockHook] isAudioCircleViewManagerAudioActive failed: ${t.message}",
+            )
+            return AudioState(
+                sourceKnown = true,
+                hasPlayingSource = playingSource != null,
+                activeKnown = false,
+                isAudioCircleActive = false,
+            )
+        }
+        return AudioState(
+            sourceKnown = sourceMethod != null,
+            hasPlayingSource = playingSource != null,
+            activeKnown = active != null,
+            isAudioCircleActive = active == true,
+        )
+    }
+
+    private fun allowShow(methodLabel: String, reason: String): Boolean {
+        synchronized(lock) {
+            allowedCount++
+        }
+        XposedCompat.logD(
+            "[IntlAudioCircleStartupShowBlockHook] allow audio circle show: " +
+                "method=$methodLabel, reason=$reason, allowedCount=$allowedCount",
+        )
+        return false
+    }
+
+    private fun isInStartupWindow(): Boolean {
+        if (homeStableReached) return false
+        return SystemClock.elapsedRealtime() - processStartElapsed <= MAX_STARTUP_WINDOW_MS
+    }
+
+    private fun markAudioEntryReached(reason: String) {
+        if (audioEntryReached) return
+        audioEntryReached = true
+        XposedCompat.logD("[IntlAudioCircleStartupShowBlockHook] audio entry reached: reason=$reason")
+    }
+
+    private fun scheduleHomeStable() {
+        if (homeStableReached || homeStableScheduled) return
+        synchronized(lock) {
+            if (homeStableReached || homeStableScheduled) return
+            homeStableScheduled = true
+        }
+        mainHandler.postDelayed({
+            homeStableReached = true
+            homeStableScheduled = false
+            XposedCompat.logD("[IntlAudioCircleStartupShowBlockHook] home stable reached")
+        }, HOME_STABLE_DELAY_MS)
+    }
+
+    private fun isEnabled(): Boolean =
+        ConfigManager.isPerformanceOptimizeEnabled && ConfigManager.isIntlAudioCircleStartupShowBlocked
+}

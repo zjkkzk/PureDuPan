@@ -196,6 +196,8 @@ object UiText {
         const val DELAY_INTL_NON_CORE_DIFF_SOCKET_DESC = "仅国际版。启动期延后云图、云视频、搜索 diff socket 注册，保留核心文件 diff；首页稳定后或进入对应入口前恢复"
         const val DELAY_INTL_FLOAT_VIEW_STARTUP_LABEL = "延后浮层初始化"
         const val DELAY_INTL_FLOAT_VIEW_STARTUP_DESC = "仅国际版。启动期延后任务提示、音频圈容器和第三方返回提示的生命周期注册；首页稳定后或进入对应入口前恢复"
+        const val BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW_LABEL = "阻止启动期音频圈自动显示"
+        const val BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW_DESC = "仅国际版。首页稳定前阻止无播放源的音频圈显示请求；主动进入音频/播放入口和已有播放源不拦截"
         const val ACTION_ICON_SETTINGS = "⚙"
         const val ACTION_ICON_GALLERY = "相册"
         const val ACTION_ICON_CLEAR = "清除"
