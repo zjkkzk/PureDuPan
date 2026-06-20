@@ -9,9 +9,12 @@ internal object BaiduTransferHookPoints {
         "com.baidu.netdisk.ui.manager.FlowAlertDialogManager"
     const val DIALOG_CTR_LISTENER =
         "com.baidu.netdisk.ui.manager.DialogCtrListener"
+    const val NET_CONFIG_UTIL =
+        "com.baidu.netdisk.base.utils.NetConfigUtil"
     const val SHOW_NON_WIFI_ALERT_DOWNLOAD_DIALOG_METHOD =
         "showNonWiFiAlertDownloadDialog"
     const val SHOW_NON_WIFI_ALERT_DOWNLOAD_BOTTOM_DIALOG_METHOD =
         "showNonWiFiAlertDownloadBottomDialog"
     const val DIALOG_CTR_LISTENER_ON_OK_METHOD = "onOkBtnClick"
+    const val SET_WIFI_ONLY_CHECKED_CONFIG_METHOD = "setWiFiOnlyCheckedConfig"
 }

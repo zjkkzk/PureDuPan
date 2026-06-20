@@ -27,23 +27,27 @@ internal object NonWifiDownloadDialogBlockHook {
                 XposedCompat.log("[NonWifiDownloadDialogBlockHook] DialogCtrListener class NOT FOUND")
                 return
             }
+            val wifiOnlyConfigMethod = findSetWifiOnlyConfigMethod(cl)
 
             var installed = 0
             installed += hookDialogMethods(
                 cl = cl,
                 listenerClass = listenerClass,
+                wifiOnlyConfigMethod = wifiOnlyConfigMethod,
                 className = BaiduTransferHookPoints.TRANSFER_CONTEXT_COMPANION,
                 tagPrefix = "TransferContext.Companion",
             )
             installed += hookDialogMethods(
                 cl = cl,
                 listenerClass = listenerClass,
+                wifiOnlyConfigMethod = wifiOnlyConfigMethod,
                 className = BaiduTransferHookPoints.TRANSFER_APIS,
                 tagPrefix = "TransferApis",
             )
             installed += hookDialogMethods(
                 cl = cl,
                 listenerClass = listenerClass,
+                wifiOnlyConfigMethod = wifiOnlyConfigMethod,
                 className = BaiduTransferHookPoints.FLOW_ALERT_DIALOG_MANAGER,
                 tagPrefix = "FlowAlertDialogManager",
             )
@@ -72,6 +76,7 @@ internal object NonWifiDownloadDialogBlockHook {
     private fun hookDialogMethods(
         cl: ClassLoader,
         listenerClass: Class<*>,
+        wifiOnlyConfigMethod: Method?,
         className: String,
         tagPrefix: String,
     ): Int {
@@ -79,6 +84,7 @@ internal object NonWifiDownloadDialogBlockHook {
         installed += hookDialogMethod(
             cl = cl,
             listenerClass = listenerClass,
+            wifiOnlyConfigMethod = wifiOnlyConfigMethod,
             className = className,
             methodName = BaiduTransferHookPoints.SHOW_NON_WIFI_ALERT_DOWNLOAD_DIALOG_METHOD,
             tag = "$tagPrefix.showNonWiFiAlertDownloadDialog",
@@ -86,6 +92,7 @@ internal object NonWifiDownloadDialogBlockHook {
         installed += hookDialogMethod(
             cl = cl,
             listenerClass = listenerClass,
+            wifiOnlyConfigMethod = wifiOnlyConfigMethod,
             className = className,
             methodName = BaiduTransferHookPoints.SHOW_NON_WIFI_ALERT_DOWNLOAD_BOTTOM_DIALOG_METHOD,
             tag = "$tagPrefix.showNonWiFiAlertDownloadBottomDialog",
@@ -96,6 +103,7 @@ internal object NonWifiDownloadDialogBlockHook {
     private fun hookDialogMethod(
         cl: ClassLoader,
         listenerClass: Class<*>,
+        wifiOnlyConfigMethod: Method?,
         className: String,
         methodName: String,
         tag: String,
@@ -116,7 +124,7 @@ internal object NonWifiDownloadDialogBlockHook {
             }
 
             val listener = chain.args.firstOrNull()
-            if (confirmDownload(listener, tag)) {
+            if (confirmDownload(listener, wifiOnlyConfigMethod, tag)) {
                 HookUtils.getDefaultReturnValue(method.returnType)
             } else {
                 chain.proceed()
@@ -125,8 +133,9 @@ internal object NonWifiDownloadDialogBlockHook {
         return 1
     }
 
-    private fun confirmDownload(listener: Any?, tag: String): Boolean {
+    private fun confirmDownload(listener: Any?, wifiOnlyConfigMethod: Method?, tag: String): Boolean {
         if (listener == null) {
+            allowMobileDataDownload(wifiOnlyConfigMethod, tag)
             XposedCompat.logD("[NonWifiDownloadDialogBlockHook] $tag skipped with null listener")
             return true
         }
@@ -140,6 +149,7 @@ internal object NonWifiDownloadDialogBlockHook {
         }
 
         return try {
+            allowMobileDataDownload(wifiOnlyConfigMethod, tag)
             onOkMethod.invoke(listener)
             XposedCompat.logD("[NonWifiDownloadDialogBlockHook] $tag confirmed without dialog")
             true
@@ -156,6 +166,40 @@ internal object NonWifiDownloadDialogBlockHook {
                     "${e.javaClass.simpleName}: ${e.message}",
             )
             false
+        }
+    }
+
+    private fun findSetWifiOnlyConfigMethod(cl: ClassLoader): Method? {
+        val clazz = XposedCompat.findClassOrNull(BaiduTransferHookPoints.NET_CONFIG_UTIL, cl)
+            ?: run {
+                XposedCompat.logD("[NonWifiDownloadDialogBlockHook] NetConfigUtil class not found")
+                return null
+            }
+        return XposedCompat.findMethodOrNull(
+            clazz,
+            BaiduTransferHookPoints.SET_WIFI_ONLY_CHECKED_CONFIG_METHOD,
+            Boolean::class.javaPrimitiveType!!,
+        )?.apply { isAccessible = true } ?: run {
+            XposedCompat.logW("[NonWifiDownloadDialogBlockHook] setWiFiOnlyCheckedConfig not found")
+            null
+        }
+    }
+
+    private fun allowMobileDataDownload(method: Method?, tag: String) {
+        if (method == null) return
+        try {
+            method.invoke(null, false)
+            XposedCompat.logD("[NonWifiDownloadDialogBlockHook] $tag disabled wifi-only before confirm")
+        } catch (e: InvocationTargetException) {
+            XposedCompat.logW(
+                "[NonWifiDownloadDialogBlockHook] setWiFiOnlyCheckedConfig threw in $tag: " +
+                    "${e.targetException?.javaClass?.simpleName}: ${e.targetException?.message}",
+            )
+        } catch (e: ReflectiveOperationException) {
+            XposedCompat.logW(
+                "[NonWifiDownloadDialogBlockHook] setWiFiOnlyCheckedConfig failed in $tag: " +
+                    "${e.javaClass.simpleName}: ${e.message}",
+            )
         }
     }
 
