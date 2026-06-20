@@ -14,7 +14,7 @@ data class SettingsSnapshot(
     val isSharePushGuideBlocked: Boolean = false,
     val isAppStoreReviewBlocked: Boolean = false,
 
-    // Baidu Netdisk UI simplification
+    // Host UI simplification
     val isBottomAiReplaced: Boolean = false,
     val isHomeCustomizeEnabled: Boolean = false,
     val isHomeTopPromotionHidden: Boolean = false,

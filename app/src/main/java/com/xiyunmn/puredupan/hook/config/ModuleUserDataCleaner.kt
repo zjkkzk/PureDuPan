@@ -1,8 +1,8 @@
 ﻿package com.xiyunmn.puredupan.hook.config
 
 import android.content.Context
+import com.xiyunmn.puredupan.hook.config.runtime.ConfigHostRuntime
 import com.xiyunmn.puredupan.hook.core.XposedCompat
-import com.xiyunmn.puredupan.hook.host.HostRegistry
 import java.io.File
 
 internal object ModuleUserDataCleaner {
@@ -126,7 +126,7 @@ internal object ModuleUserDataCleaner {
         deleted: MutableList<String>,
         failed: MutableList<String>,
     ) {
-        for (packageName in HostRegistry.supportedPackageNames) {
+        for (packageName in ConfigHostRuntime.supportedPackageNames()) {
             deleteSharedPrefs(
                 context = context,
                 prefsName = ConfigManager.moduleStatePrefsNameFor(packageName),

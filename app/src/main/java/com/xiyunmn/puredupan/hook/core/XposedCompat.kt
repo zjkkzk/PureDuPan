@@ -1,7 +1,6 @@
 ﻿package com.xiyunmn.puredupan.hook.core
 
 import android.content.Context
-import com.xiyunmn.puredupan.hook.config.ConfigManager
 import io.github.libxposed.api.XposedModule
 import java.util.concurrent.ConcurrentHashMap
 
@@ -27,6 +26,9 @@ object XposedCompat {
     @Volatile
     private var currentPackageName: String? = null
 
+    @Volatile
+    private var detailedLoggingProvider: (() -> Boolean)? = null
+
     private val installInfoOnce = ConcurrentHashMap.newKeySet<String>()
 
     internal fun setProcessName(name: String) {
@@ -39,8 +41,12 @@ object XposedCompat {
 
     fun currentPackageName(): String? = currentPackageName
 
+    internal fun setDetailedLoggingProvider(provider: () -> Boolean) {
+        detailedLoggingProvider = provider
+    }
+
     internal fun initializeFileLogging(context: Context) {
-        if (ConfigManager.shouldOutputDetailedLogs()) {
+        if (shouldOutputDetailedLogs()) {
             HookFileLogger.initialize(context)
         }
     }
@@ -61,7 +67,7 @@ object XposedCompat {
         }
 
         // Choose priority based on detailed logging setting
-        val priority = if (ConfigManager.shouldOutputDetailedLogs()) {
+        val priority = if (shouldOutputDetailedLogs()) {
             android.util.Log.DEBUG
         } else {
             android.util.Log.INFO
@@ -73,14 +79,14 @@ object XposedCompat {
     }
 
     fun logD(msg: String) {
-        if (!ConfigManager.shouldOutputDetailedLogs()) return
+        if (!shouldOutputDetailedLogs()) return
         android.util.Log.d(LOG_TAG, msg)
         module?.log(android.util.Log.DEBUG, LOG_TAG, msg)
         writeFileLogIfEnabled(android.util.Log.DEBUG, msg)
     }
 
     inline fun logD(msg: () -> String) {
-        if (!ConfigManager.shouldOutputDetailedLogs()) return
+        if (!shouldOutputDetailedLogs()) return
         logD(msg())
     }
 
@@ -106,7 +112,7 @@ object XposedCompat {
         writeFileLogIfEnabled(android.util.Log.ERROR, summary)
 
         // Always output stack trace (truncated in release mode)
-        val truncated = if (ConfigManager.shouldOutputDetailedLogs()) {
+        val truncated = if (shouldOutputDetailedLogs()) {
             stackTrace  // Full stack trace
         } else {
             stackTrace.lines().take(10).joinToString("\n")  // First 10 lines
@@ -118,8 +124,14 @@ object XposedCompat {
     }
 
     private fun writeFileLogIfEnabled(priority: Int, msg: String) {
-        if (!ConfigManager.shouldOutputDetailedLogs()) return
+        if (!shouldOutputDetailedLogs()) return
         HookFileLogger.write(priority, LOG_TAG, msg)
+    }
+
+    @PublishedApi
+    internal fun shouldOutputDetailedLogs(): Boolean {
+        return runCatching { detailedLoggingProvider?.invoke() == true }
+            .getOrDefault(false)
     }
 
     private fun isSuccessfulHookInstallLog(msg: String): Boolean {

@@ -1,15 +1,14 @@
-﻿package com.xiyunmn.puredupan.hook.config
+package com.xiyunmn.puredupan.hook.config
 
 import android.content.Context
 import android.content.SharedPreferences
 import com.xiyunmn.puredupan.hook.BuildConfig
-import com.xiyunmn.puredupan.hook.config.model.FeatureAvailabilityState
 import com.xiyunmn.puredupan.hook.config.model.FeatureAvailabilityStatus
-import com.xiyunmn.puredupan.hook.core.DexKitCompat
+import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
+import com.xiyunmn.puredupan.hook.config.runtime.ConfigHostRuntime
+import com.xiyunmn.puredupan.hook.config.runtime.DexKitSettingsRuntime
+import com.xiyunmn.puredupan.hook.config.runtime.FeatureAvailabilityRuntime
 import com.xiyunmn.puredupan.hook.core.XposedCompat
-import com.xiyunmn.puredupan.hook.host.HostFeatureAvailabilityRegistry
-import com.xiyunmn.puredupan.hook.host.HostFlavor
-import com.xiyunmn.puredupan.hook.host.HostRegistry
 
 object ConfigManager {
     const val USER_SETTINGS_PREFS_NAME = "wangpan_user_settings"
@@ -17,95 +16,95 @@ object ConfigManager {
     const val PREFS_NAME = USER_SETTINGS_PREFS_NAME
     private const val KEY_USER_SETTINGS_VERSION_CODE = "user_settings_version_code"
 
-    const val KEY_ENABLE_DETAILED_LOGGING = "enable_detailed_logging"
-    const val KEY_ENABLE_EXPERIMENTAL_DEXKIT = "enable_experimental_dexkit"
-    const val KEY_BLOCK_SPLASH_INTERSTITIAL = "block_splash_interstitial"
-    const val KEY_REMOVE_HOT_START_SPLASH = "remove_hot_start_splash"
-    const val KEY_BLOCK_IN_APP_DIALOG = "block_in_app_dialog"
-    const val KEY_BLOCK_UPDATE_DIALOG = "block_update_dialog"
-    const val KEY_BLOCK_FULL_SCREEN_BACKUP = "block_full_screen_backup"
-    const val KEY_BLOCK_SHARE_PUSH_GUIDE = "block_share_push_guide"
-    const val KEY_BLOCK_APP_STORE_REVIEW = "block_app_store_review"
-    const val KEY_REPLACE_BOTTOM_AI = "replace_bottom_ai"
-    const val KEY_HOME_CUSTOMIZE = "home_customize"
-    private const val KEY_HOME_TOP_PROMOTION_LEGACY = "remove_top_ai"
-    const val KEY_HIDE_HOME_TOP_PROMOTION = "hide_home_top_promotion"
-    const val KEY_HIDE_HOME_SEARCH_PLACEHOLDER = "hide_home_search_placeholder"
-    const val KEY_HIDE_HOME_SEARCH_AIGC_ICON = "hide_home_search_aigc_icon"
-    const val KEY_HIDE_HOME_FEED_TIP = "hide_home_feed_tip"
-    const val KEY_HIDE_HOME_BANNER = "hide_home_banner"
-    const val KEY_HIDE_HOME_MEMORIES_SECTION = "hide_home_memories_section"
-    const val KEY_HIDE_HOME_SAVE_SECTION = "hide_home_save_section"
-    const val KEY_HIDE_HOME_RECENT_SECTION = "hide_home_recent_section"
-    const val KEY_SHARE_PAGE_CUSTOMIZE = "share_page_customize"
-    const val KEY_MY_PAGE_CUSTOMIZE = "my_page_customize"
-    const val KEY_REMOVE_GAME_CENTER = "remove_game_center"
-    const val KEY_REMOVE_ABOUT_ME_BANNER = "remove_about_me_banner"
-    const val KEY_REMOVE_MY_SERVICE = "remove_my_service"
-    const val KEY_HIDE_ABOUT_ME_COIN_CENTER_BUBBLE = "hide_about_me_coin_center_bubble"
-    const val KEY_HIDE_ABOUT_ME_SIGN_IN_DOT = "hide_about_me_sign_in_dot"
-    const val KEY_HIDE_ABOUT_ME_MANAGE_SPACE_TEXT = "hide_about_me_manage_space_text"
-    const val KEY_HIDE_ABOUT_ME_REWARD_TEXT = "hide_about_me_reward_text"
-    const val KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT = "hide_about_me_account_exit_text"
-    const val KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT = "hide_about_me_star_skin_text"
-    const val KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT = "hide_about_me_free_data_card_text"
-    const val KEY_REMOVE_HOME_FAB = "remove_home_fab"
-    const val KEY_HIDE_RENEW_BUTTON = "hide_renew_button"
-    const val KEY_BLOCK_BOTTOM_BADGE = "block_bottom_badge"
-    const val KEY_BLOCK_ALBUM_BACKUP_BAR = "block_album_backup_bar"
-    private const val KEY_HIDE_MEMBER_CARD_BACKGROUND_LEGACY = "hide_member_card_background"
-    const val KEY_HIDE_ABOUT_ME_AI_COIN_ASSET = "hide_about_me_ai_coin_asset"
-    const val KEY_MEMBER_CARD_CUSTOMIZE = "member_card_customize"
-    const val KEY_REPLACE_MEMBER_CARD_BACKGROUND = "replace_member_card_background"
-    const val KEY_MEMBER_CARD_BACKGROUND_URI = "member_card_background_uri"
-    const val KEY_MEMBER_CARD_BACKGROUND_BLUR_RADIUS = "member_card_background_blur_radius"
-    const val KEY_MEMBER_CARD_BACKGROUND_SCALE_PERCENT = "member_card_background_scale_percent"
-    const val KEY_MEMBER_CARD_BACKGROUND_ROTATION_DEGREES = "member_card_background_rotation_degrees"
-    const val KEY_MEMBER_CARD_BACKGROUND_OFFSET_X_PERMILLE = "member_card_background_offset_x_permille"
-    const val KEY_MEMBER_CARD_BACKGROUND_OFFSET_Y_PERMILLE = "member_card_background_offset_y_permille"
-    const val KEY_MEMBER_CARD_SIZE_ADJUST = "member_card_size_adjust"
-    const val KEY_MEMBER_CARD_SIZE_WIDTH_DP = "member_card_size_width_dp"
-    const val KEY_MEMBER_CARD_SIZE_HEIGHT_DP = "member_card_size_height_dp"
-    const val KEY_MEMBER_CARD_DEFAULT_WIDTH_PX = "member_card_default_width_px"
-    const val KEY_MEMBER_CARD_DEFAULT_HEIGHT_PX = "member_card_default_height_px"
-    const val KEY_HIDE_MEMBER_CARD_OPERATION = "hide_member_card_operation"
-    const val KEY_HIDE_MEMBER_CARD_BENEFIT = "hide_member_card_benefit"
-    const val KEY_HIDE_MEMBER_CARD_FIRST_BENEFIT = "hide_member_card_first_benefit"
-    const val KEY_HIDE_MEMBER_CARD_SECOND_BENEFIT = "hide_member_card_second_benefit"
-    const val KEY_HIDE_MEMBER_CARD_THIRD_BENEFIT = "hide_member_card_third_benefit"
-    const val KEY_HIDE_MEMBER_CARD_BENEFIT_BAR = "hide_member_card_benefit_bar"
-    const val KEY_HIDE_MEMBER_CARD_SVIP_LEVEL = "hide_member_card_svip_level"
-    const val KEY_HIDE_MEMBER_CARD_SVIP_STATUS = "hide_member_card_svip_status"
-    const val KEY_HIDE_MEMBER_CARD_RENEW_BUTTON = "hide_member_card_renew_button"
-    const val KEY_HIDE_INTL_MEMBER_CARD_SVIP_LEVEL = "hide_intl_member_card_svip_level"
-    const val KEY_HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON = "hide_intl_member_card_upgrade_button"
-    const val KEY_REMOVE_MEMBER_CARD_CLICK = "remove_member_card_click"
-    const val KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK = "view_member_card_background_on_click"
-    const val KEY_FOLLOW_SYSTEM_NIGHT_MODE = "follow_system_night_mode"
-    const val KEY_ACCELERATE_INTL_SPLASH_STARTUP = "accelerate_intl_splash_startup"
-    const val KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER = "disable_garbage_clean_service_register"
-    const val KEY_DISABLE_DATAPACK_SOCKET_REGISTER = "disable_datapack_socket_register"
-    const val KEY_DISABLE_AIGC_BACKGROUND_COMPONENT = "disable_aigc_background_component"
-    const val KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD = "disable_dynamic_plugin_auto_download"
-    const val KEY_DISABLE_OEM_PUSH_SERVICE = "disable_oem_push_service"
-    const val KEY_DISABLE_VIDEO_AD_PRELOAD = "disable_video_ad_preload"
-    const val KEY_DISABLE_AD_SDK_INIT = "disable_ad_sdk_init"
-    const val KEY_DISABLE_SWAN_PRELOAD = "disable_swan_preload"
-    const val KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE = "disable_thumbnail_operator_service"
-    const val KEY_DISABLE_INCENTIVE_BUSINESS_SERVICE = "disable_incentive_business_service"
-    const val KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART = "disable_media_browser_service_autostart"
-    const val KEY_DISABLE_ICON_RESOURCE_DOWNLOAD = "disable_icon_resource_download"
-    const val KEY_DISABLE_B2F_GUIDANCE_PREFETCH = "disable_b2f_guidance_prefetch"
-    const val KEY_BLOCK_INTL_OFFLINE_PACKAGE_INIT = "block_intl_offline_package_init"
-    const val KEY_DELAY_INTL_FEED_PRELOAD = "delay_intl_feed_preload"
-    const val KEY_DELAY_INTL_TASK_SCORE_REFRESH = "delay_intl_task_score_refresh"
-    const val KEY_BLOCK_INTL_STORY_DOUYIN_INIT = "block_intl_story_douyin_init"
-    const val KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET = "delay_intl_non_core_diff_socket"
-    const val KEY_DELAY_INTL_FLOAT_VIEW_STARTUP = "delay_intl_float_view_startup"
-    const val KEY_BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW = "block_intl_audio_circle_startup_show"
-    const val KEY_BLOCK_INTL_AIGC_WIDGET_BACKGROUND = "block_intl_aigc_widget_background"
-    const val KEY_BLOCK_INTL_ALBUM_AI_INIT = "block_intl_album_ai_init"
-    const val KEY_PERFORMANCE_OPTIMIZE = "performance_optimize"
+    const val KEY_ENABLE_DETAILED_LOGGING = FeatureKeys.KEY_ENABLE_DETAILED_LOGGING
+    const val KEY_ENABLE_EXPERIMENTAL_DEXKIT = FeatureKeys.KEY_ENABLE_EXPERIMENTAL_DEXKIT
+    const val KEY_BLOCK_SPLASH_INTERSTITIAL = FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL
+    const val KEY_REMOVE_HOT_START_SPLASH = FeatureKeys.KEY_REMOVE_HOT_START_SPLASH
+    const val KEY_BLOCK_IN_APP_DIALOG = FeatureKeys.KEY_BLOCK_IN_APP_DIALOG
+    const val KEY_BLOCK_UPDATE_DIALOG = FeatureKeys.KEY_BLOCK_UPDATE_DIALOG
+    const val KEY_BLOCK_FULL_SCREEN_BACKUP = FeatureKeys.KEY_BLOCK_FULL_SCREEN_BACKUP
+    const val KEY_BLOCK_SHARE_PUSH_GUIDE = FeatureKeys.KEY_BLOCK_SHARE_PUSH_GUIDE
+    const val KEY_BLOCK_APP_STORE_REVIEW = FeatureKeys.KEY_BLOCK_APP_STORE_REVIEW
+    const val KEY_REPLACE_BOTTOM_AI = FeatureKeys.KEY_REPLACE_BOTTOM_AI
+    const val KEY_HOME_CUSTOMIZE = FeatureKeys.KEY_HOME_CUSTOMIZE
+    private const val LEGACY_HOME_TOP_PROMOTION = "remove_top_ai"
+    const val KEY_HIDE_HOME_TOP_PROMOTION = FeatureKeys.KEY_HIDE_HOME_TOP_PROMOTION
+    const val KEY_HIDE_HOME_SEARCH_PLACEHOLDER = FeatureKeys.KEY_HIDE_HOME_SEARCH_PLACEHOLDER
+    const val KEY_HIDE_HOME_SEARCH_AIGC_ICON = FeatureKeys.KEY_HIDE_HOME_SEARCH_AIGC_ICON
+    const val KEY_HIDE_HOME_FEED_TIP = FeatureKeys.KEY_HIDE_HOME_FEED_TIP
+    const val KEY_HIDE_HOME_BANNER = FeatureKeys.KEY_HIDE_HOME_BANNER
+    const val KEY_HIDE_HOME_MEMORIES_SECTION = FeatureKeys.KEY_HIDE_HOME_MEMORIES_SECTION
+    const val KEY_HIDE_HOME_SAVE_SECTION = FeatureKeys.KEY_HIDE_HOME_SAVE_SECTION
+    const val KEY_HIDE_HOME_RECENT_SECTION = FeatureKeys.KEY_HIDE_HOME_RECENT_SECTION
+    const val KEY_SHARE_PAGE_CUSTOMIZE = FeatureKeys.KEY_SHARE_PAGE_CUSTOMIZE
+    const val KEY_MY_PAGE_CUSTOMIZE = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE
+    const val KEY_REMOVE_GAME_CENTER = FeatureKeys.KEY_REMOVE_GAME_CENTER
+    const val KEY_REMOVE_ABOUT_ME_BANNER = FeatureKeys.KEY_REMOVE_ABOUT_ME_BANNER
+    const val KEY_REMOVE_MY_SERVICE = FeatureKeys.KEY_REMOVE_MY_SERVICE
+    const val KEY_HIDE_ABOUT_ME_COIN_CENTER_BUBBLE = FeatureKeys.KEY_HIDE_ABOUT_ME_COIN_CENTER_BUBBLE
+    const val KEY_HIDE_ABOUT_ME_SIGN_IN_DOT = FeatureKeys.KEY_HIDE_ABOUT_ME_SIGN_IN_DOT
+    const val KEY_HIDE_ABOUT_ME_MANAGE_SPACE_TEXT = FeatureKeys.KEY_HIDE_ABOUT_ME_MANAGE_SPACE_TEXT
+    const val KEY_HIDE_ABOUT_ME_REWARD_TEXT = FeatureKeys.KEY_HIDE_ABOUT_ME_REWARD_TEXT
+    const val KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT = FeatureKeys.KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT
+    const val KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT = FeatureKeys.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT
+    const val KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT = FeatureKeys.KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT
+    const val KEY_REMOVE_HOME_FAB = FeatureKeys.KEY_REMOVE_HOME_FAB
+    const val KEY_HIDE_RENEW_BUTTON = FeatureKeys.KEY_HIDE_RENEW_BUTTON
+    const val KEY_BLOCK_BOTTOM_BADGE = FeatureKeys.KEY_BLOCK_BOTTOM_BADGE
+    const val KEY_BLOCK_ALBUM_BACKUP_BAR = FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR
+    private const val LEGACY_HIDE_MEMBER_CARD_BACKGROUND = "hide_member_card_background"
+    const val KEY_HIDE_ABOUT_ME_AI_COIN_ASSET = FeatureKeys.KEY_HIDE_ABOUT_ME_AI_COIN_ASSET
+    const val KEY_MEMBER_CARD_CUSTOMIZE = FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE
+    const val KEY_REPLACE_MEMBER_CARD_BACKGROUND = FeatureKeys.KEY_REPLACE_MEMBER_CARD_BACKGROUND
+    const val KEY_MEMBER_CARD_BACKGROUND_URI = FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_URI
+    const val KEY_MEMBER_CARD_BACKGROUND_BLUR_RADIUS = FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_BLUR_RADIUS
+    const val KEY_MEMBER_CARD_BACKGROUND_SCALE_PERCENT = FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_SCALE_PERCENT
+    const val KEY_MEMBER_CARD_BACKGROUND_ROTATION_DEGREES = FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_ROTATION_DEGREES
+    const val KEY_MEMBER_CARD_BACKGROUND_OFFSET_X_PERMILLE = FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_OFFSET_X_PERMILLE
+    const val KEY_MEMBER_CARD_BACKGROUND_OFFSET_Y_PERMILLE = FeatureKeys.KEY_MEMBER_CARD_BACKGROUND_OFFSET_Y_PERMILLE
+    const val KEY_MEMBER_CARD_SIZE_ADJUST = FeatureKeys.KEY_MEMBER_CARD_SIZE_ADJUST
+    const val KEY_MEMBER_CARD_SIZE_WIDTH_DP = FeatureKeys.KEY_MEMBER_CARD_SIZE_WIDTH_DP
+    const val KEY_MEMBER_CARD_SIZE_HEIGHT_DP = FeatureKeys.KEY_MEMBER_CARD_SIZE_HEIGHT_DP
+    const val KEY_MEMBER_CARD_DEFAULT_WIDTH_PX = FeatureKeys.KEY_MEMBER_CARD_DEFAULT_WIDTH_PX
+    const val KEY_MEMBER_CARD_DEFAULT_HEIGHT_PX = FeatureKeys.KEY_MEMBER_CARD_DEFAULT_HEIGHT_PX
+    const val KEY_HIDE_MEMBER_CARD_OPERATION = FeatureKeys.KEY_HIDE_MEMBER_CARD_OPERATION
+    const val KEY_HIDE_MEMBER_CARD_BENEFIT = FeatureKeys.KEY_HIDE_MEMBER_CARD_BENEFIT
+    const val KEY_HIDE_MEMBER_CARD_FIRST_BENEFIT = FeatureKeys.KEY_HIDE_MEMBER_CARD_FIRST_BENEFIT
+    const val KEY_HIDE_MEMBER_CARD_SECOND_BENEFIT = FeatureKeys.KEY_HIDE_MEMBER_CARD_SECOND_BENEFIT
+    const val KEY_HIDE_MEMBER_CARD_THIRD_BENEFIT = FeatureKeys.KEY_HIDE_MEMBER_CARD_THIRD_BENEFIT
+    const val KEY_HIDE_MEMBER_CARD_BENEFIT_BAR = FeatureKeys.KEY_HIDE_MEMBER_CARD_BENEFIT_BAR
+    const val KEY_HIDE_MEMBER_CARD_SVIP_LEVEL = FeatureKeys.KEY_HIDE_MEMBER_CARD_SVIP_LEVEL
+    const val KEY_HIDE_MEMBER_CARD_SVIP_STATUS = FeatureKeys.KEY_HIDE_MEMBER_CARD_SVIP_STATUS
+    const val KEY_HIDE_MEMBER_CARD_RENEW_BUTTON = FeatureKeys.KEY_HIDE_MEMBER_CARD_RENEW_BUTTON
+    const val KEY_HIDE_INTL_MEMBER_CARD_SVIP_LEVEL = FeatureKeys.KEY_HIDE_INTL_MEMBER_CARD_SVIP_LEVEL
+    const val KEY_HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON = FeatureKeys.KEY_HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON
+    const val KEY_REMOVE_MEMBER_CARD_CLICK = FeatureKeys.KEY_REMOVE_MEMBER_CARD_CLICK
+    const val KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK = FeatureKeys.KEY_VIEW_MEMBER_CARD_BACKGROUND_ON_CLICK
+    const val KEY_FOLLOW_SYSTEM_NIGHT_MODE = FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE
+    const val KEY_ACCELERATE_INTL_SPLASH_STARTUP = FeatureKeys.KEY_ACCELERATE_INTL_SPLASH_STARTUP
+    const val KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER = FeatureKeys.KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER
+    const val KEY_DISABLE_DATAPACK_SOCKET_REGISTER = FeatureKeys.KEY_DISABLE_DATAPACK_SOCKET_REGISTER
+    const val KEY_DISABLE_AIGC_BACKGROUND_COMPONENT = FeatureKeys.KEY_DISABLE_AIGC_BACKGROUND_COMPONENT
+    const val KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD = FeatureKeys.KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD
+    const val KEY_DISABLE_OEM_PUSH_SERVICE = FeatureKeys.KEY_DISABLE_OEM_PUSH_SERVICE
+    const val KEY_DISABLE_VIDEO_AD_PRELOAD = FeatureKeys.KEY_DISABLE_VIDEO_AD_PRELOAD
+    const val KEY_DISABLE_AD_SDK_INIT = FeatureKeys.KEY_DISABLE_AD_SDK_INIT
+    const val KEY_DISABLE_SWAN_PRELOAD = FeatureKeys.KEY_DISABLE_SWAN_PRELOAD
+    const val KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE = FeatureKeys.KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE
+    const val KEY_DISABLE_INCENTIVE_BUSINESS_SERVICE = FeatureKeys.KEY_DISABLE_INCENTIVE_BUSINESS_SERVICE
+    const val KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART = FeatureKeys.KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART
+    const val KEY_DISABLE_ICON_RESOURCE_DOWNLOAD = FeatureKeys.KEY_DISABLE_ICON_RESOURCE_DOWNLOAD
+    const val KEY_DISABLE_B2F_GUIDANCE_PREFETCH = FeatureKeys.KEY_DISABLE_B2F_GUIDANCE_PREFETCH
+    const val KEY_BLOCK_INTL_OFFLINE_PACKAGE_INIT = FeatureKeys.KEY_BLOCK_INTL_OFFLINE_PACKAGE_INIT
+    const val KEY_DELAY_INTL_FEED_PRELOAD = FeatureKeys.KEY_DELAY_INTL_FEED_PRELOAD
+    const val KEY_DELAY_INTL_TASK_SCORE_REFRESH = FeatureKeys.KEY_DELAY_INTL_TASK_SCORE_REFRESH
+    const val KEY_BLOCK_INTL_STORY_DOUYIN_INIT = FeatureKeys.KEY_BLOCK_INTL_STORY_DOUYIN_INIT
+    const val KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET = FeatureKeys.KEY_DELAY_INTL_NON_CORE_DIFF_SOCKET
+    const val KEY_DELAY_INTL_FLOAT_VIEW_STARTUP = FeatureKeys.KEY_DELAY_INTL_FLOAT_VIEW_STARTUP
+    const val KEY_BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW = FeatureKeys.KEY_BLOCK_INTL_AUDIO_CIRCLE_STARTUP_SHOW
+    const val KEY_BLOCK_INTL_AIGC_WIDGET_BACKGROUND = FeatureKeys.KEY_BLOCK_INTL_AIGC_WIDGET_BACKGROUND
+    const val KEY_BLOCK_INTL_ALBUM_AI_INIT = FeatureKeys.KEY_BLOCK_INTL_ALBUM_AI_INIT
+    const val KEY_PERFORMANCE_OPTIMIZE = FeatureKeys.KEY_PERFORMANCE_OPTIMIZE
     const val KEY_RESTRICTED_FEATURES_UNLOCKED = "restricted_features_unlocked"
     const val KEY_DISCLAIMER_ACCEPTED = "disclaimer_accepted"
 
@@ -113,7 +112,6 @@ object ConfigManager {
     @Volatile private var appContext: Context? = null
     @Volatile private var activePrefsName: String? = null
     @Volatile private var activeModuleStatePrefsName: String? = null
-    @Volatile private var featureAvailability: Map<String, Boolean> = emptyMap()
     @Volatile private var settingsSnapshot: SettingsSnapshot = SettingsSnapshot()
     @Volatile private var prefsListener: SharedPreferences.OnSharedPreferenceChangeListener? = null
 
@@ -244,8 +242,13 @@ object ConfigManager {
             prefs = p
             activePrefsName = targetPrefsName
             activeModuleStatePrefsName = namespacedModuleStatePrefsName(appCtx.packageName)
+            XposedCompat.setDetailedLoggingProvider { shouldOutputDetailedLogs() }
+            DexKitSettingsRuntime.bindRuntimeProvider(
+                appContextProvider = { getAppContext() },
+                moduleStatePrefsProvider = { context -> getModuleStatePrefs(context) },
+            )
             applyFeatureAvailabilityInternal(
-                HostFeatureAvailabilityRegistry.featureStatusMapFor(appCtx.packageName),
+                ConfigHostRuntime.featureStatusMapForPackage(appCtx.packageName),
             )
             migrateLegacyPrefsIfNeeded(appCtx, p, targetPrefsName)
             ensureUserSettingsVersion(p)
@@ -264,7 +267,7 @@ object ConfigManager {
     fun readHomeTopPromotionHidden(p: SharedPreferences): Boolean {
         return p.getBoolean(
             KEY_HIDE_HOME_TOP_PROMOTION,
-            p.getBoolean(KEY_HOME_TOP_PROMOTION_LEGACY, false),
+            p.getBoolean(LEGACY_HOME_TOP_PROMOTION, false),
         )
     }
 
@@ -280,7 +283,7 @@ object ConfigManager {
                 val wasDexKitEnabled = settingsSnapshot.isExperimentalDexKitEnabled
                 val snapshot = refreshUserSettingsSnapshot(sharedPrefs)
                 if (!wasDexKitEnabled && snapshot.isExperimentalDexKitEnabled) {
-                    DexKitCompat.markFullScanPending("dexkit switch enabled")
+                    DexKitSettingsRuntime.markFullScanPendingFromConfigListener()
                 }
                 if (snapshot.isDetailedLoggingEnabled) {
                     appContext?.let { XposedCompat.initializeFileLogging(it) }
@@ -376,7 +379,7 @@ object ConfigManager {
         }
         val memberCardBackgroundReplaced = featureBoolean(
             KEY_REPLACE_MEMBER_CARD_BACKGROUND,
-            p.getBoolean(KEY_HIDE_MEMBER_CARD_BACKGROUND_LEGACY, false) &&
+            p.getBoolean(LEGACY_HIDE_MEMBER_CARD_BACKGROUND, false) &&
                 isFeatureAvailable(KEY_REPLACE_MEMBER_CARD_BACKGROUND),
         )
         val memberCardBackgroundUri = p.getString(KEY_MEMBER_CARD_BACKGROUND_URI, null)
@@ -462,7 +465,7 @@ object ConfigManager {
         return SettingsSnapshot(
             isDetailedLoggingEnabled = p.getBoolean(KEY_ENABLE_DETAILED_LOGGING, false),
             isExperimentalDexKitEnabled = p.getBoolean(KEY_ENABLE_EXPERIMENTAL_DEXKIT, false) &&
-                isCurrentHostIntl(),
+                doesCurrentHostSupportExperimentalDexKit(),
             isSplashInterstitialBlockEnabled = featureBoolean(KEY_BLOCK_SPLASH_INTERSTITIAL, false),
             isHotStartSplashRemoveEnabled = featureBoolean(KEY_REMOVE_HOT_START_SPLASH, false),
             isInAppDialogBlocked = featureBoolean(KEY_BLOCK_IN_APP_DIALOG, false),
@@ -471,7 +474,7 @@ object ConfigManager {
             isSharePushGuideBlocked = featureBoolean(KEY_BLOCK_SHARE_PUSH_GUIDE, false),
             isAppStoreReviewBlocked = featureBoolean(KEY_BLOCK_APP_STORE_REVIEW, false),
             isBottomAiReplaced = featureBoolean(KEY_REPLACE_BOTTOM_AI, false),
-            isHomeCustomizeEnabled = p.getBoolean(KEY_HOME_CUSTOMIZE, hasHomeCustomizeOptionEnabled),
+            isHomeCustomizeEnabled = featureBoolean(KEY_HOME_CUSTOMIZE, hasHomeCustomizeOptionEnabled),
             isHomeTopPromotionHidden = featureBoolean(KEY_HIDE_HOME_TOP_PROMOTION, readHomeTopPromotionHidden(p)),
             isHomeSearchPlaceholderHidden = featureBoolean(KEY_HIDE_HOME_SEARCH_PLACEHOLDER, false),
             isHomeSearchAigcIconHidden = featureBoolean(KEY_HIDE_HOME_SEARCH_AIGC_ICON, false),
@@ -480,8 +483,8 @@ object ConfigManager {
             isHomeMemoriesSectionHidden = featureBoolean(KEY_HIDE_HOME_MEMORIES_SECTION, false),
             isHomeSaveSectionHidden = featureBoolean(KEY_HIDE_HOME_SAVE_SECTION, false),
             isHomeRecentSectionHidden = featureBoolean(KEY_HIDE_HOME_RECENT_SECTION, false),
-            isSharePageCustomizeEnabled = p.getBoolean(KEY_SHARE_PAGE_CUSTOMIZE, hasSharePageOptionEnabled),
-            isMyPageCustomizeEnabled = p.getBoolean(KEY_MY_PAGE_CUSTOMIZE, hasMyPageOptionEnabled),
+            isSharePageCustomizeEnabled = featureBoolean(KEY_SHARE_PAGE_CUSTOMIZE, hasSharePageOptionEnabled),
+            isMyPageCustomizeEnabled = featureBoolean(KEY_MY_PAGE_CUSTOMIZE, hasMyPageOptionEnabled),
             isGameCenterRemoved = featureBoolean(KEY_REMOVE_GAME_CENTER, false),
             isAboutMeBannerRemoved = featureBoolean(KEY_REMOVE_ABOUT_ME_BANNER, false),
             isMyServiceRemoved = featureBoolean(KEY_REMOVE_MY_SERVICE, false),
@@ -497,7 +500,7 @@ object ConfigManager {
             isBottomBarBadgeBlocked = featureBoolean(KEY_BLOCK_BOTTOM_BADGE, false),
             isAlbumBackupBarBlocked = featureBoolean(KEY_BLOCK_ALBUM_BACKUP_BAR, false),
             isAboutMeAiCoinAssetHidden = featureBoolean(KEY_HIDE_ABOUT_ME_AI_COIN_ASSET, false),
-            isMemberCardCustomizeEnabled = p.getBoolean(KEY_MEMBER_CARD_CUSTOMIZE, hasMemberCardOptionEnabled),
+            isMemberCardCustomizeEnabled = featureBoolean(KEY_MEMBER_CARD_CUSTOMIZE, hasMemberCardOptionEnabled),
             isMemberCardBackgroundReplaced = memberCardBackgroundReplaced,
             memberCardBackgroundUri = memberCardBackgroundUri,
             memberCardBackgroundBlurRadius = if (isFeatureAvailable(KEY_MEMBER_CARD_BACKGROUND_BLUR_RADIUS)) {
@@ -541,7 +544,7 @@ object ConfigManager {
             isMemberCardClickRemoved = memberCardClickRemoved,
             isMemberCardBackgroundViewedOnClick = memberCardBackgroundViewedOnClick,
             isFollowSystemNightModeEnabled = featureBoolean(KEY_FOLLOW_SYSTEM_NIGHT_MODE, false),
-            isPerformanceOptimizeEnabled = p.getBoolean(KEY_PERFORMANCE_OPTIMIZE, hasPerformanceOptionEnabled),
+            isPerformanceOptimizeEnabled = featureBoolean(KEY_PERFORMANCE_OPTIMIZE, hasPerformanceOptionEnabled),
             isIntlSplashStartupAccelerateEnabled = featureBoolean(
                 KEY_ACCELERATE_INTL_SPLASH_STARTUP,
                 false,
@@ -634,7 +637,7 @@ object ConfigManager {
                 KEY_BLOCK_INTL_ALBUM_AI_INIT,
                 false,
             ),
-            isBottomBarCustomEnabled = p.getBoolean(KEY_CUSTOM_BOTTOM_BAR, hasBottomBarOptionEnabled),
+            isBottomBarCustomEnabled = featureBoolean(KEY_CUSTOM_BOTTOM_BAR, hasBottomBarOptionEnabled),
             isBottomBarTabFileHidden = featureBoolean(KEY_HIDE_TAB_FILE, false),
             isBottomBarTabShareHidden = featureBoolean(KEY_HIDE_TAB_SHARE, false),
             isBottomBarTabVipHidden = featureBoolean(KEY_HIDE_TAB_VIP, false),
@@ -645,9 +648,9 @@ object ConfigManager {
         )
     }
 
-    private fun isCurrentHostIntl(): Boolean {
+    private fun doesCurrentHostSupportExperimentalDexKit(): Boolean {
         val packageName = appContext?.packageName ?: XposedCompat.currentPackageName() ?: return false
-        return HostRegistry.resolveByPackageName(packageName)?.flavor == HostFlavor.BAIDU_INTL
+        return ConfigHostRuntime.supportsExperimentalDexKit(packageName)
     }
 
     private fun Int.floorMod360(): Int {
@@ -655,7 +658,7 @@ object ConfigManager {
     }
 
     fun isFeatureAvailable(featureKey: String): Boolean {
-        return featureAvailability[featureKey] != false
+        return FeatureAvailabilityRuntime.isAvailable(featureKey)
     }
 
     fun applyFeatureAvailability(
@@ -674,20 +677,18 @@ object ConfigManager {
     private fun applyFeatureAvailabilityInternal(
         featureStatusMap: Map<String, FeatureAvailabilityStatus>,
     ) {
-        featureAvailability = featureStatusMap.mapValues { (_, status) ->
-            status.state != FeatureAvailabilityState.DISABLED
-        }
+        FeatureAvailabilityRuntime.apply(featureStatusMap)
     }
 
     // ── 底栏定制 (Bottom Bar Simplify) ──────────────────────────────────────
 
-    const val KEY_CUSTOM_BOTTOM_BAR = "custom_bottom_bar"
-    const val KEY_HIDE_TAB_FILE = "hide_tab_file"
-    const val KEY_HIDE_TAB_SHARE = "hide_tab_share"
-    const val KEY_HIDE_TAB_VIP = "hide_tab_vip"
-    const val KEY_HIDE_TAB_AIGC = "hide_tab_aigc"
-    const val KEY_HIDE_TAB_HOME = "hide_tab_home"
-    const val KEY_HIDE_TAB_MINE = "hide_tab_mine"
+    const val KEY_CUSTOM_BOTTOM_BAR = FeatureKeys.KEY_CUSTOM_BOTTOM_BAR
+    const val KEY_HIDE_TAB_FILE = FeatureKeys.KEY_HIDE_TAB_FILE
+    const val KEY_HIDE_TAB_SHARE = FeatureKeys.KEY_HIDE_TAB_SHARE
+    const val KEY_HIDE_TAB_VIP = FeatureKeys.KEY_HIDE_TAB_VIP
+    const val KEY_HIDE_TAB_AIGC = FeatureKeys.KEY_HIDE_TAB_AIGC
+    const val KEY_HIDE_TAB_HOME = FeatureKeys.KEY_HIDE_TAB_HOME
+    const val KEY_HIDE_TAB_MINE = FeatureKeys.KEY_HIDE_TAB_MINE
 
     val isBottomBarCustomEnabled: Boolean get() = settingsSnapshot.isBottomBarCustomEnabled
     val isBottomBarTabFileHidden: Boolean get() = settingsSnapshot.isBottomBarTabFileHidden
@@ -768,8 +769,7 @@ object ConfigManager {
     }
 
     private fun sanitizePackageName(packageName: String): String {
-        val fallbackPackageName = HostRegistry.resolveByPackageName(packageName)?.packageName
-            ?: packageName
+        val fallbackPackageName = ConfigHostRuntime.canonicalPackageNameOrSelf(packageName)
         val effectivePackageName = packageName.ifBlank { fallbackPackageName.ifBlank { "unknown" } }
         return effectivePackageName
             .replace(':', '_')

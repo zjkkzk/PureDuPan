@@ -1,0 +1,65 @@
+package com.xiyunmn.puredupan.hook.feature.baidu.cn.ad
+
+import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
+import com.xiyunmn.puredupan.hook.symbols.baidu.cn.BaiduCnHookPoints
+import com.xiyunmn.puredupan.hook.core.HookState
+import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.core.HookUtils
+
+/**
+ * Blocks the full-screen SVIP exclusive icon guide shown from AboutMeActivity.
+ */
+object SvipIconGuideBlockHook {
+    private val hookState = HookState()
+
+    internal fun hook(cl: ClassLoader) {
+        if (!HookSettings.isFullScreenBackupBlocked) {
+            XposedCompat.log("[SvipIconGuideBlockHook] skipped: config disabled")
+            return
+        }
+        val mod = XposedCompat.module ?: return
+        if (!hookState.markInstalled()) return
+
+        try {
+            val clazz = XposedCompat.findClassOrNull(
+                BaiduCnHookPoints.SVIP_ICON_GUIDE,
+                cl,
+            ) ?: run {
+                XposedCompat.log("[SvipIconGuideBlockHook] SvipIconGuide class NOT FOUND")
+                return
+            }
+
+            var installed = 0
+            for (method in clazz.declaredMethods) {
+                if (method.name != BaiduCnHookPoints.SVIP_ICON_GUIDE_SHOW_GUIDE_METHOD) {
+                    continue
+                }
+                method.isAccessible = true
+                mod.hook(method).intercept { chain ->
+                    if (HookSettings.isFullScreenBackupBlocked) {
+                        HookUtils.getDefaultReturnValue(method.returnType)
+                    } else {
+                        chain.proceed()
+                    }
+                }
+                installed++
+            }
+
+            if (installed == 0) {
+                hookState.reset()
+                XposedCompat.log("[SvipIconGuideBlockHook] showGuide NOT FOUND")
+                return
+            }
+
+            XposedCompat.log("[SvipIconGuideBlockHook] hooks INSTALLED: count=$installed")
+        } catch (e: ReflectiveOperationException) {
+            hookState.reset()
+            XposedCompat.log("[SvipIconGuideBlockHook] FAILED (reflection): ${e.javaClass.simpleName}: ${e.message}")
+            XposedCompat.log(e)
+        } catch (e: Exception) {
+            hookState.reset()
+            XposedCompat.log("[SvipIconGuideBlockHook] FAILED: ${e.message}")
+            XposedCompat.log(e)
+        }
+    }
+}

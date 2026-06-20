@@ -1,36 +1,31 @@
 package com.xiyunmn.puredupan.hook.host
 
+import com.xiyunmn.puredupan.hook.config.model.MemberCardLayoutMode
+
 internal data class HostCapabilities(
+    val features: HostFeatureCapabilities = HostFeatureCapabilities(),
+    val hooks: HostHookCapabilities = HostHookCapabilities(),
+    val uiHookPoints: HostUiHookPoints = HostUiHookPoints(),
+    val settings: HostSettingsCapabilities = HostSettingsCapabilities(),
+    val dexKit: HostDexKitCapabilities = HostDexKitCapabilities(),
+)
+
+internal data class HostFeatureCapabilities(
+    val availableKeys: Set<String> = emptySet(),
+)
+
+internal data class HostHookCapabilities(
+    val catalogId: String? = null,
     val supportsOemPushHook: Boolean = false,
-    val supportsHotStartSplashAd: Boolean = true,
-    val supportsStandaloneHotStartSplashRemove: Boolean = false,
-    val supportsLaunchHandoffOptimize: Boolean = false,
-    val supportsUpdateDialogBlock: Boolean = true,
-    val supportsSvipIconGuideBlock: Boolean = true,
-    val supportsSharePushGuideBlock: Boolean = true,
-    val supportsBottomAiTabReplace: Boolean = true,
-    val supportsHomeCustomize: Boolean = true,
-    val supportsHomeUploadEntry: Boolean = true,
-    val supportsGarbageCleanServiceOptimize: Boolean = true,
-    val supportsDatapackSocketOptimize: Boolean = true,
-    val supportsAigcBackgroundOptimize: Boolean = true,
-    val supportsDynamicPluginAutoDownloadBlock: Boolean = true,
-    val supportsVideoAdPreloadBlock: Boolean = true,
-    val supportsAdSdkInitBlock: Boolean = true,
-    val supportsSwanPreloadBlock: Boolean = true,
-    val supportsThumbnailOperatorServiceBlock: Boolean = true,
-    val supportsIncentiveBusinessServiceBlock: Boolean = true,
-    val supportsAudioCircleAutostartBlock: Boolean = true,
-    val supportsIconResourceDownloadBlock: Boolean = true,
-    val supportsB2fGuidancePrefetchBlock: Boolean = true,
-    val supportsIntlOfflinePackageInitBlock: Boolean = false,
-    val supportsIntlFeedPreloadDelay: Boolean = false,
-    val supportsIntlTaskScoreRefreshDelay: Boolean = false,
-    val supportsIntlStoryDouyinInitBlock: Boolean = false,
-    val supportsIntlNonCoreDiffSocketDelay: Boolean = false,
-    val supportsIntlFloatViewStartupDelay: Boolean = false,
-    val supportsIntlAudioCircleStartupShowBlock: Boolean = false,
-    val supportsIntlAigcWidgetBackgroundBlock: Boolean = false,
-    val supportsIntlAlbumAiInitBlock: Boolean = false,
-    val supportsMemberCardCustomize: Boolean = true,
+)
+
+internal data class HostSettingsCapabilities(
+    val primarySplashAdFeatureKey: String? = null,
+    val memberCardLayoutMode: MemberCardLayoutMode = MemberCardLayoutMode.STANDARD,
+)
+
+internal data class HostDexKitCapabilities(
+    val targetRegistryId: String? = null,
+    val showStatusInSettings: Boolean = false,
+    val stableActivityClassNames: List<String> = emptyList(),
 )

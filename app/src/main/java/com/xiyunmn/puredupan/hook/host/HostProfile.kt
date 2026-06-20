@@ -1,11 +1,11 @@
 package com.xiyunmn.puredupan.hook.host
 
 internal data class HostProfile(
-    val flavor: HostFlavor,
+    val id: String,
     val packageName: String,
-    val applicationClassName: String?,
     val handledProcessNames: Set<String>,
     val attachHookProcessNames: Set<String>,
+    val pushServiceProcessNames: Set<String> = emptySet(),
     val capabilities: HostCapabilities,
 ) {
     val mainProcessName: String = packageName
@@ -15,7 +15,7 @@ internal data class HostProfile(
     fun isMainProcess(processName: String): Boolean = processName == mainProcessName
 
     fun isPushServiceProcess(processName: String): Boolean =
-        processName == "$packageName:pushservice"
+        pushServiceProcessNames.contains(processName)
 
     fun shouldHandleProcess(processName: String): Boolean =
         handledProcessNames.contains(processName)

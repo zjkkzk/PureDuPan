@@ -4,12 +4,12 @@ import android.app.AlertDialog
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
-import android.view.Window
 import android.widget.Toast
+import com.xiyunmn.puredupan.hook.ui.settings.SettingsDialogWindows
 
 internal fun showDisclaimerDialog(context: Context, onAccepted: () -> Unit) {
     var countdown = DISCLAIMER_COUNTDOWN_SECONDS
-    val dialog = AlertDialog.Builder(context, SettingsMenuHook.getDialogTheme(context))
+    val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
         .setTitle(UiText.Settings.DISCLAIMER_TITLE)
         .setMessage(UiText.Settings.DISCLAIMER_MESSAGE)
         .setCancelable(false)
@@ -21,7 +21,7 @@ internal fun showDisclaimerDialog(context: Context, onAccepted: () -> Unit) {
         val window = dialog.window
         if (window != null) {
             val density = context.resources.displayMetrics.density
-            SettingsMenuHook.applyDialogStyle(window, density)
+            SettingsDialogWindows.applyCardStyle(window, density)
         }
 
         val positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
@@ -62,7 +62,7 @@ internal fun showDisclaimerDialog(context: Context, onAccepted: () -> Unit) {
 
 internal fun showRestrictedFeatureWarningDialog(context: Context, onConfirmed: () -> Unit) {
     var countdown = RESTRICTED_FEATURE_WARNING_COUNTDOWN_SECONDS
-    val dialog = AlertDialog.Builder(context, SettingsMenuHook.getDialogTheme(context))
+    val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
         .setTitle(UiText.Settings.RESTRICTED_FEATURE_WARNING_TITLE)
         .setMessage(UiText.Settings.RESTRICTED_FEATURE_WARNING_MESSAGE)
         .setPositiveButton(UiText.Settings.restrictedFeatureWarningCountdown(countdown), null)
@@ -73,7 +73,7 @@ internal fun showRestrictedFeatureWarningDialog(context: Context, onConfirmed: (
         val window = dialog.window
         if (window != null) {
             val density = context.resources.displayMetrics.density
-            SettingsMenuHook.applyDialogStyle(window, density)
+            SettingsDialogWindows.applyCardStyle(window, density)
         }
 
         val positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)

@@ -1,4 +1,4 @@
-﻿package com.xiyunmn.puredupan.hook.ui
+package com.xiyunmn.puredupan.hook.ui
 
 import android.animation.ValueAnimator
 import android.content.Context
@@ -17,7 +17,6 @@ import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import android.view.animation.PathInterpolator
 import android.widget.Button
-import com.xiyunmn.puredupan.hook.core.StableBaiduPanHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 
 /**
@@ -101,8 +100,9 @@ internal object UiStyle {
 
     private fun resolveHostNightModeBySkinConfig(context: Context): Boolean? {
         return try {
+            val skinConfigClassName = HostThemeRuntime.skinConfigClassName(context) ?: return null
             val skinConfig = XposedCompat.findClassOrNull(
-                StableBaiduPanHookPoints.SKIN_CONFIG_CLASS,
+                skinConfigClassName,
                 context.classLoader,
             ) ?: return null
 

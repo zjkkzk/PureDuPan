@@ -1,11 +1,11 @@
-﻿package com.xiyunmn.puredupan.hook
+package com.xiyunmn.puredupan.hook
 
 import android.content.Context
-import com.xiyunmn.puredupan.hook.config.ConfigManager
-import com.xiyunmn.puredupan.hook.core.DexKitCacheWarmUp
+import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
-import com.xiyunmn.puredupan.hook.host.HostProfile
-import com.xiyunmn.puredupan.hook.host.HostRegistry
+import com.xiyunmn.puredupan.hook.plan.HookInstaller
+import com.xiyunmn.puredupan.hook.runtime.HostLoadRuntime
+import com.xiyunmn.puredupan.hook.runtime.HostLoadSession
 import io.github.libxposed.api.XposedModule
 import io.github.libxposed.api.XposedModuleInterface.ModuleLoadedParam
 import io.github.libxposed.api.XposedModuleInterface.PackageLoadedParam
@@ -20,7 +20,6 @@ class MainHook : XposedModule() {
     private val sAttachHookInstalled = AtomicBoolean(false)
     private val sStaticHooksInstalled = AtomicBoolean(false)
     private val sPostAttachStaticHooksInstalled = AtomicBoolean(false)
-    private val activeHost = AtomicReference<HostProfile?>(null)
     private var processName: String = ""
 
     override fun onModuleLoaded(param: ModuleLoadedParam) {
@@ -33,38 +32,37 @@ class MainHook : XposedModule() {
 
     override fun onPackageLoaded(param: PackageLoadedParam) {
         super.onPackageLoaded(param)
-        XposedCompat.log("[MainHook] onPackageLoaded: pkg=${param.packageName}, cl=${param.defaultClassLoader}")
+        XposedCompat.log("[MainHook] onPackageLoaded: pkg=${param.packageName}")
 
-        val host = HostRegistry.resolveByPackageName(param.packageName) ?: return
+        HostLoadRuntime.resolve(param.packageName) ?: return
         XposedCompat.setCurrentPackageName(param.packageName)
-        if (!host.isMainProcess(processName)) return
-        activeHost.compareAndSet(null, host)
     }
 
     override fun onPackageReady(param: PackageReadyParam) {
         super.onPackageReady(param)
         XposedCompat.log("[MainHook] onPackageReady: pkg=${param.packageName}, process=$processName")
 
-        val host = HostRegistry.resolveByPackageName(param.packageName)
-        if (host == null) {
+        val hostSession = HostLoadRuntime.resolve(param.packageName)
+        if (hostSession == null) {
             XposedCompat.log("[MainHook] onPackageReady: SKIP - non-target package (${param.packageName})")
             return
         }
         XposedCompat.setCurrentPackageName(param.packageName)
-        activeHost.set(host)
-        if (!HookInstallPlanner.shouldHandleProcess(host, processName)) {
+        if (!hostSession.shouldHandleProcess(processName)) {
             XposedCompat.log("[MainHook] onPackageReady: SKIP - non-target process ($processName)")
             return
         }
         val cl = param.classLoader
         XposedCompat.log("[MainHook] onPackageReady: using app classloader=$cl")
 
-        handleLoadPackage(host, cl)
+        handleLoadPackage(hostSession, cl)
     }
 
-    private fun handleLoadPackage(host: HostProfile, cl: ClassLoader) {
-        XposedCompat.log("[MainHook] handleLoadPackage: pkg=${host.packageName}, cl=$cl, host=${host.flavor}")
-        val staticPlan = HookInstallPlanner.staticPlan(host, processName)
+    private fun handleLoadPackage(hostSession: HostLoadSession, cl: ClassLoader) {
+        XposedCompat.log(
+            "[MainHook] handleLoadPackage: pkg=${hostSession.packageName}, cl=$cl, host=${hostSession.hostId}",
+        )
+        val staticPlan = hostSession.staticPlan(processName)
         if (staticPlan.isEmpty()) {
             XposedCompat.logD("[MainHook] static hook plan empty for process=$processName, skip")
         } else if (sStaticHooksInstalled.compareAndSet(false, true)) {
@@ -85,7 +83,7 @@ class MainHook : XposedModule() {
             XposedCompat.log("[MainHook] static hooks already installed, skip duplicate install")
         }
 
-        if (!HookInstallPlanner.shouldInstallAttachHook(host, processName)) {
+        if (!hostSession.shouldInstallAttachHook(processName)) {
             XposedCompat.logD("[MainHook] Application.attach hook skipped for process=$processName")
             return
         }
@@ -110,23 +108,18 @@ class MainHook : XposedModule() {
                     val app = chain.thisObject as? android.app.Application
                     if (app != null) {
                         sAppContext.set(app)
-                        ConfigManager.init(app)
-                        XposedCompat.log("[MainHook] > ConfigManager initialized, app=${app.packageName}")
+                        HookSettings.initialize(app)
+                        XposedCompat.log("[MainHook] > settings initialized, app=${app.packageName}")
                     }
                 }
 
                 if (sPostAttachStaticHooksInstalled.compareAndSet(false, true)) {
-                    val settings = ConfigManager.snapshot()
+                    val settings = HookSettings.settingsSnapshot()
                     HookInstaller.install(
-                        HookInstallPlanner.postAttachPlan(
-                            host = host,
-                            processName = processName,
-                            settings = settings,
-                        ),
+                        hostSession.postAttachPlan(processName, settings),
                         cl,
                     )
-                    DexKitCacheWarmUp.startIfNeeded(
-                        host = host,
+                    hostSession.startDexKitWarmUp(
                         processName = processName,
                         settings = settings,
                         classLoader = cl,

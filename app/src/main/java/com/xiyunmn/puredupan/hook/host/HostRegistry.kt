@@ -1,80 +1,42 @@
 package com.xiyunmn.puredupan.hook.host
 
-import com.xiyunmn.puredupan.hook.core.Constants
+import com.xiyunmn.puredupan.hook.host.profiles.baidu.BaiduCnHostProfile
+import com.xiyunmn.puredupan.hook.host.profiles.baidu.BaiduIntlHostProfile
 
 internal object HostRegistry {
-    private val baiduCnProfile = HostProfile(
-        flavor = HostFlavor.BAIDU_CN,
-        packageName = Constants.BAIDU_NETDISK_PACKAGE,
-        applicationClassName = "com.baidu.netdisk.ShellApplication",
-        handledProcessNames = setOf(
-            Constants.BAIDU_NETDISK_PACKAGE,
-            "${Constants.BAIDU_NETDISK_PACKAGE}:pushservice",
-        ),
-        attachHookProcessNames = setOf(
-            Constants.BAIDU_NETDISK_PACKAGE,
-            "${Constants.BAIDU_NETDISK_PACKAGE}:pushservice",
-        ),
-        capabilities = HostCapabilities(
-            supportsOemPushHook = true,
-            supportsStandaloneHotStartSplashRemove = false,
-        ),
-    )
-
-    private val baiduIntlProfile = HostProfile(
-        flavor = HostFlavor.BAIDU_INTL,
-        packageName = Constants.BAIDU_DRIVE_INTL_PACKAGE,
-        applicationClassName = "com.baidu.netdisk.ShellApplication",
-        handledProcessNames = setOf(Constants.BAIDU_DRIVE_INTL_PACKAGE),
-        attachHookProcessNames = setOf(Constants.BAIDU_DRIVE_INTL_PACKAGE),
-        capabilities = HostCapabilities(
-            supportsOemPushHook = false,
-            supportsHotStartSplashAd = true,
-            supportsStandaloneHotStartSplashRemove = true,
-            supportsLaunchHandoffOptimize = true,
-            supportsUpdateDialogBlock = false,
-            supportsSvipIconGuideBlock = false,
-            supportsSharePushGuideBlock = false,
-            supportsBottomAiTabReplace = false,
-            supportsHomeCustomize = true,
-            supportsHomeUploadEntry = true,
-            supportsGarbageCleanServiceOptimize = false,
-            supportsDatapackSocketOptimize = false,
-            supportsAigcBackgroundOptimize = false,
-            supportsDynamicPluginAutoDownloadBlock = false,
-            supportsVideoAdPreloadBlock = false,
-            supportsAdSdkInitBlock = false,
-            supportsSwanPreloadBlock = false,
-            supportsThumbnailOperatorServiceBlock = false,
-            supportsIncentiveBusinessServiceBlock = false,
-            supportsAudioCircleAutostartBlock = false,
-            supportsIconResourceDownloadBlock = false,
-            supportsB2fGuidancePrefetchBlock = false,
-            supportsIntlOfflinePackageInitBlock = true,
-            supportsIntlFeedPreloadDelay = true,
-            supportsIntlTaskScoreRefreshDelay = true,
-            supportsIntlStoryDouyinInitBlock = true,
-            supportsIntlNonCoreDiffSocketDelay = true,
-            supportsIntlFloatViewStartupDelay = true,
-            supportsIntlAudioCircleStartupShowBlock = true,
-            supportsIntlAigcWidgetBackgroundBlock = true,
-            supportsIntlAlbumAiInitBlock = true,
-            supportsMemberCardCustomize = true,
-        ),
-    )
-
     private val profiles = listOf(
-        baiduCnProfile,
-        baiduIntlProfile,
+        BaiduCnHostProfile,
+        BaiduIntlHostProfile,
     )
+
+    init {
+        HostProfileValidator.validate(profiles)
+    }
 
     val supportedPackageNames: Set<String> = profiles.mapTo(linkedSetOf()) { it.packageName }
+    val supportedFeatureKeys: Set<String> =
+        profiles.flatMapTo(linkedSetOf()) { it.capabilities.features.availableKeys }
+    val hookCatalogRequirements: List<HostHookCatalogRequirement> =
+        profiles.mapNotNull { profile ->
+            val catalogId = profile.capabilities.hooks.catalogId ?: return@mapNotNull null
+            HostHookCatalogRequirement(
+                hostId = profile.id,
+                catalogId = catalogId,
+                availableFeatureKeys = profile.capabilities.features.availableKeys,
+            )
+        }
+    val requiredHookCatalogIds: Set<String> =
+        hookCatalogRequirements.mapTo(linkedSetOf()) { it.catalogId }
+    val requiredDexKitTargetRegistryIds: Set<String> =
+        profiles.mapNotNullTo(linkedSetOf()) { it.capabilities.dexKit.targetRegistryId }
 
     fun resolveByPackageName(packageName: String): HostProfile? {
         return profiles.firstOrNull { it.handlesPackage(packageName) }
     }
-
-    fun requireByPackageName(packageName: String): HostProfile {
-        return resolveByPackageName(packageName) ?: baiduCnProfile
-    }
 }
+
+internal data class HostHookCatalogRequirement(
+    val hostId: String,
+    val catalogId: String,
+    val availableFeatureKeys: Set<String>,
+)
