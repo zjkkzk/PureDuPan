@@ -70,8 +70,14 @@ internal object BaiduSamsungHookPoints {
         "com.baidu.netdisk.ui.permission.presenter.PermissionPresenter"
     const val PERMISSION_DIALOG_ACTIVITY =
         "com.baidu.netdisk.ui.permission.view.PermissionDialogActivity"
+    const val NEW_PERMISSION_DIALOG_ACTIVITY =
+        "com.baidu.netdisk.permission.NewPermissionDialogActivity"
+    const val PERMISSION_UTIL =
+        "com.baidu.netdisk.permission.PermissionUtil"
     const val PERMISSION_DIALOG_ACTIVITY_ON_CREATE_METHOD = "onCreate"
     const val PERMISSION_ARRAY_EXTRA = "key_permission_array"
+    const val PERMISSION_INFO_EXTRA = "permission_info"
+    const val PERMISSION_SCENE_LIST_EXTRA = "key_permission_scene_list"
 
     const val GUIDE_CONTEXT_COMPANION =
         "rubik.generate.context.bd_netdisk_com_baidu_netdisk_guide.GuideContext\$Companion"

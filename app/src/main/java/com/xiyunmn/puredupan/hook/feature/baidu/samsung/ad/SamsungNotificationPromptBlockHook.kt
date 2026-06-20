@@ -3,7 +3,9 @@ package com.xiyunmn.puredupan.hook.feature.baidu.samsung.ad
 import android.app.Activity
 import android.app.Dialog
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Parcelable
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.HookUtils
@@ -14,7 +16,15 @@ import java.lang.reflect.Method
 internal object SamsungNotificationPromptBlockHook {
     private const val POST_NOTIFICATIONS_PERMISSION = "android.permission.POST_NOTIFICATIONS"
     private const val ACTIVITY_COMPAT = "androidx.core.app.ActivityCompat"
+    private const val ACTIVITY_RESULT_LAUNCHER = "androidx.activity.result.ActivityResultLauncher"
+    private const val ACTIVITY_RESULT_REGISTRY_IMPL =
+        "androidx.activity.ComponentActivity\$activityResultRegistry\$1"
+    private const val ACTIVITY_RESULT_CONTRACT =
+        "androidx.activity.result.contract.ActivityResultContract"
+    private const val ACTIVITY_OPTIONS_COMPAT = "androidx.core.app.ActivityOptionsCompat"
+    private const val CONTEXT_COMPAT = "androidx.core.content.ContextCompat"
     private const val ANDROIDX_FRAGMENT = "androidx.fragment.app.Fragment"
+    private const val NOTIFICATION_MANAGER_COMPAT = "androidx.core.app.NotificationManagerCompat"
 
     private val hookState = HookState()
 
@@ -28,7 +38,9 @@ internal object SamsungNotificationPromptBlockHook {
 
         try {
             var installed = 0
+            installed += hookPermissionStateChecks(cl)
             installed += hookSystemPermissionRequests(cl)
+            installed += hookActivityResultPermissionRequests(cl)
             installed += hookHostPermissionRequests(cl)
             installed += hookPushGuideDialog(cl)
 
@@ -98,6 +110,141 @@ internal object SamsungNotificationPromptBlockHook {
         return installed
     }
 
+    private fun hookPermissionStateChecks(cl: ClassLoader): Int {
+        var installed = 0
+        val contextCompatClass = XposedCompat.findClassOrNull(CONTEXT_COMPAT, cl)
+        if (contextCompatClass != null) {
+            XposedCompat.findMethodOrNull(
+                contextCompatClass,
+                "checkSelfPermission",
+                Context::class.java,
+                String::class.java,
+            )?.let { method ->
+                method.isAccessible = true
+                XposedCompat.module?.hook(method)?.intercept { chain ->
+                    if (HookSettings.isNotificationPromptBlocked &&
+                        chain.args.getOrNull(1) == POST_NOTIFICATIONS_PERMISSION
+                    ) {
+                        XposedCompat.logD(
+                            "[SamsungNotificationPromptBlockHook] faked ContextCompat.checkSelfPermission",
+                        )
+                        PackageManager.PERMISSION_GRANTED
+                    } else {
+                        chain.proceed()
+                    }
+                }
+                installed++
+            }
+        } else {
+            XposedCompat.logD("[SamsungNotificationPromptBlockHook] ContextCompat class not found")
+        }
+
+        installed += hookContextPermissionCheck(
+            className = "android.content.ContextWrapper",
+            methodName = "checkSelfPermission",
+            parameterTypes = arrayOf(String::class.java),
+            permissionArgIndex = 0,
+            tag = "ContextWrapper.checkSelfPermission",
+        )
+        installed += hookContextPermissionCheck(
+            className = "android.view.ContextThemeWrapper",
+            methodName = "checkSelfPermission",
+            parameterTypes = arrayOf(String::class.java),
+            permissionArgIndex = 0,
+            tag = "ContextThemeWrapper.checkSelfPermission",
+        )
+        installed += hookContextPermissionCheck(
+            className = "android.app.ContextImpl",
+            methodName = "checkSelfPermission",
+            parameterTypes = arrayOf(String::class.java),
+            permissionArgIndex = 0,
+            tag = "ContextImpl.checkSelfPermission",
+        )
+        installed += hookContextPermissionCheck(
+            className = "android.app.ContextImpl",
+            methodName = "checkPermission",
+            parameterTypes = arrayOf(
+                String::class.java,
+                Int::class.javaPrimitiveType!!,
+                Int::class.javaPrimitiveType!!,
+            ),
+            permissionArgIndex = 0,
+            tag = "ContextImpl.checkPermission",
+        )
+
+        val notificationManagerCompatClass = XposedCompat.findClassOrNull(NOTIFICATION_MANAGER_COMPAT, cl)
+        if (notificationManagerCompatClass != null) {
+            XposedCompat.findMethodOrNull(
+                notificationManagerCompatClass,
+                "areNotificationsEnabled",
+            )?.let { method ->
+                method.isAccessible = true
+                XposedCompat.module?.hook(method)?.intercept { chain ->
+                    if (HookSettings.isNotificationPromptBlocked) {
+                        XposedCompat.logD(
+                            "[SamsungNotificationPromptBlockHook] faked NotificationManagerCompat.areNotificationsEnabled",
+                        )
+                        true
+                    } else {
+                        chain.proceed()
+                    }
+                }
+                installed++
+            }
+        } else {
+            XposedCompat.logD("[SamsungNotificationPromptBlockHook] NotificationManagerCompat class not found")
+        }
+
+        val permissionUtilClass = XposedCompat.findClassOrNull(BaiduSamsungHookPoints.PERMISSION_UTIL, cl)
+        if (permissionUtilClass != null) {
+            XposedCompat.findMethodOrNull(
+                permissionUtilClass,
+                "isNotificationEnable",
+                Context::class.java,
+            )?.let { method ->
+                method.isAccessible = true
+                XposedCompat.module?.hook(method)?.intercept { chain ->
+                    if (HookSettings.isNotificationPromptBlocked) {
+                        XposedCompat.logD(
+                            "[SamsungNotificationPromptBlockHook] faked PermissionUtil.isNotificationEnable",
+                        )
+                        true
+                    } else {
+                        chain.proceed()
+                    }
+                }
+                installed++
+            }
+        } else {
+            XposedCompat.logD("[SamsungNotificationPromptBlockHook] PermissionUtil class not found")
+        }
+        return installed
+    }
+
+    private fun hookContextPermissionCheck(
+        className: String,
+        methodName: String,
+        parameterTypes: Array<Class<*>>,
+        permissionArgIndex: Int,
+        tag: String,
+    ): Int {
+        val method = runCatching {
+            Class.forName(className, false, null).getDeclaredMethod(methodName, *parameterTypes)
+        }.getOrNull() ?: return 0
+        method.isAccessible = true
+        XposedCompat.module?.hook(method)?.intercept { chain ->
+            if (HookSettings.isNotificationPromptBlocked &&
+                chain.args.getOrNull(permissionArgIndex) == POST_NOTIFICATIONS_PERMISSION
+            ) {
+                XposedCompat.logD("[SamsungNotificationPromptBlockHook] faked $tag")
+                PackageManager.PERMISSION_GRANTED
+            } else {
+                chain.proceed()
+            }
+        }
+        return 1
+    }
+
     private fun hookHostPermissionRequests(cl: ClassLoader): Int {
         var installed = 0
         val presenterClass = XposedCompat.findClassOrNull(
@@ -119,6 +266,8 @@ internal object SamsungNotificationPromptBlockHook {
         } else {
             XposedCompat.logD("[SamsungNotificationPromptBlockHook] PermissionPresenter class not found")
         }
+
+        installed += hookNewPermissionDialogActivity(cl)
 
         val activityClass = XposedCompat.findClassOrNull(
             BaiduSamsungHookPoints.PERMISSION_DIALOG_ACTIVITY,
@@ -168,6 +317,41 @@ internal object SamsungNotificationPromptBlockHook {
         return installed
     }
 
+    private fun hookNewPermissionDialogActivity(cl: ClassLoader): Int {
+        val activityClass = XposedCompat.findClassOrNull(
+            BaiduSamsungHookPoints.NEW_PERMISSION_DIALOG_ACTIVITY,
+            cl,
+        )
+            ?: run {
+                XposedCompat.logD("[SamsungNotificationPromptBlockHook] NewPermissionDialogActivity class not found")
+                return 0
+            }
+        val method = XposedCompat.findMethodOrNull(
+            activityClass,
+            "onCreate",
+            Bundle::class.java,
+        ) ?: return 0
+        method.isAccessible = true
+        XposedCompat.module?.hook(method)?.intercept { chain ->
+            val activity = chain.thisObject as? Activity
+                ?: return@intercept chain.proceed()
+            if (!HookSettings.isNotificationPromptBlocked) {
+                return@intercept chain.proceed()
+            }
+            val permissions = findNotificationPermissionsFromIntent(activity)
+            if (permissions?.isNotificationOnly == true) {
+                activity.finish()
+                XposedCompat.logD(
+                    "[SamsungNotificationPromptBlockHook] blocked NewPermissionDialogActivity",
+                )
+                HookUtils.getDefaultReturnValue(method.returnType)
+            } else {
+                chain.proceed()
+            }
+        }
+        return 1
+    }
+
     private fun hookPushGuideDialog(cl: ClassLoader): Int {
         val targetClass = XposedCompat.findClassOrNull(
             BaiduSamsungHookPoints.PUSH_GUIDE_NORMAL_DIALOG,
@@ -215,6 +399,67 @@ internal object SamsungNotificationPromptBlockHook {
         return installed
     }
 
+    private fun hookActivityResultPermissionRequests(cl: ClassLoader): Int {
+        var installed = 0
+        val launcherClass = XposedCompat.findClassOrNull(ACTIVITY_RESULT_LAUNCHER, cl)
+        if (launcherClass != null) {
+            XposedCompat.findMethodOrNull(
+                launcherClass,
+                "launch",
+                Any::class.java,
+            )?.let { method ->
+                method.isAccessible = true
+                XposedCompat.module?.hook(method)?.intercept { chain ->
+                    if (HookSettings.isNotificationPromptBlocked &&
+                        inputRequestsOnlyNotificationPermission(chain.args.getOrNull(0))
+                    ) {
+                        XposedCompat.logD(
+                            "[SamsungNotificationPromptBlockHook] blocked ActivityResultLauncher.launch",
+                        )
+                        HookUtils.getDefaultReturnValue(method.returnType)
+                    } else {
+                        chain.proceed()
+                    }
+                }
+                installed++
+            }
+        } else {
+            XposedCompat.logD("[SamsungNotificationPromptBlockHook] ActivityResultLauncher class not found")
+        }
+
+        val registryClass = XposedCompat.findClassOrNull(ACTIVITY_RESULT_REGISTRY_IMPL, cl)
+        val contractClass = XposedCompat.findClassOrNull(ACTIVITY_RESULT_CONTRACT, cl)
+        val optionsClass = XposedCompat.findClassOrNull(ACTIVITY_OPTIONS_COMPAT, cl)
+        if (registryClass != null && contractClass != null && optionsClass != null) {
+            XposedCompat.findMethodOrNull(
+                registryClass,
+                "onLaunch",
+                Int::class.javaPrimitiveType!!,
+                contractClass,
+                Any::class.java,
+                optionsClass,
+            )?.let { method ->
+                method.isAccessible = true
+                XposedCompat.module?.hook(method)?.intercept { chain ->
+                    if (HookSettings.isNotificationPromptBlocked &&
+                        inputRequestsOnlyNotificationPermission(chain.args.getOrNull(2))
+                    ) {
+                        XposedCompat.logD(
+                            "[SamsungNotificationPromptBlockHook] blocked ActivityResultRegistry.onLaunch",
+                        )
+                        HookUtils.getDefaultReturnValue(method.returnType)
+                    } else {
+                        chain.proceed()
+                    }
+                }
+                installed++
+            }
+        } else {
+            XposedCompat.logD("[SamsungNotificationPromptBlockHook] ActivityResultRegistry classes not found")
+        }
+        return installed
+    }
+
     private fun hookPermissionArrayMethod(
         method: Method,
         permissionsArgIndex: Int,
@@ -251,6 +496,63 @@ internal object SamsungNotificationPromptBlockHook {
             permissions = filtered,
             removed = filtered.size != original.size,
         )
+    }
+
+    private fun findNotificationPermissionsFromIntent(activity: Activity): NotificationPermissionRequest? {
+        val intent = activity.intent ?: return null
+        val permissionInfo = intent.getParcelableExtra<Parcelable>(
+            BaiduSamsungHookPoints.PERMISSION_INFO_EXTRA,
+        )
+        val permissionInfoPermissions = extractPermissions(permissionInfo)
+        if (permissionInfoPermissions.isNotEmpty()) {
+            return NotificationPermissionRequest(
+                containsNotification = permissionInfoPermissions.contains(POST_NOTIFICATIONS_PERMISSION),
+                isNotificationOnly = permissionInfoPermissions.all { it == POST_NOTIFICATIONS_PERMISSION },
+            )
+        }
+
+        val scenes = intent.getParcelableArrayListExtra<Parcelable>(
+            BaiduSamsungHookPoints.PERMISSION_SCENE_LIST_EXTRA,
+        )
+            ?: return null
+        val scenePermissions = scenes.flatMap { extractPermissions(it) }
+        if (scenePermissions.isEmpty()) return null
+        return NotificationPermissionRequest(
+            containsNotification = scenePermissions.contains(POST_NOTIFICATIONS_PERMISSION),
+            isNotificationOnly = scenePermissions.all { it == POST_NOTIFICATIONS_PERMISSION },
+        )
+    }
+
+    private fun extractPermissions(source: Any?): List<String> {
+        if (source == null) return emptyList()
+        return try {
+            val permissions = findNoArgMethodInHierarchy(source.javaClass, "getPermissions")
+                ?.invoke(source)
+                ?: findNoArgMethodInHierarchy(source.javaClass, "getPermissionList")?.invoke(source)
+            when (permissions) {
+                is Array<*> -> permissions.filterIsInstance<String>()
+                is Collection<*> -> permissions.filterIsInstance<String>()
+                else -> emptyList()
+            }
+        } catch (t: Throwable) {
+            XposedCompat.logD("[SamsungNotificationPromptBlockHook] permission extract ignored: ${t.message}")
+            emptyList()
+        }
+    }
+
+    private fun inputRequestsOnlyNotificationPermission(input: Any?): Boolean {
+        return when (input) {
+            POST_NOTIFICATIONS_PERMISSION -> true
+            is Array<*> -> {
+                val permissions = input.filterIsInstance<String>()
+                permissions.isNotEmpty() && permissions.all { it == POST_NOTIFICATIONS_PERMISSION }
+            }
+            is Collection<*> -> {
+                val permissions = input.filterIsInstance<String>()
+                permissions.isNotEmpty() && permissions.all { it == POST_NOTIFICATIONS_PERMISSION }
+            }
+            else -> false
+        }
     }
 
     private fun createDismissedDialog(fragment: Any?): Dialog? {
@@ -298,5 +600,10 @@ internal object SamsungNotificationPromptBlockHook {
     private data class PermissionFilter(
         val permissions: Array<String>,
         val removed: Boolean,
+    )
+
+    private data class NotificationPermissionRequest(
+        val containsNotification: Boolean,
+        val isNotificationOnly: Boolean,
     )
 }
