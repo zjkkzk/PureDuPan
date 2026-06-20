@@ -26,6 +26,7 @@ object ConfigManager {
     const val KEY_BLOCK_SHARE_PUSH_GUIDE = FeatureKeys.KEY_BLOCK_SHARE_PUSH_GUIDE
     const val KEY_BLOCK_APP_STORE_REVIEW = FeatureKeys.KEY_BLOCK_APP_STORE_REVIEW
     const val KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG = FeatureKeys.KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG
+    const val KEY_BLOCK_NOTIFICATION_PROMPT = FeatureKeys.KEY_BLOCK_NOTIFICATION_PROMPT
     private const val LEGACY_BLOCK_SAMSUNG_NON_WIFI_DOWNLOAD_DIALOG =
         "block_samsung_non_wifi_download_dialog"
     const val KEY_REPLACE_BOTTOM_AI = FeatureKeys.KEY_REPLACE_BOTTOM_AI
@@ -129,6 +130,8 @@ object ConfigManager {
     val isAppStoreReviewBlocked: Boolean get() = settingsSnapshot.isAppStoreReviewBlocked
     val isNonWifiDownloadDialogBlocked: Boolean
         get() = settingsSnapshot.isNonWifiDownloadDialogBlocked
+    val isNotificationPromptBlocked: Boolean
+        get() = settingsSnapshot.isNotificationPromptBlocked
     val isBottomAiReplaced: Boolean get() = settingsSnapshot.isBottomAiReplaced
     val isHomeCustomizeEnabled: Boolean get() = settingsSnapshot.isHomeCustomizeEnabled
     val isHomeTopPromotionHidden: Boolean get() = settingsSnapshot.isHomeTopPromotionHidden
@@ -483,6 +486,7 @@ object ConfigManager {
                 p.getBoolean(LEGACY_BLOCK_SAMSUNG_NON_WIFI_DOWNLOAD_DIALOG, false) &&
                     isFeatureAvailable(KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG),
             ),
+            isNotificationPromptBlocked = featureBoolean(KEY_BLOCK_NOTIFICATION_PROMPT, false),
             isBottomAiReplaced = featureBoolean(KEY_REPLACE_BOTTOM_AI, false),
             isHomeCustomizeEnabled = featureBoolean(KEY_HOME_CUSTOMIZE, hasHomeCustomizeOptionEnabled),
             isHomeTopPromotionHidden = featureBoolean(KEY_HIDE_HOME_TOP_PROMOTION, readHomeTopPromotionHidden(p)),

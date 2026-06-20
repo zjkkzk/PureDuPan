@@ -1,8 +1,12 @@
 package com.xiyunmn.puredupan.hook.plan.catalogs.baidu.samsung
 
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.AppStoreReviewBlockHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.FullScreenBackupBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.NonWifiDownloadDialogBlockHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.SvipIconGuideBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.ad.SamsungBusinessOpDialogBlockHook
+import com.xiyunmn.puredupan.hook.feature.baidu.samsung.ad.SamsungNotificationPromptBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.performance.SamsungAdSdkInitBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.performance.SamsungAigcBackgroundComponentBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.performance.SamsungAudioCircleViewAutostartBlockHook
@@ -58,6 +62,26 @@ internal object BaiduSamsungPostAttachHookSpecs {
             context.isMain && settings.isNonWifiDownloadDialogBlocked
         }, featureKey = FeatureKeys.KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG) { cl ->
             NonWifiDownloadDialogBlockHook.hook(cl)
+        },
+        HookSpec("FullScreenBackupBlockHook", { context, settings, _ ->
+            context.isMain && settings.isFullScreenBackupBlocked
+        }, featureKey = FeatureKeys.KEY_BLOCK_FULL_SCREEN_BACKUP) { cl ->
+            FullScreenBackupBlockHook.hook(cl)
+        },
+        HookSpec("SvipIconGuideBlockHook", { context, settings, _ ->
+            context.isMain && settings.isFullScreenBackupBlocked
+        }, featureKey = FeatureKeys.KEY_BLOCK_FULL_SCREEN_BACKUP) { cl ->
+            SvipIconGuideBlockHook.hook(cl)
+        },
+        HookSpec("AppStoreReviewBlockHook", { context, settings, _ ->
+            context.isMain && settings.isAppStoreReviewBlocked
+        }, featureKey = FeatureKeys.KEY_BLOCK_APP_STORE_REVIEW) { cl ->
+            AppStoreReviewBlockHook.hook(cl)
+        },
+        HookSpec("SamsungNotificationPromptBlockHook", { context, settings, _ ->
+            context.isMain && settings.isNotificationPromptBlocked
+        }, featureKey = FeatureKeys.KEY_BLOCK_NOTIFICATION_PROMPT) { cl ->
+            SamsungNotificationPromptBlockHook.hook(cl)
         },
     )
 

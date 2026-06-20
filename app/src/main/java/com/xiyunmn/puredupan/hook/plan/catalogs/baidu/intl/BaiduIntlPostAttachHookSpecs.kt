@@ -1,7 +1,10 @@
 package com.xiyunmn.puredupan.hook.plan.catalogs.baidu.intl
 
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.AppStoreReviewBlockHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.FullScreenBackupBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.NonWifiDownloadDialogBlockHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.SvipIconGuideBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlAigcWidgetBackgroundBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlAlbumAiInitBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlAudioCircleStartupShowBlockHook
@@ -35,6 +38,21 @@ internal object BaiduIntlPostAttachHookSpecs {
     )
 
     val ad = listOf(
+        HookSpec("FullScreenBackupBlockHook", { context, settings, _ ->
+            context.isMain && settings.isFullScreenBackupBlocked
+        }, featureKey = FeatureKeys.KEY_BLOCK_FULL_SCREEN_BACKUP) { cl ->
+            FullScreenBackupBlockHook.hook(cl)
+        },
+        HookSpec("SvipIconGuideBlockHook", { context, settings, _ ->
+            context.isMain && settings.isFullScreenBackupBlocked
+        }, featureKey = FeatureKeys.KEY_BLOCK_FULL_SCREEN_BACKUP) { cl ->
+            SvipIconGuideBlockHook.hook(cl)
+        },
+        HookSpec("AppStoreReviewBlockHook", { context, settings, _ ->
+            context.isMain && settings.isAppStoreReviewBlocked
+        }, featureKey = FeatureKeys.KEY_BLOCK_APP_STORE_REVIEW) { cl ->
+            AppStoreReviewBlockHook.hook(cl)
+        },
         HookSpec("NonWifiDownloadDialogBlockHook", { context, settings, _ ->
             context.isMain && settings.isNonWifiDownloadDialogBlocked
         }, featureKey = FeatureKeys.KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG) { cl ->

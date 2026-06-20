@@ -11,6 +11,7 @@ object FeatureKeys {
     const val KEY_BLOCK_SHARE_PUSH_GUIDE = "block_share_push_guide"
     const val KEY_BLOCK_APP_STORE_REVIEW = "block_app_store_review"
     const val KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG = "block_non_wifi_download_dialog"
+    const val KEY_BLOCK_NOTIFICATION_PROMPT = "block_notification_prompt"
     const val KEY_REPLACE_BOTTOM_AI = "replace_bottom_ai"
     const val KEY_HOME_CUSTOMIZE = "home_customize"
     const val KEY_HIDE_HOME_TOP_PROMOTION = "hide_home_top_promotion"

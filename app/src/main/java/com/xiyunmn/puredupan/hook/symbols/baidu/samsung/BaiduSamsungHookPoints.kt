@@ -59,6 +59,20 @@ internal object BaiduSamsungHookPoints {
         "showNonWiFiAlertDownloadBottomDialog"
     const val DIALOG_CTR_LISTENER_ON_OK_METHOD = "onOkBtnClick"
 
+    const val PUSH_GUIDE_NORMAL_DIALOG =
+        "com.baidu.netdisk.push.guide.PushGuideNormalDialog"
+    const val PUSH_GUIDE_ON_CREATE_DIALOG_METHOD = "onCreateDialog"
+    const val PUSH_GUIDE_ON_START_METHOD = "onStart"
+    const val PUSH_GUIDE_ON_RESUME_METHOD = "onResume"
+    const val PUSH_GUIDE_SHOW_METHOD = "show"
+    const val PUSH_GUIDE_SHOW_DIALOG_METHOD = "showDialog"
+    const val PERMISSION_PRESENTER =
+        "com.baidu.netdisk.ui.permission.presenter.PermissionPresenter"
+    const val PERMISSION_DIALOG_ACTIVITY =
+        "com.baidu.netdisk.ui.permission.view.PermissionDialogActivity"
+    const val PERMISSION_DIALOG_ACTIVITY_ON_CREATE_METHOD = "onCreate"
+    const val PERMISSION_ARRAY_EXTRA = "key_permission_array"
+
     const val GUIDE_CONTEXT_COMPANION =
         "rubik.generate.context.bd_netdisk_com_baidu_netdisk_guide.GuideContext\$Companion"
     const val GUIDE_APIS_KT = "com.baidu.netdisk.GuideApisKt"

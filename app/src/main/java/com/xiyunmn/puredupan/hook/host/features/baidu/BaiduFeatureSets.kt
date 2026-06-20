@@ -68,6 +68,8 @@ internal object BaiduFeatureSets {
     )
 
     private val baiduSharedContentBlock = listOf(
+        FeatureKeys.KEY_BLOCK_APP_STORE_REVIEW,
+        FeatureKeys.KEY_BLOCK_FULL_SCREEN_BACKUP,
         FeatureKeys.KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG,
     )
 
@@ -128,8 +130,6 @@ internal object BaiduFeatureSets {
     )
 
     private val baiduCnStartup = listOf(
-        FeatureKeys.KEY_BLOCK_APP_STORE_REVIEW,
-        FeatureKeys.KEY_BLOCK_FULL_SCREEN_BACKUP,
         FeatureKeys.KEY_BLOCK_IN_APP_DIALOG,
         FeatureKeys.KEY_BLOCK_SHARE_PUSH_GUIDE,
         FeatureKeys.KEY_BLOCK_UPDATE_DIALOG,
@@ -214,6 +214,7 @@ internal object BaiduFeatureSets {
 
     private val baiduSamsungAd = listOf(
         FeatureKeys.KEY_BLOCK_IN_APP_DIALOG,
+        FeatureKeys.KEY_BLOCK_NOTIFICATION_PROMPT,
     )
 
     private val baiduSamsungHomeCustomize = listOf(

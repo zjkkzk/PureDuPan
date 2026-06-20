@@ -75,6 +75,10 @@ internal object SettingsHostTextCatalog {
                 "移除下载 WiFi 未连接弹窗",
                 "未连接 WiFi 时点击下载，自动确认并直接创建下载任务",
             )
+            this[SettingsUserState.KEY_BLOCK_NOTIFICATION_PROMPT] = text(
+                "移除消息通知弹窗",
+                "拦截启动时系统通知权限请求和应用内消息通知引导弹窗",
+            )
             this[SettingsUserState.KEY_HOME_CUSTOMIZE] = text(
                 "首页头部板块",
                 "管理「首页」信息流头部的轮播图、推荐提示、回忆、转存和最近板块",
@@ -271,6 +275,10 @@ internal object SettingsHostTextCatalog {
             SettingsUserState.KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG to text(
                 UiText.Settings.BLOCK_NON_WIFI_DOWNLOAD_DIALOG_LABEL,
                 UiText.Settings.BLOCK_NON_WIFI_DOWNLOAD_DIALOG_DESC,
+            ),
+            SettingsUserState.KEY_BLOCK_NOTIFICATION_PROMPT to text(
+                UiText.Settings.BLOCK_NOTIFICATION_PROMPT_LABEL,
+                UiText.Settings.BLOCK_NOTIFICATION_PROMPT_DESC,
             ),
             SettingsUserState.KEY_HOME_CUSTOMIZE to text(
                 UiText.Settings.HOME_CUSTOMIZE_LABEL,

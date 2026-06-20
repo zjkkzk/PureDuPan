@@ -65,6 +65,11 @@ internal object TopLevelSettingsRegistry {
             UiText.Settings.BLOCK_NON_WIFI_DOWNLOAD_DIALOG_DESC,
         ),
         TopLevelSwitchSpec(
+            SettingsUserState.KEY_BLOCK_NOTIFICATION_PROMPT,
+            UiText.Settings.BLOCK_NOTIFICATION_PROMPT_LABEL,
+            UiText.Settings.BLOCK_NOTIFICATION_PROMPT_DESC,
+        ),
+        TopLevelSwitchSpec(
             SettingsUserState.KEY_BLOCK_UPDATE_DIALOG,
             UiText.Settings.BLOCK_UPDATE_DIALOG_LABEL,
             UiText.Settings.BLOCK_UPDATE_DIALOG_DESC,

@@ -14,6 +14,7 @@ data class SettingsSnapshot(
     val isSharePushGuideBlocked: Boolean = false,
     val isAppStoreReviewBlocked: Boolean = false,
     val isNonWifiDownloadDialogBlocked: Boolean = false,
+    val isNotificationPromptBlocked: Boolean = false,
 
     // Host UI simplification
     val isBottomAiReplaced: Boolean = false,

@@ -26,6 +26,8 @@ object UiText {
         const val BLOCK_APP_STORE_REVIEW_DESC = "去除切换到「文件」页面时弹出的评分引导弹窗"
         const val BLOCK_NON_WIFI_DOWNLOAD_DIALOG_LABEL = "移除下载 WiFi 未连接弹窗"
         const val BLOCK_NON_WIFI_DOWNLOAD_DIALOG_DESC = "未连接 WiFi 时点击下载，自动确认并直接创建下载任务"
+        const val BLOCK_NOTIFICATION_PROMPT_LABEL = "移除消息通知弹窗"
+        const val BLOCK_NOTIFICATION_PROMPT_DESC = "拦截启动时系统通知权限请求和应用内消息通知引导弹窗"
 
         const val HIDE_HOME_TOP_PROMOTION_LABEL = "顶部动态推广"
         const val HIDE_HOME_TOP_PROMOTION_DESC = "隐藏「首页」顶部搜索框区域的动态推广，并跳过对应启动期预加载"
