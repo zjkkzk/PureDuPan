@@ -35,7 +35,7 @@ internal val BaiduSamsungHostProfile = HostProfile(
         ),
         hooks = HostHookCapabilities(
             catalogId = HostIds.BAIDU_SAMSUNG,
-            supportsOemPushHook = false,
+            supportsOemPushHook = true,
         ),
         settings = HostSettingsCapabilities(
             primarySplashAdFeatureKey = FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL,

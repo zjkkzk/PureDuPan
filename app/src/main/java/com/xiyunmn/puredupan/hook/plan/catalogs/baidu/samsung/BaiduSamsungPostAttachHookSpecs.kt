@@ -2,6 +2,7 @@ package com.xiyunmn.puredupan.hook.plan.catalogs.baidu.samsung
 
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.ad.SamsungBusinessOpDialogBlockHook
+import com.xiyunmn.puredupan.hook.feature.baidu.samsung.performance.SamsungOemPushServiceBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.startup.SamsungSplashAdBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.ui.SamsungGameCenterRemoveHook
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.ui.SamsungGameCenterRuntimeBlockHook
@@ -61,6 +62,17 @@ internal object BaiduSamsungPostAttachHookSpecs {
             },
             featureKey = FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE,
         ) { cl -> SamsungMemberCardCustomizeHook.hook(cl) },
+    )
+
+    val performance = listOf(
+        HookSpec("SamsungOemPushServiceBlockHook", { context, settings, _ ->
+            context.isPushService &&
+                context.supportsOemPushHook &&
+                settings.isPerformanceOptimizeEnabled &&
+                settings.isOemPushServiceDisabled
+        }, featureKey = FeatureKeys.KEY_DISABLE_OEM_PUSH_SERVICE) { cl ->
+            SamsungOemPushServiceBlockHook.hook(cl)
+        },
     )
 
     val tailEntry = listOf(

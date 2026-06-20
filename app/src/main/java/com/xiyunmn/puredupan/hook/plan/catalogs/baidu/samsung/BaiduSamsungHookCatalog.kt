@@ -16,6 +16,7 @@ internal object BaiduSamsungHookCatalog : HookCatalog {
             BaiduSamsungPostAttachHookSpecs.memberCard +
             BaiduSharedPostAttachHookSpecs.postMemberLead +
             BaiduSharedPostAttachHookSpecs.postMemberTail +
+            BaiduSamsungPostAttachHookSpecs.performance +
             BaiduSamsungPostAttachHookSpecs.tailEntry
     }
 }

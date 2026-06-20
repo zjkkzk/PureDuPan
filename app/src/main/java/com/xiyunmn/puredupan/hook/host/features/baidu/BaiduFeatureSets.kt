@@ -52,6 +52,7 @@ internal object BaiduFeatureSets {
             baiduSharedMemberCardCustomize,
             baiduSamsungMemberCardCustomize,
             baiduSamsungBottomBarCustomize,
+            baiduSamsungPerformanceCustomize,
         )
 
     private val baiduSharedDiagnostics = listOf(
@@ -248,6 +249,11 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_HIDE_TAB_MINE,
         FeatureKeys.KEY_HIDE_TAB_AIGC,
         FeatureKeys.KEY_HIDE_TAB_VIP,
+    )
+
+    private val baiduSamsungPerformanceCustomize = listOf(
+        FeatureKeys.KEY_PERFORMANCE_OPTIMIZE,
+        FeatureKeys.KEY_DISABLE_OEM_PUSH_SERVICE,
     )
 
     private val baiduIntlPerformanceCustomize = listOf(
