@@ -2,17 +2,15 @@ package com.xiyunmn.puredupan.hook.feature.baidu.intl.performance
 
 import android.app.Activity
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.os.SystemClock
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlHookPoints
 import java.lang.reflect.Method
 
 internal object IntlAudioCircleStartupShowBlockHook {
+    private const val TAG = "IntlAudioCircleStartupShowBlockHook"
     private const val AUDIO_API_CLASS_NAME = BaiduIntlHookPoints.AUDIO_API
     private const val AUDIO_PLAYER_ACTIVITY_CLASS_NAME = BaiduIntlHookPoints.AUDIO_PLAYER_ACTIVITY
     private const val HOME_STABLE_DELAY_MS = 2500L
@@ -26,7 +24,6 @@ internal object IntlAudioCircleStartupShowBlockHook {
     )
 
     private val hookState = HookState()
-    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
     private val lock = Any()
     private val processStartElapsed = SystemClock.elapsedRealtime()
 
@@ -148,39 +145,10 @@ internal object IntlAudioCircleStartupShowBlockHook {
         return installed
     }
 
-    private fun hookHomeStableSignal(cl: ClassLoader): Boolean {
-        val mod = XposedCompat.module ?: return false
-        val mainActivityClassName = currentMainActivityClassName() ?: run {
-            XposedCompat.log("[IntlAudioCircleStartupShowBlockHook] MainActivity host capability missing")
-            return false
+    private fun hookHomeStableSignal(cl: ClassLoader): Boolean =
+        IntlHomeStableRestoreSignal.hook(cl, TAG) {
+            scheduleHomeStable()
         }
-        val mainActivityClass = XposedCompat.findClassOrNull(mainActivityClassName, cl) ?: run {
-            XposedCompat.log("[IntlAudioCircleStartupShowBlockHook] MainActivity class NOT FOUND")
-            return false
-        }
-        val focusMethod = XposedCompat.findMethodOrNull(
-            mainActivityClass,
-            "onWindowFocusChanged",
-            Boolean::class.javaPrimitiveType!!,
-        ) ?: run {
-            XposedCompat.log("[IntlAudioCircleStartupShowBlockHook] MainActivity.onWindowFocusChanged NOT FOUND")
-            return false
-        }
-
-        mod.hook(focusMethod).intercept { chain ->
-            val result = chain.proceed()
-            val activity = chain.thisObject as? Activity
-            val hasFocus = chain.args.firstOrNull() as? Boolean ?: false
-            if (hasFocus && activity?.javaClass?.name == mainActivityClassName) {
-                scheduleHomeStable()
-            }
-            result
-        }
-        return true
-    }
-
-    private fun currentMainActivityClassName(): String? =
-        BaiduFeatureRuntime.currentMainActivityClassName()
 
     private fun shouldBlockStartupShow(receiver: Any, activity: Activity?, methodLabel: String): Boolean {
         if (!isEnabled()) return false
@@ -261,16 +229,25 @@ internal object IntlAudioCircleStartupShowBlockHook {
     }
 
     private fun scheduleHomeStable() {
-        if (homeStableReached || homeStableScheduled) return
-        synchronized(lock) {
-            if (homeStableReached || homeStableScheduled) return
-            homeStableScheduled = true
-        }
-        mainHandler.postDelayed({
-            homeStableReached = true
-            homeStableScheduled = false
-            XposedCompat.logD("[IntlAudioCircleStartupShowBlockHook] home stable reached")
-        }, HOME_STABLE_DELAY_MS)
+        IntlHomeStableRestoreSignal.scheduleDelayedRestore(
+            tag = TAG,
+            delayMs = HOME_STABLE_DELAY_MS,
+            tryMarkScheduled = {
+                synchronized(lock) {
+                    if (homeStableReached || homeStableScheduled) {
+                        false
+                    } else {
+                        homeStableScheduled = true
+                        true
+                    }
+                }
+            },
+            clearScheduled = { homeStableScheduled = false },
+            restore = {
+                homeStableReached = true
+                XposedCompat.logD("[$TAG] home stable reached")
+            },
+        )
     }
 
     private fun isEnabled(): Boolean =

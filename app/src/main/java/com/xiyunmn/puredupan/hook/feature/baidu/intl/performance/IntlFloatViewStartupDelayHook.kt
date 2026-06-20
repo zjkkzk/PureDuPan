@@ -1,18 +1,15 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.performance
 
-import android.app.Activity
 import android.app.Application
-import android.os.Handler
-import android.os.Looper
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlHookPoints
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 
 internal object IntlFloatViewStartupDelayHook {
+    private const val TAG = "IntlFloatViewStartupDelayHook"
     private const val TASK_QUERY_API_CLASS_NAME = BaiduIntlHookPoints.TASK_QUERY_API
     private const val AUDIO_API_CLASS_NAME = BaiduIntlHookPoints.AUDIO_API
     private const val RETURN_THIRD_APP_VIEW_CLASS_NAME = BaiduIntlHookPoints.RETURN_THIRD_APP_VIEW
@@ -42,7 +39,6 @@ internal object IntlFloatViewStartupDelayHook {
     )
 
     private val hookState = HookState()
-    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
     private val lock = Any()
     private val chainStates = linkedMapOf(
         Chain.TASK_QUERY to ChainState(Chain.TASK_QUERY),
@@ -173,39 +169,10 @@ internal object IntlFloatViewStartupDelayHook {
         return true
     }
 
-    private fun hookHomeStableRestoreSignal(cl: ClassLoader): Boolean {
-        val mod = XposedCompat.module ?: return false
-        val mainActivityClassName = currentMainActivityClassName() ?: run {
-            XposedCompat.log("[IntlFloatViewStartupDelayHook] MainActivity host capability missing")
-            return false
+    private fun hookHomeStableRestoreSignal(cl: ClassLoader): Boolean =
+        IntlHomeStableRestoreSignal.hook(cl, TAG) {
+            scheduleHomeStableRestore()
         }
-        val mainActivityClass = XposedCompat.findClassOrNull(mainActivityClassName, cl) ?: run {
-            XposedCompat.log("[IntlFloatViewStartupDelayHook] MainActivity class NOT FOUND")
-            return false
-        }
-        val focusMethod = XposedCompat.findMethodOrNull(
-            mainActivityClass,
-            "onWindowFocusChanged",
-            Boolean::class.javaPrimitiveType!!,
-        ) ?: run {
-            XposedCompat.log("[IntlFloatViewStartupDelayHook] MainActivity.onWindowFocusChanged NOT FOUND")
-            return false
-        }
-
-        mod.hook(focusMethod).intercept { chain ->
-            val result = chain.proceed()
-            val activity = chain.thisObject as? Activity
-            val hasFocus = chain.args.firstOrNull() as? Boolean ?: false
-            if (hasFocus && activity?.javaClass?.name == mainActivityClassName) {
-                scheduleHomeStableRestore()
-            }
-            result
-        }
-        return true
-    }
-
-    private fun currentMainActivityClassName(): String? =
-        BaiduFeatureRuntime.currentMainActivityClassName()
 
     private fun hookTaskQueryRestoreSignals(cl: ClassLoader): Int {
         val apiClass = XposedCompat.findClassOrNull(TASK_QUERY_API_CLASS_NAME, cl) ?: run {
@@ -275,16 +242,24 @@ internal object IntlFloatViewStartupDelayHook {
 
     private fun scheduleHomeStableRestore() {
         homeStableReached = true
-        if (!isEnabled() || homeStableRestoreScheduled || allChainsRestored()) return
-        synchronized(lock) {
-            if (homeStableRestoreScheduled || allChainsRestored()) return
-            homeStableRestoreScheduled = true
-        }
-        mainHandler.postDelayed({
-            homeStableRestoreScheduled = false
-            restoreAllPending("home_stable")
-        }, HOME_STABLE_RESTORE_DELAY_MS)
-        XposedCompat.logD("[IntlFloatViewStartupDelayHook] home stable restore scheduled")
+        if (!isEnabled()) return
+        IntlHomeStableRestoreSignal.scheduleDelayedRestore(
+            tag = TAG,
+            delayMs = HOME_STABLE_RESTORE_DELAY_MS,
+            tryMarkScheduled = {
+                synchronized(lock) {
+                    val allRestored = chainStates.values.all { it.restored || !it.skipped }
+                    if (homeStableRestoreScheduled || allRestored) {
+                        false
+                    } else {
+                        homeStableRestoreScheduled = true
+                        true
+                    }
+                }
+            },
+            clearScheduled = { homeStableRestoreScheduled = false },
+            restore = ::restoreAllPending,
+        )
     }
 
     private fun allChainsRestored(): Boolean = synchronized(lock) {

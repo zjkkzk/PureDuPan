@@ -1,18 +1,15 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.performance
 
-import android.app.Activity
 import android.content.Context
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlHookPoints
 import java.lang.reflect.Method
 
 internal object IntlTaskScoreRefreshDelayHook {
+    private const val TAG = "IntlTaskScoreRefreshDelayHook"
     private const val TASK_SCORE_MANAGER_CLASS_NAME = BaiduIntlHookPoints.TASK_SCORE_MANAGER
     private const val VIP_CHANNEL_ACTIVITY_CLASS_NAME = BaiduIntlHookPoints.VIP_CHANNEL_ACTIVITY
     private const val HOME_STABLE_RESTORE_DELAY_MS = 2500L
@@ -23,7 +20,6 @@ internal object IntlTaskScoreRefreshDelayHook {
     )
 
     private val hookState = HookState()
-    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
     private val lock = Any()
 
     @Volatile private var refreshMethod: Method? = null
@@ -113,39 +109,10 @@ internal object IntlTaskScoreRefreshDelayHook {
         return true
     }
 
-    private fun hookHomeStableRestoreSignal(cl: ClassLoader): Boolean {
-        val mod = XposedCompat.module ?: return false
-        val mainActivityClassName = currentMainActivityClassName() ?: run {
-            XposedCompat.log("[IntlTaskScoreRefreshDelayHook] MainActivity host capability missing")
-            return false
+    private fun hookHomeStableRestoreSignal(cl: ClassLoader): Boolean =
+        IntlHomeStableRestoreSignal.hook(cl, TAG) {
+            scheduleHomeStableRestore()
         }
-        val mainActivityClass = XposedCompat.findClassOrNull(mainActivityClassName, cl) ?: run {
-            XposedCompat.log("[IntlTaskScoreRefreshDelayHook] MainActivity class NOT FOUND")
-            return false
-        }
-        val focusMethod = XposedCompat.findMethodOrNull(
-            mainActivityClass,
-            "onWindowFocusChanged",
-            Boolean::class.javaPrimitiveType!!,
-        ) ?: run {
-            XposedCompat.log("[IntlTaskScoreRefreshDelayHook] MainActivity.onWindowFocusChanged NOT FOUND")
-            return false
-        }
-
-        mod.hook(focusMethod).intercept { chain ->
-            val result = chain.proceed()
-            val activity = chain.thisObject as? Activity
-            val hasFocus = chain.args.firstOrNull() as? Boolean ?: false
-            if (hasFocus && activity?.javaClass?.name == mainActivityClassName) {
-                scheduleHomeStableRestore()
-            }
-            result
-        }
-        return true
-    }
-
-    private fun currentMainActivityClassName(): String? =
-        BaiduFeatureRuntime.currentMainActivityClassName()
 
     private fun hookBusinessEntryRestoreSignals(cl: ClassLoader): Int {
         val mod = XposedCompat.module ?: return 0
@@ -175,16 +142,23 @@ internal object IntlTaskScoreRefreshDelayHook {
     }
 
     private fun scheduleHomeStableRestore() {
-        if (!isEnabled() || restored || homeStableRestoreScheduled) return
-        synchronized(lock) {
-            if (restored || homeStableRestoreScheduled) return
-            homeStableRestoreScheduled = true
-        }
-        mainHandler.postDelayed({
-            homeStableRestoreScheduled = false
-            restoreIfPending("home_stable")
-        }, HOME_STABLE_RESTORE_DELAY_MS)
-        XposedCompat.logD("[IntlTaskScoreRefreshDelayHook] home stable restore scheduled")
+        if (!isEnabled()) return
+        IntlHomeStableRestoreSignal.scheduleDelayedRestore(
+            tag = TAG,
+            delayMs = HOME_STABLE_RESTORE_DELAY_MS,
+            tryMarkScheduled = {
+                synchronized(lock) {
+                    if (restored || homeStableRestoreScheduled) {
+                        false
+                    } else {
+                        homeStableRestoreScheduled = true
+                        true
+                    }
+                }
+            },
+            clearScheduled = { homeStableRestoreScheduled = false },
+            restore = ::restoreIfPending,
+        )
     }
 
     private fun restoreIfPending(reason: String) {

@@ -1,14 +1,10 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.performance
 
-import android.app.Activity
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlSocketHookPoints
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
@@ -62,7 +58,6 @@ internal object IntlNonCoreDiffSocketDelayHook {
     )
 
     private val hookState = HookState()
-    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
     private val lock = Any()
     private val actionStates = linkedMapOf(
         CLOUD_IMAGE_DIFF_ACTION to ActionState(CLOUD_IMAGE_DIFF_ACTION),
@@ -351,39 +346,10 @@ internal object IntlNonCoreDiffSocketDelayHook {
         return true
     }
 
-    private fun hookHomeStableRestoreSignal(cl: ClassLoader): Boolean {
-        val mod = XposedCompat.module ?: return false
-        val mainActivityClassName = currentMainActivityClassName() ?: run {
-            XposedCompat.log("[IntlNonCoreDiffSocketDelayHook] MainActivity host capability missing")
-            return false
+    private fun hookHomeStableRestoreSignal(cl: ClassLoader): Boolean =
+        IntlHomeStableRestoreSignal.hook(cl, TAG) {
+            scheduleHomeStableRestore()
         }
-        val mainActivityClass = XposedCompat.findClassOrNull(mainActivityClassName, cl) ?: run {
-            XposedCompat.log("[IntlNonCoreDiffSocketDelayHook] MainActivity class NOT FOUND")
-            return false
-        }
-        val focusMethod = XposedCompat.findMethodOrNull(
-            mainActivityClass,
-            "onWindowFocusChanged",
-            Boolean::class.javaPrimitiveType!!,
-        ) ?: run {
-            XposedCompat.log("[IntlNonCoreDiffSocketDelayHook] MainActivity.onWindowFocusChanged NOT FOUND")
-            return false
-        }
-
-        mod.hook(focusMethod).intercept { chain ->
-            val result = chain.proceed()
-            val activity = chain.thisObject as? Activity
-            val hasFocus = chain.args.firstOrNull() as? Boolean ?: false
-            if (hasFocus && activity?.javaClass?.name == mainActivityClassName) {
-                scheduleHomeStableRestore()
-            }
-            result
-        }
-        return true
-    }
-
-    private fun currentMainActivityClassName(): String? =
-        BaiduFeatureRuntime.currentMainActivityClassName()
 
     private fun hookEntryRestoreSignals(
         cl: ClassLoader,
@@ -419,16 +385,24 @@ internal object IntlNonCoreDiffSocketDelayHook {
     }
 
     private fun scheduleHomeStableRestore() {
-        if (!isEnabled() || homeStableRestoreScheduled || allActionsRestored()) return
-        synchronized(lock) {
-            if (homeStableRestoreScheduled || allActionsRestored()) return
-            homeStableRestoreScheduled = true
-        }
-        mainHandler.postDelayed({
-            homeStableRestoreScheduled = false
-            restoreAllPending("home_stable")
-        }, HOME_STABLE_RESTORE_DELAY_MS)
-        XposedCompat.logD("[IntlNonCoreDiffSocketDelayHook] home stable restore scheduled")
+        if (!isEnabled()) return
+        IntlHomeStableRestoreSignal.scheduleDelayedRestore(
+            tag = TAG,
+            delayMs = HOME_STABLE_RESTORE_DELAY_MS,
+            tryMarkScheduled = {
+                synchronized(lock) {
+                    val allRestored = actionStates.values.all { it.restored || !it.skipped }
+                    if (homeStableRestoreScheduled || allRestored) {
+                        false
+                    } else {
+                        homeStableRestoreScheduled = true
+                        true
+                    }
+                }
+            },
+            clearScheduled = { homeStableRestoreScheduled = false },
+            restore = ::restoreAllPending,
+        )
     }
 
     private fun allActionsRestored(): Boolean = synchronized(lock) {

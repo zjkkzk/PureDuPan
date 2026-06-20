@@ -1,17 +1,14 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.performance
 
-import android.app.Activity
-import android.os.Handler
-import android.os.Looper
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.XposedCompat
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.intl.BaiduIntlHookPoints
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 
 internal object IntlFeedPreloadDelayHook {
+    private const val TAG = "IntlFeedPreloadDelayHook"
     private const val NEW_FEED_HOME_CONTEXT_CLASS_NAME = BaiduIntlHookPoints.NEW_FEED_HOME_CONTEXT
     private const val NEW_FEED_HOME_COMPANION_CLASS_NAME = BaiduIntlHookPoints.NEW_FEED_HOME_COMPANION
     private const val PRELOAD_FEED_DATA_METHOD_NAME = "preloadFeedData"
@@ -28,7 +25,6 @@ internal object IntlFeedPreloadDelayHook {
     )
 
     private val hookState = HookState()
-    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
     private val lock = Any()
 
     @Volatile private var preloadMethod: Method? = null
@@ -106,8 +102,18 @@ internal object IntlFeedPreloadDelayHook {
             val companionReceiver = runCatching {
                 XposedCompat.findField(contextClass, "INSTANCE").get(null)
             }.getOrNull()
-            if (companionMethod != null && companionReceiver != null) {
+            if (
+                companionMethod != null &&
+                companionReceiver != null &&
+                companionMethod.declaringClass.isInstance(companionReceiver)
+            ) {
                 return ResolvedPreloadMethod(companionMethod, companionReceiver)
+            } else if (companionMethod != null && companionReceiver != null) {
+                XposedCompat.logW(
+                    "[$TAG] preload companion receiver mismatch: " +
+                        "receiver=${companionReceiver.javaClass.name}, " +
+                        "methodOwner=${companionMethod.declaringClass.name}",
+                )
             }
         }
 
@@ -132,51 +138,29 @@ internal object IntlFeedPreloadDelayHook {
         return true
     }
 
-    private fun hookHomeStableRestoreSignal(cl: ClassLoader): Boolean {
-        val mod = XposedCompat.module ?: return false
-        val mainActivityClassName = currentMainActivityClassName() ?: run {
-            XposedCompat.log("[IntlFeedPreloadDelayHook] MainActivity host capability missing")
-            return false
+    private fun hookHomeStableRestoreSignal(cl: ClassLoader): Boolean =
+        IntlHomeStableRestoreSignal.hook(cl, TAG) {
+            scheduleHomeStableRestore()
         }
-        val mainActivityClass = XposedCompat.findClassOrNull(mainActivityClassName, cl) ?: run {
-            XposedCompat.log("[IntlFeedPreloadDelayHook] MainActivity class NOT FOUND")
-            return false
-        }
-        val focusMethod = XposedCompat.findMethodOrNull(
-            mainActivityClass,
-            "onWindowFocusChanged",
-            Boolean::class.javaPrimitiveType!!,
-        ) ?: run {
-            XposedCompat.log("[IntlFeedPreloadDelayHook] MainActivity.onWindowFocusChanged NOT FOUND")
-            return false
-        }
-
-        mod.hook(focusMethod).intercept { chain ->
-            val result = chain.proceed()
-            val activity = chain.thisObject as? Activity
-            val hasFocus = chain.args.firstOrNull() as? Boolean ?: false
-            if (hasFocus && activity?.javaClass?.name == mainActivityClassName) {
-                scheduleHomeStableRestore()
-            }
-            result
-        }
-        return true
-    }
-
-    private fun currentMainActivityClassName(): String? =
-        BaiduFeatureRuntime.currentMainActivityClassName()
 
     private fun scheduleHomeStableRestore() {
-        if (!isEnabled() || restored || homeStableRestoreScheduled) return
-        synchronized(lock) {
-            if (restored || homeStableRestoreScheduled) return
-            homeStableRestoreScheduled = true
-        }
-        mainHandler.postDelayed({
-            homeStableRestoreScheduled = false
-            restoreIfPending("home_stable")
-        }, HOME_STABLE_RESTORE_DELAY_MS)
-        XposedCompat.logD("[IntlFeedPreloadDelayHook] home stable restore scheduled")
+        if (!isEnabled()) return
+        IntlHomeStableRestoreSignal.scheduleDelayedRestore(
+            tag = TAG,
+            delayMs = HOME_STABLE_RESTORE_DELAY_MS,
+            tryMarkScheduled = {
+                synchronized(lock) {
+                    if (restored || homeStableRestoreScheduled) {
+                        false
+                    } else {
+                        homeStableRestoreScheduled = true
+                        true
+                    }
+                }
+            },
+            clearScheduled = { homeStableRestoreScheduled = false },
+            restore = ::restoreIfPending,
+        )
     }
 
     private fun restoreIfPending(reason: String) {
