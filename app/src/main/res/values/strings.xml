@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="module_description">净化百度网盘国内版、国际版与三星版界面元素，提供首页、我的页、会员卡、搜索页、底栏和性能相关定制\n在宿主首页或我的页的 PureDuPan 入口打开模块设置</string>
+    <string name="module_description">百度网盘净化 Xposed 模块 - 去广告、精简界面、性能优化\n模块入口：长按首页“+”、长按我的页“扫一扫”</string>
 </resources>
