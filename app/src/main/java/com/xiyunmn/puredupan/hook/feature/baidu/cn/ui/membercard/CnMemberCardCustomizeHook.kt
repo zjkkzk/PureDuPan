@@ -46,6 +46,7 @@ import kotlin.math.max
  * Customizes only the VIP card area in AboutMeTopFragmentHeteromo.
  */
 object CnMemberCardCustomizeHook {
+    private const val MEMBER_CARD_ACTIVITY_CONTAINER_ID = "about_me_top"
     private const val MEMBER_CARD_ROOT_ID = "cl_aboutme_top"
     private const val MEMBER_CARD_BACKGROUND_ID = "iv_bg"
     private const val MEMBER_CARD_OPERATION_ID = "operation_layout"
@@ -192,8 +193,20 @@ object CnMemberCardCustomizeHook {
 
         val resources = root.resources ?: return
         val packageName = root.context?.packageName ?: return
+        val hostRoot = root.rootView ?: root
         val cardRoot = findViewByEntryName(root, resources, packageName, MEMBER_CARD_ROOT_ID) ?: root
+        val activityCardRoot = findViewByEntryName(
+            hostRoot,
+            resources,
+            packageName,
+            MEMBER_CARD_ACTIVITY_CONTAINER_ID,
+        )?.takeIf { isAncestorOf(it, cardRoot) }
         applyCardClickBehavior(cardRoot, snapshot)
+
+        activityCardRoot?.let {
+            applyCardSize(it, snapshot, recordDefault = true)
+        }
+        applyCardSize(cardRoot, snapshot, recordDefault = activityCardRoot == null)
 
         val background = findViewByEntryName(root, resources, packageName, MEMBER_CARD_BACKGROUND_ID)
         if (background != null) {
@@ -560,12 +573,18 @@ object CnMemberCardCustomizeHook {
         return hidden
     }
 
-    private fun applyCardSize(background: View, snapshot: SettingsSnapshot) {
+    private fun applyCardSize(
+        background: View,
+        snapshot: SettingsSnapshot,
+        recordDefault: Boolean = false,
+    ) {
         val params = background.layoutParams ?: return
         val original = originalSizes.getOrPut(background) {
             OriginalSize(params.width, params.height)
         }
-        recordDefaultMemberCardBackgroundSize(background, original)
+        if (recordDefault) {
+            recordDefaultMemberCardBackgroundSize(background, original)
+        }
 
         val density = background.resources?.displayMetrics?.density ?: return
         val targetWidth = if (snapshot.isMemberCardSizeAdjusted && snapshot.memberCardWidthDp > 0) {
@@ -1036,6 +1055,15 @@ object CnMemberCardCustomizeHook {
         val id = resources.getIdentifier(idName, "id", packageName)
         if (id == 0) return null
         return root.findViewById(id)
+    }
+
+    private fun isAncestorOf(ancestor: View, child: View): Boolean {
+        var current: View? = child
+        while (current != null) {
+            if (current === ancestor) return true
+            current = current.parent as? View
+        }
+        return false
     }
 
 }

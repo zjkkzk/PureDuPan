@@ -4,35 +4,11 @@ package com.xiyunmn.puredupan.hook.symbols.baidu.samsung
  * Stable hook points verified against Baidu Netdisk Samsung host.
  */
 internal object BaiduSamsungHookPoints {
-    const val DEFAULT_MAIN_ACTIVITY = "com.baidu.netdisk.ui.DefaultMainActivity"
     const val NAVIGATE_ACTIVITY = "com.baidu.netdisk.ui.Navigate"
 
-    const val NEW_FEED_HOME_TITLE_BAR_FRAGMENT =
-        "com.baidu.netdisk.newfeedhome.feedhome.ui.view.fragment.FHTitleBarFragment"
-    const val HOME_UPLOAD_ENTRY = "upload_file_entry"
-    const val HOME_UPLOAD_ENTRY_GUIDE_END = "upload_file_entry_guide_end"
     const val ABOUT_ME_SCAN_ICON = "self_qrcode_scan_icon"
     const val ABOUT_ME_QRCODE_ENTRANCE_ICON = "self_qrcode_entrance_icon"
     const val ABOUT_ME_QRCODE_ENTRANCE_ICON_NEW_POS = "self_qrcode_entrance_icon_new_pos"
-
-    val FEED_FRAGMENT_CLASSES = listOf(
-        "com.baidu.netdisk.newfeedhome.feedhome.ui.view.fragment.FHFeedFragment",
-        "com.baidu.netdisk.feedhome.ui.view.fragment.FHFeedFragment",
-    )
-    const val HOME_STORY_CARD_VIEW =
-        "com.baidu.netdisk.newstory.ui.view.home.HomeStoryCardView"
-    val HOME_SAVE_CARD_VIEWS = listOf(
-        "com.baidu.netdisk.newfeedhome.feedhome.ui.view.fragment.NewHomeSaveCardView",
-    )
-    val HOME_RECENT_CARD_VIEWS = listOf(
-        "com.baidu.netdisk.newfeedhome.feedhome.ui.view.fragment.NewHomeRecentCardView",
-    )
-
-    const val ABOUT_ME_TOP_FRAGMENT =
-        "com.baidu.netdisk.ui.aboutme.view.AboutMeTopFragment"
-    const val ABOUT_ME_USER_CENTER_FRAGMENT =
-        "com.baidu.netdisk.ui.aboutme.view.UserCenterFragment"
-    const val ABOUT_ME_TOP_FRAGMENT_ON_VIEW_CREATED_METHOD = "onViewCreated"
 
     const val SPLASH_MANAGER =
         "com.baidu.netdisk.advertise.splash.SplashManager"
@@ -47,37 +23,11 @@ internal object BaiduSamsungHookPoints {
     const val BUSINESS_OP_DIALOG_SHOW_DIALOG_METHOD = "showDialog"
     const val BUSINESS_OP_DIALOG_ON_CREATE_VIEW_METHOD = "onCreateView"
 
-    const val TRANSFER_APIS =
-        "com.baidu.netdisk.ui.transfer.component.TransferApis"
-    const val FLOW_ALERT_DIALOG_MANAGER =
-        "com.baidu.netdisk.ui.manager.FlowAlertDialogManager"
-    const val DIALOG_CTR_LISTENER =
-        "com.baidu.netdisk.ui.manager.DialogCtrListener"
-    const val SHOW_NON_WIFI_ALERT_DOWNLOAD_DIALOG_METHOD =
-        "showNonWiFiAlertDownloadDialog"
-    const val SHOW_NON_WIFI_ALERT_DOWNLOAD_BOTTOM_DIALOG_METHOD =
-        "showNonWiFiAlertDownloadBottomDialog"
-    const val DIALOG_CTR_LISTENER_ON_OK_METHOD = "onOkBtnClick"
-
     const val PUSH_GUIDE_NORMAL_DIALOG =
         "com.baidu.netdisk.push.guide.PushGuideNormalDialog"
     const val PUSH_GUIDE_ON_CREATE_DIALOG_METHOD = "onCreateDialog"
     const val PUSH_GUIDE_ON_START_METHOD = "onStart"
     const val PUSH_GUIDE_ON_RESUME_METHOD = "onResume"
-    const val PUSH_GUIDE_SHOW_METHOD = "show"
-    const val PUSH_GUIDE_SHOW_DIALOG_METHOD = "showDialog"
-    const val PERMISSION_PRESENTER =
-        "com.baidu.netdisk.ui.permission.presenter.PermissionPresenter"
-    const val PERMISSION_DIALOG_ACTIVITY =
-        "com.baidu.netdisk.ui.permission.view.PermissionDialogActivity"
-    const val NEW_PERMISSION_DIALOG_ACTIVITY =
-        "com.baidu.netdisk.permission.NewPermissionDialogActivity"
-    const val PERMISSION_UTIL =
-        "com.baidu.netdisk.permission.PermissionUtil"
-    const val PERMISSION_DIALOG_ACTIVITY_ON_CREATE_METHOD = "onCreate"
-    const val PERMISSION_ARRAY_EXTRA = "key_permission_array"
-    const val PERMISSION_INFO_EXTRA = "permission_info"
-    const val PERMISSION_SCENE_LIST_EXTRA = "key_permission_scene_list"
 
     const val GUIDE_CONTEXT_COMPANION =
         "rubik.generate.context.bd_netdisk_com_baidu_netdisk_guide.GuideContext\$Companion"
@@ -100,10 +50,10 @@ internal object BaiduSamsungHookPoints {
     const val AD_SDK_SERVICE_ON_START_COMMAND_METHOD = "onStartCommand"
     val AD_SDK_DOWNLOAD_SERVICE_CLASSES = listOf(
         "com.qq.e.comm.DownloadService",
-        "com.ss.android.socialbase.downloader.downloader.CSJDownloadService",
-        "com.ss.android.socialbase.downloader.downloader.CSJIndependentProcessDownloadService",
+        "com.byazt.zs.ApiDownloadHandlerService",
         "com.beizi.ad.DownloadService",
         "com.ubix.ssp.open.comm.DownloadService",
+        "com.octopus.ad.DownloadService",
         "com.baidu.swan.game.ad.downloader.core.AdDownloadService",
     )
 
@@ -147,6 +97,8 @@ internal object BaiduSamsungHookPoints {
         "com.baidu.netdisk.dynamic.ocrscan.OCRSORecogDownloader",
         "com.baidu.netdisk.dynamic.image2office.Image2OfficeDownloader",
         "com.baidu.netdisk.dynamic.imagebodyidentify.ImageBodyIdentifyDownloader",
+        "com.baidu.netdisk.dynamic.imagesdk.ImageRecogDownloader",
+        "com.baidu.netdisk.dynamic.facedetect.FaceDetectDownloader",
     )
     val DYNAMIC_PLUGIN_AUTO_INSTALL_EXECUTOR_CLASSES = listOf(
         "com.baidu.netdisk.dynamic.ocrscan.OCRScanModelV2Executor",
@@ -156,22 +108,11 @@ internal object BaiduSamsungHookPoints {
         "com.baidu.netdisk.dynamic.ocrscan.OCRSORecogExecutor",
         "com.baidu.netdisk.dynamic.image2office.Image2OfficeExecutor",
         "com.baidu.netdisk.dynamic.imagebodyidentify.ImageBodyIdentifyExecutor",
+        "com.baidu.netdisk.dynamic.imagesdk.ImageRecogExecutor",
+        "com.baidu.netdisk.dynamic.facedetect.FaceDetectExecutor",
     )
 
-    const val BASE_ACTIVITY = "com.baidu.netdisk.BaseActivity"
-    const val SETTINGS_ACTIVITY = "com.baidu.netdisk.ui.SettingsActivity"
-    const val CHANGE_SKIN_KT = "com.baidu.netdisk.themskin.ChangeSkinKt"
-    const val SKIN_LOADER_LISTENER = "com.netdisk.themeskin.listener.SkinLoaderListener"
-    const val SETTINGS_ITEM_VIEW = "com.baidu.netdisk.ui.widget.SettingsItemView"
-
-    const val ABOUT_ME_GAME_CENTER_FRAGMENT =
-        "com.baidu.netdisk.operation.ui.fragment.game.AboutMeGameCenterFragment"
-    const val GAME_CENTER_VIEW_MODEL =
-        "com.baidu.netdisk.ui.aboutme.viewmodel.GameCenterViewModel"
-    const val GAME_CENTER_AMIS_OPEN_METHOD = "isAmisOpen"
-    const val GAME_CENTER_FETCH_CONFIG_METHOD = "fetchGameCenterConfig"
     const val ANDROIDX_FRAGMENT_MANAGER = "androidx.fragment.app.FragmentManager"
-    const val ANDROIDX_LIFECYCLE_OWNER = "androidx.lifecycle.LifecycleOwner"
 
     const val OEM_PUSH_ON_CREATE_METHOD = "onCreate"
     const val OEM_PUSH_ON_START_COMMAND_METHOD = "onStartCommand"

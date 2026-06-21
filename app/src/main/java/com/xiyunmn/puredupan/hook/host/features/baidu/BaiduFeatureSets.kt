@@ -47,19 +47,8 @@ internal object BaiduFeatureSets {
 
     val baiduSamsungAvailableKeys: Set<String>
         get() = mergeKeys(
-            baiduSharedDiagnostics,
-            baiduSharedContentBlock,
-            baiduSamsungStartup,
+            baiduCnAvailableKeys,
             baiduSamsungAd,
-            baiduSamsungHomeCustomize,
-            baiduSamsungShareCustomize,
-            baiduSamsungMyPageCustomize,
-            baiduSharedUiBlock,
-            baiduSharedMemberCardCustomize,
-            baiduSamsungMemberCardCustomize,
-            baiduSamsungBottomBarCustomize,
-            baiduSamsungPerformanceCustomize,
-            baiduSamsungThemeCustomize,
         )
 
     private val baiduSharedDiagnostics = listOf(
@@ -214,78 +203,8 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_HIDE_TAB_AIGC,
     )
 
-    private val baiduSamsungStartup = listOf(
-        FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL,
-    )
-
     private val baiduSamsungAd = listOf(
-        FeatureKeys.KEY_BLOCK_IN_APP_DIALOG,
         FeatureKeys.KEY_BLOCK_NOTIFICATION_PROMPT,
-    )
-
-    private val baiduSamsungHomeCustomize = listOf(
-        FeatureKeys.KEY_HOME_CUSTOMIZE,
-        FeatureKeys.KEY_HIDE_HOME_BANNER,
-        FeatureKeys.KEY_HIDE_HOME_FEED_TIP,
-        FeatureKeys.KEY_HIDE_HOME_MEMORIES_SECTION,
-        FeatureKeys.KEY_HIDE_HOME_SAVE_SECTION,
-        FeatureKeys.KEY_HIDE_HOME_RECENT_SECTION,
-    )
-
-    private val baiduSamsungShareCustomize = listOf(
-        FeatureKeys.KEY_SHARE_PAGE_CUSTOMIZE,
-        FeatureKeys.KEY_REMOVE_HOME_FAB,
-    )
-
-    private val baiduSamsungMyPageCustomize = listOf(
-        FeatureKeys.KEY_MY_PAGE_CUSTOMIZE,
-        FeatureKeys.KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT,
-        FeatureKeys.KEY_HIDE_ABOUT_ME_COIN_CENTER_BUBBLE,
-        FeatureKeys.KEY_HIDE_ABOUT_ME_MANAGE_SPACE_TEXT,
-        FeatureKeys.KEY_HIDE_ABOUT_ME_REWARD_TEXT,
-        FeatureKeys.KEY_HIDE_ABOUT_ME_SIGN_IN_DOT,
-        FeatureKeys.KEY_HIDE_ABOUT_ME_STAR_SKIN_TEXT,
-        FeatureKeys.KEY_REMOVE_ABOUT_ME_BANNER,
-        FeatureKeys.KEY_REMOVE_GAME_CENTER,
-        FeatureKeys.KEY_REMOVE_MY_SERVICE,
-    )
-
-    private val baiduSamsungMemberCardCustomize = listOf(
-        FeatureKeys.KEY_HIDE_INTL_MEMBER_CARD_SVIP_LEVEL,
-        FeatureKeys.KEY_HIDE_INTL_MEMBER_CARD_UPGRADE_BUTTON,
-        FeatureKeys.KEY_HIDE_MEMBER_CARD_FIRST_BENEFIT,
-        FeatureKeys.KEY_HIDE_MEMBER_CARD_SECOND_BENEFIT,
-        FeatureKeys.KEY_HIDE_MEMBER_CARD_THIRD_BENEFIT,
-    )
-
-    private val baiduSamsungBottomBarCustomize = listOf(
-        FeatureKeys.KEY_BLOCK_BOTTOM_BADGE,
-        FeatureKeys.KEY_CUSTOM_BOTTOM_BAR,
-        FeatureKeys.KEY_HIDE_TAB_FILE,
-        FeatureKeys.KEY_HIDE_TAB_SHARE,
-        FeatureKeys.KEY_HIDE_TAB_HOME,
-        FeatureKeys.KEY_HIDE_TAB_MINE,
-        FeatureKeys.KEY_HIDE_TAB_AIGC,
-    )
-
-    private val baiduSamsungPerformanceCustomize = listOf(
-        FeatureKeys.KEY_PERFORMANCE_OPTIMIZE,
-        FeatureKeys.KEY_DISABLE_AD_SDK_INIT,
-        FeatureKeys.KEY_DISABLE_AIGC_BACKGROUND_COMPONENT,
-        FeatureKeys.KEY_DISABLE_B2F_GUIDANCE_PREFETCH,
-        FeatureKeys.KEY_DISABLE_DATAPACK_SOCKET_REGISTER,
-        FeatureKeys.KEY_DISABLE_DYNAMIC_PLUGIN_AUTO_DOWNLOAD,
-        FeatureKeys.KEY_DISABLE_GARBAGE_CLEAN_SERVICE_REGISTER,
-        FeatureKeys.KEY_DISABLE_INCENTIVE_BUSINESS_SERVICE,
-        FeatureKeys.KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART,
-        FeatureKeys.KEY_DISABLE_OEM_PUSH_SERVICE,
-        FeatureKeys.KEY_DISABLE_SWAN_PRELOAD,
-        FeatureKeys.KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE,
-        FeatureKeys.KEY_DISABLE_VIDEO_AD_PRELOAD,
-    )
-
-    private val baiduSamsungThemeCustomize = listOf(
-        FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
     )
 
     private val baiduIntlPerformanceCustomize = listOf(

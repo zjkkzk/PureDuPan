@@ -19,6 +19,8 @@ internal object SamsungDynamicPluginAutoDownloadBlockHook {
         33, // OCR_SO_SDK_V5
         34, // IMAGE_TO_OFFICE
         36, // SHOUBAI_IMAGE_BODY_IDENTIFY
+        37, // IMAGE_RECOG_SDK
+        38, // FACE_DETECT
     )
 
     internal fun hook(cl: ClassLoader) {

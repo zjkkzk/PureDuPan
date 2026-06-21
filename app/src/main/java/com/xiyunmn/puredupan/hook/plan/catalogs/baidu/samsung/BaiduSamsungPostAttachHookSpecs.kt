@@ -1,6 +1,10 @@
 package com.xiyunmn.puredupan.hook.plan.catalogs.baidu.samsung
 
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
+import com.xiyunmn.puredupan.hook.feature.baidu.cn.ad.LuckyCouponBlockHook
+import com.xiyunmn.puredupan.hook.feature.baidu.cn.ad.SharePushGuideBlockHook
+import com.xiyunmn.puredupan.hook.feature.baidu.cn.ad.UpdateDialogBlockHook
+import com.xiyunmn.puredupan.hook.feature.baidu.cn.performance.IconResourceDownloadBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.AppStoreReviewBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.FullScreenBackupBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ad.NonWifiDownloadDialogBlockHook
@@ -22,12 +26,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.samsung.performance.SamsungThumb
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.performance.SamsungVideoAdPreloadBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.startup.SamsungLaunchHandoffOptimizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.startup.SamsungSplashAdBlockHook
-import com.xiyunmn.puredupan.hook.feature.baidu.samsung.ui.SamsungGameCenterRemoveHook
-import com.xiyunmn.puredupan.hook.feature.baidu.samsung.ui.SamsungGameCenterRuntimeBlockHook
-import com.xiyunmn.puredupan.hook.feature.baidu.samsung.ui.SamsungSystemNightModeSyncHook
 import com.xiyunmn.puredupan.hook.feature.baidu.samsung.ui.entry.SamsungAboutMeModuleEntryHook
-import com.xiyunmn.puredupan.hook.feature.baidu.samsung.ui.entry.SamsungHomeTitleBarModuleEntryHook
-import com.xiyunmn.puredupan.hook.feature.baidu.samsung.ui.membercard.SamsungMemberCardCustomizeHook
 import com.xiyunmn.puredupan.hook.plan.HookSpec
 
 internal object BaiduSamsungPostAttachHookSpecs {
@@ -58,6 +57,17 @@ internal object BaiduSamsungPostAttachHookSpecs {
         }, featureKey = FeatureKeys.KEY_BLOCK_IN_APP_DIALOG) { cl ->
             SamsungBusinessOpDialogBlockHook.hook(cl)
         },
+        HookSpec("LuckyCouponBlockHook", { context, settings, _ ->
+            context.isMain && settings.isInAppDialogBlocked
+        }, featureKey = FeatureKeys.KEY_BLOCK_IN_APP_DIALOG) { cl ->
+            LuckyCouponBlockHook.hook(cl)
+        },
+        HookSpec("UpdateDialogBlockHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isUpdateDialogBlocked
+        }, featureKey = FeatureKeys.KEY_BLOCK_UPDATE_DIALOG) { cl ->
+            UpdateDialogBlockHook.hook(cl)
+        },
         HookSpec("NonWifiDownloadDialogBlockHook", { context, settings, _ ->
             context.isMain && settings.isNonWifiDownloadDialogBlocked
         }, featureKey = FeatureKeys.KEY_BLOCK_NON_WIFI_DOWNLOAD_DIALOG) { cl ->
@@ -73,6 +83,12 @@ internal object BaiduSamsungPostAttachHookSpecs {
         }, featureKey = FeatureKeys.KEY_BLOCK_FULL_SCREEN_BACKUP) { cl ->
             SvipIconGuideBlockHook.hook(cl)
         },
+        HookSpec("SharePushGuideBlockHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isSharePushGuideBlocked
+        }, featureKey = FeatureKeys.KEY_BLOCK_SHARE_PUSH_GUIDE) { cl ->
+            SharePushGuideBlockHook.hook(cl)
+        },
         HookSpec("AppStoreReviewBlockHook", { context, settings, _ ->
             context.isMain && settings.isAppStoreReviewBlocked
         }, featureKey = FeatureKeys.KEY_BLOCK_APP_STORE_REVIEW) { cl ->
@@ -83,35 +99,6 @@ internal object BaiduSamsungPostAttachHookSpecs {
         }, featureKey = FeatureKeys.KEY_BLOCK_NOTIFICATION_PROMPT) { cl ->
             SamsungNotificationPromptBlockHook.hook(cl)
         },
-    )
-
-    val myPage = listOf(
-        HookSpec("SamsungGameCenterRuntimeBlockHook", { context, settings, _ ->
-            context.isMain &&
-                settings.isMyPageCustomizeEnabled &&
-                settings.isGameCenterRemoved
-        }, featureKey = FeatureKeys.KEY_REMOVE_GAME_CENTER) { cl ->
-            SamsungGameCenterRuntimeBlockHook.hook(cl)
-        },
-        HookSpec("SamsungGameCenterRemoveHook", { context, settings, _ ->
-            context.isMain &&
-                settings.isMyPageCustomizeEnabled &&
-                settings.isGameCenterRemoved
-        }, featureKey = FeatureKeys.KEY_REMOVE_GAME_CENTER) { cl ->
-            SamsungGameCenterRemoveHook.hook(cl)
-        },
-    )
-
-    val memberCard = listOf(
-        HookSpec(
-            "SamsungMemberCardCustomizeHook",
-            { context, settings, derived ->
-                context.isMain &&
-                    settings.isMemberCardCustomizeEnabled &&
-                    derived.hasMemberCardCustomizeOption
-            },
-            featureKey = FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE,
-        ) { cl -> SamsungMemberCardCustomizeHook.hook(cl) },
     )
 
     val performance = listOf(
@@ -205,20 +192,13 @@ internal object BaiduSamsungPostAttachHookSpecs {
         }, featureKey = FeatureKeys.KEY_DISABLE_VIDEO_AD_PRELOAD) { cl ->
             SamsungVideoAdPreloadBlockHook.hook(cl)
         },
-    )
-
-    val tail = listOf(
-        HookSpec("SamsungSystemNightModeSyncHook", { context, settings, _ ->
+        HookSpec("IconResourceDownloadBlockHook", { context, settings, _ ->
             context.isMain &&
-                settings.isFollowSystemNightModeEnabled
-        }, featureKey = FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE) { cl ->
-            SamsungSystemNightModeSyncHook.hook(cl)
+                settings.isPerformanceOptimizeEnabled &&
+                settings.isIconResourceDownloadDisabled
+        }, featureKey = FeatureKeys.KEY_DISABLE_ICON_RESOURCE_DOWNLOAD) { cl ->
+            IconResourceDownloadBlockHook.hook(cl)
         },
     )
 
-    val tailEntry = listOf(
-        HookSpec("SamsungHomeTitleBarModuleEntryHook", { context, _, _ ->
-            context.isMain
-        }) { cl -> SamsungHomeTitleBarModuleEntryHook.hook(cl) },
-    )
 }

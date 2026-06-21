@@ -1,7 +1,6 @@
 package com.xiyunmn.puredupan.hook.host.profiles.baidu
 
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
-import com.xiyunmn.puredupan.hook.config.model.MemberCardLayoutMode
 import com.xiyunmn.puredupan.hook.host.HomeCustomizeHookPoints
 import com.xiyunmn.puredupan.hook.host.HostCapabilities
 import com.xiyunmn.puredupan.hook.host.HostFeatureCapabilities
@@ -12,7 +11,6 @@ import com.xiyunmn.puredupan.hook.host.HostProfile
 import com.xiyunmn.puredupan.hook.host.HostSettingsCapabilities
 import com.xiyunmn.puredupan.hook.host.HostUiHookPoints
 import com.xiyunmn.puredupan.hook.host.features.baidu.BaiduFeatureSets
-import com.xiyunmn.puredupan.hook.symbols.baidu.samsung.BaiduSamsungHookPoints
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduSharedHookPoints
 
 internal val BaiduSamsungHostProfile = HostProfile(
@@ -39,7 +37,6 @@ internal val BaiduSamsungHostProfile = HostProfile(
         ),
         settings = HostSettingsCapabilities(
             primarySplashAdFeatureKey = FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL,
-            memberCardLayoutMode = MemberCardLayoutMode.BENEFIT_SLOT,
         ),
         uiHookPoints = HostUiHookPoints(
             mainActivityClassName = BaiduSharedHookPoints.MAIN_ACTIVITY,
@@ -57,10 +54,13 @@ internal val BaiduSamsungHostProfile = HostProfile(
                 BaiduSharedHookPoints.MAIN_ACTIVITY,
             ),
             homeCustomize = HomeCustomizeHookPoints(
-                feedFragmentClassNames = BaiduSamsungHookPoints.FEED_FRAGMENT_CLASSES,
-                storyCardViewClassNames = listOf(BaiduSamsungHookPoints.HOME_STORY_CARD_VIEW),
-                saveCardViewClassNames = BaiduSamsungHookPoints.HOME_SAVE_CARD_VIEWS,
-                recentCardViewClassNames = BaiduSamsungHookPoints.HOME_RECENT_CARD_VIEWS,
+                searchboxFragmentClassName = BaiduSharedHookPoints.HOME_SEARCHBOX_FRAGMENT,
+                home25aiContextCompanionClassName = BaiduSharedHookPoints.HOME25AI_CONTEXT_COMPANION,
+                loadHomeBannerMethodName = BaiduSharedHookPoints.HOME25AI_LOAD_HOME_BANNER_METHOD,
+                feedFragmentClassNames = BaiduSharedHookPoints.FEED_FRAGMENT_CLASSES,
+                storyCardViewClassNames = listOf(BaiduSharedHookPoints.HOME_STORY_CARD_VIEW),
+                saveCardViewClassNames = BaiduSharedHookPoints.HOME_SAVE_CARD_VIEWS,
+                recentCardViewClassNames = BaiduSharedHookPoints.HOME_RECENT_CARD_VIEWS,
             ),
         ),
     ),

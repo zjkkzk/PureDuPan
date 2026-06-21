@@ -22,7 +22,6 @@ import java.lang.ref.WeakReference
 import java.lang.reflect.Modifier
 
 internal object SamsungLaunchHandoffOptimizeHook {
-    private const val DEFAULT_MAIN_ACTIVITY_CLASS_NAME = BaiduSamsungHookPoints.DEFAULT_MAIN_ACTIVITY
     private const val NAVIGATE_CLASS_NAME = BaiduSamsungHookPoints.NAVIGATE_ACTIVITY
     private const val WINDOW_INSETS_CONTROLLER_COMPAT_CLASS_NAME = "androidx.core.view.WindowInsetsControllerCompat"
     private const val STARTUP_STATUS_BAR_STABILIZE_MS = 2500L
@@ -56,28 +55,17 @@ internal object SamsungLaunchHandoffOptimizeHook {
                 "setSystemUiVisibility",
                 Int::class.javaPrimitiveType!!,
             ).apply { isAccessible = true }
-            val defaultMainActivityClass = XposedCompat.findClassOrNull(DEFAULT_MAIN_ACTIVITY_CLASS_NAME, cl)
-                ?: throw ClassNotFoundException(DEFAULT_MAIN_ACTIVITY_CLASS_NAME)
             val navigateClass = XposedCompat.findClassOrNull(NAVIGATE_CLASS_NAME, cl)
                 ?: throw ClassNotFoundException(NAVIGATE_CLASS_NAME)
             val mainActivityClassName = currentMainActivityClassName()
                 ?: throw IllegalStateException("MainActivity host capability missing")
             val mainActivityClass = XposedCompat.findClassOrNull(mainActivityClassName, cl)
                 ?: throw ClassNotFoundException(mainActivityClassName)
-            val defaultOnCreateMethod = XposedCompat.findMethodOrNull(
-                defaultMainActivityClass,
-                "onCreate",
-                Bundle::class.java,
-            ) ?: throw NoSuchMethodException("$DEFAULT_MAIN_ACTIVITY_CLASS_NAME.onCreate")
             val navigateOnCreateMethod = XposedCompat.findMethodOrNull(
                 navigateClass,
                 "onCreate",
                 Bundle::class.java,
             ) ?: throw NoSuchMethodException("$NAVIGATE_CLASS_NAME.onCreate")
-            val defaultInitViewMethod = XposedCompat.findMethodOrNull(
-                defaultMainActivityClass,
-                "initView",
-            ) ?: throw NoSuchMethodException("$DEFAULT_MAIN_ACTIVITY_CLASS_NAME.initView")
             val navigateInitViewMethod = XposedCompat.findMethodOrNull(
                 navigateClass,
                 "initView",
@@ -101,27 +89,23 @@ internal object SamsungLaunchHandoffOptimizeHook {
                 Boolean::class.javaPrimitiveType!!,
             ) ?: throw NoSuchMethodException("$mainActivityClassName.onWindowFocusChanged")
 
-            listOf(defaultOnCreateMethod, navigateOnCreateMethod).forEach { method ->
-                mod.hook(method).intercept { chain ->
-                    val activity = chain.thisObject as? Activity
-                    stabilizeShellWindow(activity, "${activity.shortClassName()}.onCreate/before")
-                    val result = chain.proceed()
-                    stabilizeShellWindow(activity, "${activity.shortClassName()}.onCreate/after")
-                    result
-                }
+            mod.hook(navigateOnCreateMethod).intercept { chain ->
+                val activity = chain.thisObject as? Activity
+                stabilizeShellWindow(activity, "${activity.shortClassName()}.onCreate/before")
+                val result = chain.proceed()
+                stabilizeShellWindow(activity, "${activity.shortClassName()}.onCreate/after")
+                result
             }
-            listOf(defaultInitViewMethod, navigateInitViewMethod).forEach { method ->
-                mod.hook(method).intercept { chain ->
-                    val activity = chain.thisObject as? Activity
-                    enterShellInitView()
-                    try {
-                        stabilizeShellWindow(activity, "${activity.shortClassName()}.initView/before")
-                        val result = chain.proceed()
-                        stabilizeShellWindow(activity, "${activity.shortClassName()}.initView/after")
-                        result
-                    } finally {
-                        exitShellInitView()
-                    }
+            mod.hook(navigateInitViewMethod).intercept { chain ->
+                val activity = chain.thisObject as? Activity
+                enterShellInitView()
+                try {
+                    stabilizeShellWindow(activity, "${activity.shortClassName()}.initView/before")
+                    val result = chain.proceed()
+                    stabilizeShellWindow(activity, "${activity.shortClassName()}.initView/after")
+                    result
+                } finally {
+                    exitShellInitView()
                 }
             }
             if (navigateGetLayoutIdMethod != null) {
@@ -358,7 +342,7 @@ internal object SamsungLaunchHandoffOptimizeHook {
     private fun shouldStabilizeShellWindow(activity: Activity?): Boolean {
         if (!HookSettings.isSplashInterstitialBlockEnabled) return false
         val className = activity?.javaClass?.name ?: return false
-        return className == DEFAULT_MAIN_ACTIVITY_CLASS_NAME || className == NAVIGATE_CLASS_NAME
+        return className == NAVIGATE_CLASS_NAME
     }
 
     private fun stabilizeMainWindow(activity: Activity?, reason: String) {
