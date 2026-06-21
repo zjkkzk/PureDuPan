@@ -164,23 +164,32 @@ object BottomBarSimplifyFeature {
         runCatching {
             val aigcCloudTab = findViewByEntryName(activity, TAB_AIGC_CLOUD_ID)
             val aigcAfxTab = findViewByEntryName(activity, TAB_AIGC_AFX_ID)
-            val aigcSlotContainer = (aigcCloudTab?.parent as? View)
-                ?: (aigcAfxTab?.parent as? View)
-            val hadVisibleAigcSlot = aigcCloudTab.isShownOrVisible() || aigcAfxTab.isShownOrVisible()
+            val raisedBackground = findViewByEntryName(activity, TAB_AIGC_RAISED_BACKGROUND_ID)
+            val tabContainer = findViewByEntryName(activity, TAB_CONTAINER_ID) as? LinearLayout
+            val hasDedicatedAigcSlot = aigcAfxTab != null || raisedBackground != null
+            val aigcSlotContainer = if (hasDedicatedAigcSlot) {
+                ((aigcAfxTab?.parent as? View) ?: (aigcCloudTab?.parent as? View))
+                    ?.takeIf { it !== tabContainer }
+            } else {
+                null
+            }
+            val hadVisibleDedicatedAigcSlot = hasDedicatedAigcSlot &&
+                (aigcCloudTab.isShownOrVisible() ||
+                    aigcAfxTab.isShownOrVisible() ||
+                    raisedBackground.isShownOrVisible())
 
             hideTabView(aigcCloudTab)
             hideTabView(aigcAfxTab)
             hideTabView(aigcSlotContainer)
             hideTabView(findViewByEntryName(activity, TAB_AIGC_AFX_CLICK_AREA_ID))
             hideTabView(findViewByEntryName(activity, TAB_AIGC_HI_LOTTIE_ID))
-            hideTabView(findViewByEntryName(activity, TAB_AIGC_RAISED_BACKGROUND_ID))
+            hideTabView(raisedBackground)
 
-            if (hadVisibleAigcSlot) {
+            if (hadVisibleDedicatedAigcSlot) {
                 val resoureTab = findViewByEntryName(activity, TAB_DISCOVERY_ID)
                 hideTabView(resoureTab)
             }
 
-            val tabContainer = findViewByEntryName(activity, TAB_CONTAINER_ID) as? LinearLayout
             if (tabContainer != null) {
                 reflowLinearLayoutChildren(tabContainer)
             }
