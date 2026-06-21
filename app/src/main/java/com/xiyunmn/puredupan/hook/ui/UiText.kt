@@ -30,7 +30,7 @@ object UiText {
         const val BLOCK_NOTIFICATION_PROMPT_DESC = "拦截应用内消息通知引导弹窗"
 
         const val HIDE_HOME_TOP_PROMOTION_LABEL = "顶部动态推广"
-        const val HIDE_HOME_TOP_PROMOTION_DESC = "隐藏「首页」顶部搜索框区域的动态推广，并跳过对应启动期预加载"
+        const val HIDE_HOME_TOP_PROMOTION_DESC = "隐藏搜索框上方的动态推广控件"
         const val HOME_CUSTOMIZE_LABEL = "首页定制"
         const val HOME_CUSTOMIZE_DESC = "管理「首页」顶部搜索框、工具栏、动态推广和推荐提示"
         const val HIDE_HOME_SEARCH_PLACEHOLDER_LABEL = "搜索框提示词"

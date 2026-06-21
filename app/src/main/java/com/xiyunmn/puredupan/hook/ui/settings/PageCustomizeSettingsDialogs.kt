@@ -229,10 +229,6 @@ internal object PageCustomizeSettingsDialogs {
                     .visibleRows(rowsByKey)
             }
 
-            SettingsDialogLayout.addVisibleRows(
-                root,
-                visibleHomeRows(HomeCustomizeSettingsSection.TOP_PROMOTION),
-            )
             SettingsDialogLayout.addTitledSection(
                 root = root,
                 context = context,

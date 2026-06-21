@@ -23,6 +23,9 @@ object HomeCustomizeHook {
     private const val SEARCH_AIGC_ICON_ID = "searchbox_aigc_icon"
     private const val SEARCH_AIGC_VIDEO_ID = "searchbox_aigc_video"
     private const val SEARCH_AIGC_BORDER_ANIM_ID = "searchbox_border_anim_view"
+    private const val HOME25_TOP_CONTAINER_ID = "home25ai_v1"
+    private const val HOME25_CONTENT_ID = "home25ai_content"
+    private const val HOME25_SEARCHBOX_CONTENT_ID = "searchbox_content"
     private const val FEED_TIP_ID = "cl_feed_tip"
     private const val FEED_TIP_RECOMMENDATION_TEXT_ID = "recommendation_text"
     private const val FEED_TIP_HEADER_FIELD = "feedSettingTipViewHeader"
@@ -441,10 +444,20 @@ object HomeCustomizeHook {
         resources: android.content.res.Resources,
         packageName: String,
     ) {
+        var changed = false
+        var foundToolbar = false
         homeCustomizeHookPoints().toolbarViewIdNames.forEach { idName ->
-            hideViewByEntryName(root, resources, packageName, idName) {
+            val id = resources.getIdentifier(idName, "id", packageName)
+            if (id == 0) return@forEach
+            val view = root.findViewById<View>(id) ?: return@forEach
+            foundToolbar = true
+            if (collapseView(view)) {
+                changed = true
                 XposedCompat.logD("[HomeCustomizeHook] home toolbar hidden by id: $idName")
             }
+        }
+        if (foundToolbar || changed) {
+            collapseHome25ContentOffset(root, resources, packageName)
         }
     }
 
@@ -655,6 +668,78 @@ object HomeCustomizeHook {
         view.isClickable = false
         (view.parent as? ViewGroup)?.requestLayout()
         return true
+    }
+
+    private fun collapseView(view: View?): Boolean {
+        if (view == null) return false
+        var changed = hideView(view)
+
+        if (view.minimumHeight != 0) {
+            view.minimumHeight = 0
+            changed = true
+        }
+        if (view.paddingLeft != 0 || view.paddingTop != 0 || view.paddingRight != 0 || view.paddingBottom != 0) {
+            view.setPadding(0, 0, 0, 0)
+            changed = true
+        }
+
+        val params = view.layoutParams
+        if (params != null) {
+            if (params.height != 0) {
+                params.height = 0
+                changed = true
+            }
+            if (params is ViewGroup.MarginLayoutParams) {
+                if (
+                    params.leftMargin != 0 ||
+                    params.topMargin != 0 ||
+                    params.rightMargin != 0 ||
+                    params.bottomMargin != 0
+                ) {
+                    params.setMargins(0, 0, 0, 0)
+                    changed = true
+                }
+            }
+            if (changed) {
+                view.layoutParams = params
+            }
+        }
+
+        if (changed) {
+            view.requestLayout()
+            (view.parent as? ViewGroup)?.requestLayout()
+        }
+        return changed
+    }
+
+    private fun collapseHome25ContentOffset(
+        root: View,
+        resources: android.content.res.Resources,
+        packageName: String,
+    ) {
+        val contentId = resources.getIdentifier(HOME25_CONTENT_ID, "id", packageName)
+        val topContainerId = resources.getIdentifier(HOME25_TOP_CONTAINER_ID, "id", packageName)
+        val searchboxId = resources.getIdentifier(HOME25_SEARCHBOX_CONTENT_ID, "id", packageName)
+        if (contentId == 0 || topContainerId == 0 || searchboxId == 0) return
+
+        val content = root.findViewById<View>(contentId) ?: return
+        val topContainer = root.findViewById<View>(topContainerId) ?: return
+        val searchbox = root.findViewById<View>(searchboxId) ?: return
+
+        fun adjustContentOffset() {
+            val targetTranslationY = searchbox.bottom + topContainer.paddingBottom
+            if (targetTranslationY <= 0) return
+            if (content.translationY != targetTranslationY.toFloat()) {
+                content.translationY = targetTranslationY.toFloat()
+                content.requestLayout()
+                (content.parent as? ViewGroup)?.requestLayout()
+                XposedCompat.logD("[HomeCustomizeHook] home content offset collapsed: $targetTranslationY")
+            }
+        }
+
+        topContainer.requestLayout()
+        adjustContentOffset()
+        content.post { adjustContentOffset() }
     }
 
     private fun hideViewByEntryName(

@@ -5,7 +5,6 @@ import com.xiyunmn.puredupan.hook.settings.registry.SettingsUserState
 import com.xiyunmn.puredupan.hook.ui.UiText
 
 internal enum class HomeCustomizeSettingsSection {
-    TOP_PROMOTION,
     TOP_WIDGET,
     CONTENT_SECTION,
 }
@@ -28,7 +27,7 @@ internal object HomeCustomizeSettingsRegistry {
             SettingsUserState.KEY_HIDE_HOME_TOP_PROMOTION,
             UiText.Settings.HIDE_HOME_TOP_PROMOTION_LABEL,
             UiText.Settings.HIDE_HOME_TOP_PROMOTION_DESC,
-            HomeCustomizeSettingsSection.TOP_PROMOTION,
+            HomeCustomizeSettingsSection.TOP_WIDGET,
             SettingsUserState::readHomeTopPromotionHidden,
         ),
         booleanSpec(
@@ -62,9 +61,9 @@ internal object HomeCustomizeSettingsRegistry {
             HomeCustomizeSettingsSection.TOP_WIDGET,
         ),
         booleanSpec(
-            SettingsUserState.KEY_HIDE_HOME_MEMORIES_SECTION,
-            UiText.Settings.HIDE_HOME_MEMORIES_SECTION_LABEL,
-            UiText.Settings.HIDE_HOME_MEMORIES_SECTION_DESC,
+            SettingsUserState.KEY_HIDE_HOME_RECENT_SECTION,
+            UiText.Settings.HIDE_HOME_RECENT_SECTION_LABEL,
+            UiText.Settings.HIDE_HOME_RECENT_SECTION_DESC,
             HomeCustomizeSettingsSection.CONTENT_SECTION,
         ),
         booleanSpec(
@@ -74,9 +73,9 @@ internal object HomeCustomizeSettingsRegistry {
             HomeCustomizeSettingsSection.CONTENT_SECTION,
         ),
         booleanSpec(
-            SettingsUserState.KEY_HIDE_HOME_RECENT_SECTION,
-            UiText.Settings.HIDE_HOME_RECENT_SECTION_LABEL,
-            UiText.Settings.HIDE_HOME_RECENT_SECTION_DESC,
+            SettingsUserState.KEY_HIDE_HOME_MEMORIES_SECTION,
+            UiText.Settings.HIDE_HOME_MEMORIES_SECTION_LABEL,
+            UiText.Settings.HIDE_HOME_MEMORIES_SECTION_DESC,
             HomeCustomizeSettingsSection.CONTENT_SECTION,
         ),
     )
