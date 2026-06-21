@@ -45,6 +45,16 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             feature = "搜索页智能推荐",
         ),
         DexKitTargetDescriptor(
+            id = BaiduIntlSearchPageHookPoints.SEARCH_HINT_CONTAINER_CACHE_ID,
+            target = "intl search hint container composable",
+            feature = "搜索页智能推荐",
+        ),
+        DexKitTargetDescriptor(
+            id = BaiduIntlSearchPageHookPoints.MAIN_SEARCH_BAR_CACHE_ID,
+            target = "intl main search bar composable",
+            feature = "搜索页搜索框提示词",
+        ),
+        DexKitTargetDescriptor(
             id = BaiduIntlSearchPageHookPoints.searchDefaultContentHelperCacheIds[0].second,
             target = "intl legacy search placeholder display method",
             feature = "搜索页搜索框提示词",
@@ -85,6 +95,12 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             }
             tasks += DexKitWarmUpTask(BaiduIntlSearchPageHookPoints.SEARCH_AI_RECOMMEND_CARD_CACHE_ID) {
                 IntlSearchPageCustomizeHook.warmUpSearchAiRecommendCardCache(classLoader)
+            }
+            tasks += DexKitWarmUpTask(BaiduIntlSearchPageHookPoints.SEARCH_HINT_CONTAINER_CACHE_ID) {
+                IntlSearchPageCustomizeHook.warmUpSearchHintContainerCache(classLoader)
+            }
+            tasks += DexKitWarmUpTask(BaiduIntlSearchPageHookPoints.MAIN_SEARCH_BAR_CACHE_ID) {
+                IntlSearchPageCustomizeHook.warmUpMainSearchBarCache(classLoader)
             }
             BaiduIntlSearchPageHookPoints.searchDefaultContentHelperCacheIds.forEach { (_, cacheId) ->
                 tasks += DexKitWarmUpTask(cacheId) {
