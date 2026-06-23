@@ -1,5 +1,6 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.shared.ad
 
+import android.content.Context
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.HookUtils
@@ -10,6 +11,11 @@ import java.lang.reflect.Method
 
 internal object NonWifiDownloadDialogBlockHook {
     private val hookState = HookState()
+
+    private data class RestartSchedulersInvoker(
+        val target: Any,
+        val method: Method,
+    )
 
     internal fun hook(cl: ClassLoader) {
         if (!HookSettings.isNonWifiDownloadDialogBlocked) {
@@ -28,12 +34,14 @@ internal object NonWifiDownloadDialogBlockHook {
                 return
             }
             val wifiOnlyConfigMethod = findSetWifiOnlyConfigMethod(cl)
+            val restartSchedulersInvoker = findRestartSchedulersInvoker(cl)
 
             var installed = 0
             installed += hookDialogMethods(
                 cl = cl,
                 listenerClass = listenerClass,
                 wifiOnlyConfigMethod = wifiOnlyConfigMethod,
+                restartSchedulersInvoker = restartSchedulersInvoker,
                 className = BaiduTransferHookPoints.TRANSFER_CONTEXT_COMPANION,
                 tagPrefix = "TransferContext.Companion",
             )
@@ -41,6 +49,7 @@ internal object NonWifiDownloadDialogBlockHook {
                 cl = cl,
                 listenerClass = listenerClass,
                 wifiOnlyConfigMethod = wifiOnlyConfigMethod,
+                restartSchedulersInvoker = restartSchedulersInvoker,
                 className = BaiduTransferHookPoints.TRANSFER_APIS,
                 tagPrefix = "TransferApis",
             )
@@ -48,6 +57,7 @@ internal object NonWifiDownloadDialogBlockHook {
                 cl = cl,
                 listenerClass = listenerClass,
                 wifiOnlyConfigMethod = wifiOnlyConfigMethod,
+                restartSchedulersInvoker = restartSchedulersInvoker,
                 className = BaiduTransferHookPoints.FLOW_ALERT_DIALOG_MANAGER,
                 tagPrefix = "FlowAlertDialogManager",
             )
@@ -77,6 +87,7 @@ internal object NonWifiDownloadDialogBlockHook {
         cl: ClassLoader,
         listenerClass: Class<*>,
         wifiOnlyConfigMethod: Method?,
+        restartSchedulersInvoker: RestartSchedulersInvoker?,
         className: String,
         tagPrefix: String,
     ): Int {
@@ -85,6 +96,7 @@ internal object NonWifiDownloadDialogBlockHook {
             cl = cl,
             listenerClass = listenerClass,
             wifiOnlyConfigMethod = wifiOnlyConfigMethod,
+            restartSchedulersInvoker = restartSchedulersInvoker,
             className = className,
             methodName = BaiduTransferHookPoints.SHOW_NON_WIFI_ALERT_DOWNLOAD_DIALOG_METHOD,
             tag = "$tagPrefix.showNonWiFiAlertDownloadDialog",
@@ -93,6 +105,7 @@ internal object NonWifiDownloadDialogBlockHook {
             cl = cl,
             listenerClass = listenerClass,
             wifiOnlyConfigMethod = wifiOnlyConfigMethod,
+            restartSchedulersInvoker = restartSchedulersInvoker,
             className = className,
             methodName = BaiduTransferHookPoints.SHOW_NON_WIFI_ALERT_DOWNLOAD_BOTTOM_DIALOG_METHOD,
             tag = "$tagPrefix.showNonWiFiAlertDownloadBottomDialog",
@@ -104,6 +117,7 @@ internal object NonWifiDownloadDialogBlockHook {
         cl: ClassLoader,
         listenerClass: Class<*>,
         wifiOnlyConfigMethod: Method?,
+        restartSchedulersInvoker: RestartSchedulersInvoker?,
         className: String,
         methodName: String,
         tag: String,
@@ -124,7 +138,7 @@ internal object NonWifiDownloadDialogBlockHook {
             }
 
             val listener = chain.args.firstOrNull()
-            if (confirmDownload(listener, wifiOnlyConfigMethod, tag)) {
+            if (confirmDownload(listener, wifiOnlyConfigMethod, restartSchedulersInvoker, chain.thisObject, tag)) {
                 HookUtils.getDefaultReturnValue(method.returnType)
             } else {
                 chain.proceed()
@@ -133,9 +147,16 @@ internal object NonWifiDownloadDialogBlockHook {
         return 1
     }
 
-    private fun confirmDownload(listener: Any?, wifiOnlyConfigMethod: Method?, tag: String): Boolean {
+    private fun confirmDownload(
+        listener: Any?,
+        wifiOnlyConfigMethod: Method?,
+        restartSchedulersInvoker: RestartSchedulersInvoker?,
+        managerObject: Any?,
+        tag: String,
+    ): Boolean {
         if (listener == null) {
             allowMobileDataDownload(wifiOnlyConfigMethod, tag)
+            restartTransferSchedulers(restartSchedulersInvoker, managerObject, null, tag)
             XposedCompat.logD("[NonWifiDownloadDialogBlockHook] $tag skipped with null listener")
             return true
         }
@@ -151,9 +172,11 @@ internal object NonWifiDownloadDialogBlockHook {
         return try {
             allowMobileDataDownload(wifiOnlyConfigMethod, tag)
             onOkMethod.invoke(listener)
+            restartTransferSchedulers(restartSchedulersInvoker, managerObject, listener, tag)
             XposedCompat.logD("[NonWifiDownloadDialogBlockHook] $tag confirmed without dialog")
             true
         } catch (e: InvocationTargetException) {
+            restartTransferSchedulers(restartSchedulersInvoker, managerObject, listener, tag)
             XposedCompat.logE(
                 "[NonWifiDownloadDialogBlockHook] onOkBtnClick threw in $tag: " +
                     "${e.targetException?.javaClass?.simpleName}: ${e.targetException?.message}",
@@ -185,6 +208,33 @@ internal object NonWifiDownloadDialogBlockHook {
         }
     }
 
+    private fun findRestartSchedulersInvoker(cl: ClassLoader): RestartSchedulersInvoker? {
+        val clazz = XposedCompat.findClassOrNull(BaiduTransferHookPoints.MAIN_CREATE_OBJECT_API, cl)
+            ?: run {
+                XposedCompat.logD("[NonWifiDownloadDialogBlockHook] MCreateObjectApi class not found")
+                return null
+            }
+        val method = XposedCompat.findMethodOrNull(
+            clazz,
+            BaiduTransferHookPoints.RESTART_SCHEDULERS_METHOD,
+            Context::class.java,
+        )?.apply { isAccessible = true } ?: run {
+            XposedCompat.logW("[NonWifiDownloadDialogBlockHook] restartSchedulers(Context) not found")
+            return null
+        }
+
+        return try {
+            val constructor = clazz.getDeclaredConstructor().apply { isAccessible = true }
+            RestartSchedulersInvoker(constructor.newInstance(), method)
+        } catch (e: ReflectiveOperationException) {
+            XposedCompat.logW(
+                "[NonWifiDownloadDialogBlockHook] create MCreateObjectApi failed: " +
+                    "${e.javaClass.simpleName}: ${e.message}",
+            )
+            null
+        }
+    }
+
     private fun allowMobileDataDownload(method: Method?, tag: String) {
         if (method == null) return
         try {
@@ -201,6 +251,110 @@ internal object NonWifiDownloadDialogBlockHook {
                     "${e.javaClass.simpleName}: ${e.message}",
             )
         }
+    }
+
+    private fun restartTransferSchedulers(
+        invoker: RestartSchedulersInvoker?,
+        managerObject: Any?,
+        listener: Any?,
+        tag: String,
+    ): Boolean {
+        if (restartSchedulersByProvider(invoker, managerObject, listener, tag)) return true
+        if (restartSchedulersByManager(managerObject, tag)) return true
+
+        XposedCompat.logW("[NonWifiDownloadDialogBlockHook] restart schedulers unavailable for $tag")
+        return false
+    }
+
+    private fun restartSchedulersByProvider(
+        invoker: RestartSchedulersInvoker?,
+        managerObject: Any?,
+        listener: Any?,
+        tag: String,
+    ): Boolean {
+        if (invoker == null) return false
+        val context = resolveHostContext(managerObject, listener) ?: run {
+            XposedCompat.logW("[NonWifiDownloadDialogBlockHook] host context unavailable for $tag")
+            return false
+        }
+        return try {
+            invoker.method.invoke(invoker.target, context)
+            XposedCompat.logD("[NonWifiDownloadDialogBlockHook] $tag restarted transfer schedulers")
+            true
+        } catch (e: InvocationTargetException) {
+            XposedCompat.logW(
+                "[NonWifiDownloadDialogBlockHook] restartSchedulers threw in $tag: " +
+                    "${e.targetException?.javaClass?.simpleName}: ${e.targetException?.message}",
+            )
+            false
+        } catch (e: ReflectiveOperationException) {
+            XposedCompat.logW(
+                "[NonWifiDownloadDialogBlockHook] restartSchedulers failed in $tag: " +
+                    "${e.javaClass.simpleName}: ${e.message}",
+            )
+            false
+        }
+    }
+
+    private fun restartSchedulersByManager(managerObject: Any?, tag: String): Boolean {
+        if (managerObject == null) return false
+        val method = findNoArgMethodInHierarchy(
+            managerObject.javaClass,
+            BaiduTransferHookPoints.RESTART_SCHEDULERS_METHOD,
+        ) ?: return false
+
+        return try {
+            method.invoke(managerObject)
+            XposedCompat.logD("[NonWifiDownloadDialogBlockHook] $tag restarted schedulers via manager")
+            true
+        } catch (e: InvocationTargetException) {
+            XposedCompat.logW(
+                "[NonWifiDownloadDialogBlockHook] manager restart threw in $tag: " +
+                    "${e.targetException?.javaClass?.simpleName}: ${e.targetException?.message}",
+            )
+            false
+        } catch (e: ReflectiveOperationException) {
+            XposedCompat.logW(
+                "[NonWifiDownloadDialogBlockHook] manager restart failed in $tag: " +
+                    "${e.javaClass.simpleName}: ${e.message}",
+            )
+            false
+        }
+    }
+
+    private fun resolveHostContext(managerObject: Any?, listener: Any?): Context? {
+        currentApplicationContext()?.let { return it }
+        findContextField(managerObject)?.let { return it }
+        return findContextField(listener)
+    }
+
+    private fun currentApplicationContext(): Context? {
+        return runCatching {
+            val activityThread = Class.forName("android.app.ActivityThread")
+            val method = activityThread.getDeclaredMethod("currentApplication").apply { isAccessible = true }
+            val context = method.invoke(null) as? Context
+            context?.applicationContext ?: context
+        }.getOrNull()
+    }
+
+    private fun findContextField(instance: Any?): Context? {
+        if (instance == null) return null
+
+        var current: Class<*>? = instance.javaClass
+        while (current != null) {
+            for (field in current.declaredFields) {
+                if (!Context::class.java.isAssignableFrom(field.type)) continue
+                val context = runCatching {
+                    field.isAccessible = true
+                    field.get(instance) as? Context
+                }.getOrNull()
+                if (context != null) {
+                    return context.applicationContext ?: context
+                }
+            }
+            current = current.superclass
+        }
+        return null
     }
 
     private fun findNoArgMethodInHierarchy(clazz: Class<*>, name: String): Method? {
