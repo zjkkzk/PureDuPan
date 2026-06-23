@@ -15,10 +15,6 @@ import org.luckypray.dexkit.query.matchers.MethodMatcher
 internal object IntlNonCoreDiffSocketDelayHook {
     const val SOCKET_REGISTER_CACHE_ID = "intl_non_core_diff_socket_register"
 
-    // Current-version compatibility path only. The class name is verified with
-    // action constants and method shape before use, and DexKit can resolve it
-    // semantically when the obfuscated name changes.
-    private const val SOCKET_MANAGER_CLASS_NAME = BaiduIntlSocketHookPoints.SOCKET_MANAGER_COMPAT_CLASS
     private const val KOTLIN_FUNCTION1_CLASS_NAME = "kotlin.jvm.functions.Function1"
     private const val HOME_STABLE_RESTORE_DELAY_MS = 2500L
 
@@ -154,35 +150,6 @@ internal object IntlNonCoreDiffSocketDelayHook {
 
     private fun resolveSocketRegisterMethod(cl: ClassLoader): Method? {
         return resolveSocketRegisterMethodWithDexKit(cl)
-            ?: resolveSocketRegisterMethodByKnownClass(cl)
-    }
-
-    private fun resolveSocketRegisterMethodByKnownClass(cl: ClassLoader): Method? {
-        val socketManagerClass = XposedCompat.findClassOrNull(SOCKET_MANAGER_CLASS_NAME, cl) ?: return null
-        if (!isExpectedSocketManagerClass(socketManagerClass)) {
-            XposedCompat.logW("[IntlNonCoreDiffSocketDelayHook] socket manager signature mismatch")
-            return null
-        }
-
-        val candidates = socketManagerClass.declaredMethods.filter { method ->
-            !Modifier.isStatic(method.modifiers) &&
-                method.returnType == Void.TYPE &&
-                method.parameterTypes.size == 2 &&
-                method.parameterTypes[0] == String::class.java &&
-                method.parameterTypes[1].name == KOTLIN_FUNCTION1_CLASS_NAME
-        }
-        if (candidates.isEmpty()) {
-            XposedCompat.logW("[IntlNonCoreDiffSocketDelayHook] socket register method candidate not found")
-            return null
-        }
-        if (candidates.size > 1) {
-            XposedCompat.logW(
-                "[IntlNonCoreDiffSocketDelayHook] ambiguous socket register method: " +
-                    candidates.joinToString { "${it.name}(${it.parameterTypes.joinToString { type -> type.name }})" },
-            )
-            return null
-        }
-        return candidates.single().apply { isAccessible = true }
     }
 
     private fun resolveSocketRegisterMethodWithDexKit(cl: ClassLoader): Method? {
@@ -405,10 +372,6 @@ internal object IntlNonCoreDiffSocketDelayHook {
         )
     }
 
-    private fun allActionsRestored(): Boolean = synchronized(lock) {
-        actionStates.values.all { it.restored || !it.skipped }
-    }
-
     private fun restoreAllPending(reason: String) {
         actionStates.keys.forEach { action ->
             restoreActionIfPending(action, reason)
@@ -459,7 +422,9 @@ internal object IntlNonCoreDiffSocketDelayHook {
     }
 
     private fun isEnabled(): Boolean =
-        HookSettings.isPerformanceOptimizeEnabled && HookSettings.isIntlNonCoreDiffSocketDelayed
+        HookSettings.isPerformanceOptimizeEnabled &&
+            HookSettings.isExperimentalDexKitEnabled &&
+            HookSettings.isIntlNonCoreDiffSocketDelayed
 
     private const val TAG = "IntlNonCoreDiffSocketDelayHook"
 }

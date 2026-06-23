@@ -1,7 +1,6 @@
 package com.xiyunmn.puredupan.hook.symbols.baidu.intl
 
 internal object BaiduIntlSocketHookPoints {
-    const val SOCKET_MANAGER_COMPAT_CLASS = "com.baidu.netdisk.socket.____"
     const val SOCKET_PACKAGE_PREFIX = "com.baidu.netdisk.socket."
 
     const val CLOUD_FILE_DIFF_ACTION = "cloudfile_diff_action"

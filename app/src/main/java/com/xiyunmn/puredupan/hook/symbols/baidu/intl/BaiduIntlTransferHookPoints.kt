@@ -16,14 +16,19 @@ internal object BaiduIntlTransferHookPoints {
         "com.baidu.netdisk.ui.manager.DialogCtrListener"
     const val KOTLIN_FUNCTION0 =
         "kotlin.jvm.functions.Function0"
-    const val NET_CONFIG_UTIL =
-        "com.baidu.netdisk.base.utils.NetConfigUtil"
     const val MAIN_CREATE_OBJECT_API =
         "com.baidu.netdisk.main.provider.MCreateObjectApi"
+    const val NETDISK_SERVICE =
+        "com.baidu.netdisk.service.NetdiskService"
     const val WIFI_ONLY_TRANSFER_ACTION =
         "com.baidu.netdisk.plugins.ACTION_WIFI_DOWNLOAD_ONLY"
     const val WIFI_ONLY_TRANSFER_EXTRA =
         "com.baidu.netdisk.plugins.EXTRA_DOWNLOAD_WIFI_ONLY_STATE"
+    const val TRANSFER_ACTION_RESTART_SCHEDULERS =
+        "com.baidu.netdisk.ACTION_RESTART_SCHEDULERS"
+    const val TRANSFER_ACTION_RESET_SCHEDULERS =
+        "com.baidu.netdisk.ACTION_RESET_SCHEDULERS"
+    const val USE_TRAFFIC_BUTTON_ID_NAME = "bt_use_traffic"
 
     const val SHOW_NON_WIFI_ALERT_DOWNLOAD_DIALOG_METHOD =
         "showNonWiFiAlertDownloadDialog"
@@ -33,7 +38,6 @@ internal object BaiduIntlTransferHookPoints {
     const val FLOW_ALERT_SET_TYPE_METHOD = "setType"
     const val FLOW_ALERT_SET_ON_CLICK_USE_TRAFFIC_METHOD = "setOnClickUseTraffic"
     const val FUNCTION0_INVOKE_METHOD = "invoke"
-    const val SET_WIFI_ONLY_CHECKED_CONFIG_METHOD = "setWiFiOnlyCheckedConfig"
     const val RESTART_SCHEDULERS_METHOD = "restartSchedulers"
     const val SHOW_METHOD = "show"
 }

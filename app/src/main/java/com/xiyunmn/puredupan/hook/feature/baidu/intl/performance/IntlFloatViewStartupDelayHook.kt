@@ -262,10 +262,6 @@ internal object IntlFloatViewStartupDelayHook {
         )
     }
 
-    private fun allChainsRestored(): Boolean = synchronized(lock) {
-        chainStates.values.all { it.restored || !it.skipped }
-    }
-
     private fun restoreAllPending(reason: String) {
         Chain.values().forEach { chain ->
             restoreChainIfPending(chain, reason)

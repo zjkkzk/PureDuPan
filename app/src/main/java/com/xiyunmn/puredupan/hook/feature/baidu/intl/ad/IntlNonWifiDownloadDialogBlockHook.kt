@@ -1,7 +1,9 @@
 package com.xiyunmn.puredupan.hook.feature.baidu.intl.ad
 
+import android.app.Dialog
 import android.content.Context
 import android.content.Intent
+import android.view.View
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.core.HookUtils
@@ -20,6 +22,9 @@ internal object IntlNonWifiDownloadDialogBlockHook {
     private val hookState = HookState()
     private val flowAlertDialogTypes = Collections.synchronizedMap(WeakHashMap<Any, Int>())
     private val flowAlertUseTrafficListeners = Collections.synchronizedMap(WeakHashMap<Any, Any>())
+    private val flowAlertConfirmedDialogs = Collections.synchronizedSet(
+        Collections.newSetFromMap(WeakHashMap<Any, Boolean>()),
+    )
 
     private data class RestartSchedulersInvoker(
         val target: Any,
@@ -42,11 +47,9 @@ internal object IntlNonWifiDownloadDialogBlockHook {
                 XposedCompat.log("[IntlNonWifiDownloadDialogBlockHook] DialogCtrListener class NOT FOUND")
                 return
             }
-            val wifiOnlyConfigMethod = findSetWifiOnlyConfigMethod(cl)
             val restartSchedulersInvoker = findRestartSchedulersInvoker(cl)
             val flowAlertDialogPathInstalled = hookFlowAlertTransferFileDialog(
                 cl = cl,
-                wifiOnlyConfigMethod = wifiOnlyConfigMethod,
                 restartSchedulersInvoker = restartSchedulersInvoker,
             )
 
@@ -54,7 +57,6 @@ internal object IntlNonWifiDownloadDialogBlockHook {
             installed += hookDialogMethods(
                 cl = cl,
                 listenerClass = listenerClass,
-                wifiOnlyConfigMethod = wifiOnlyConfigMethod,
                 restartSchedulersInvoker = restartSchedulersInvoker,
                 flowAlertDialogPathInstalled = flowAlertDialogPathInstalled,
                 className = BaiduIntlTransferHookPoints.TRANSFER_CONTEXT_COMPANION,
@@ -63,7 +65,6 @@ internal object IntlNonWifiDownloadDialogBlockHook {
             installed += hookDialogMethods(
                 cl = cl,
                 listenerClass = listenerClass,
-                wifiOnlyConfigMethod = wifiOnlyConfigMethod,
                 restartSchedulersInvoker = restartSchedulersInvoker,
                 flowAlertDialogPathInstalled = flowAlertDialogPathInstalled,
                 className = BaiduIntlTransferHookPoints.TRANSFER_APIS,
@@ -72,7 +73,6 @@ internal object IntlNonWifiDownloadDialogBlockHook {
             installed += hookDialogMethods(
                 cl = cl,
                 listenerClass = listenerClass,
-                wifiOnlyConfigMethod = wifiOnlyConfigMethod,
                 restartSchedulersInvoker = restartSchedulersInvoker,
                 flowAlertDialogPathInstalled = flowAlertDialogPathInstalled,
                 className = BaiduIntlTransferHookPoints.FLOW_ALERT_DIALOG_MANAGER,
@@ -106,7 +106,6 @@ internal object IntlNonWifiDownloadDialogBlockHook {
     private fun hookDialogMethods(
         cl: ClassLoader,
         listenerClass: Class<*>,
-        wifiOnlyConfigMethod: Method?,
         restartSchedulersInvoker: RestartSchedulersInvoker?,
         flowAlertDialogPathInstalled: Boolean,
         className: String,
@@ -116,7 +115,6 @@ internal object IntlNonWifiDownloadDialogBlockHook {
         installed += hookDialogMethod(
             cl = cl,
             listenerClass = listenerClass,
-            wifiOnlyConfigMethod = wifiOnlyConfigMethod,
             restartSchedulersInvoker = restartSchedulersInvoker,
             flowAlertDialogPathInstalled = flowAlertDialogPathInstalled,
             className = className,
@@ -126,7 +124,6 @@ internal object IntlNonWifiDownloadDialogBlockHook {
         installed += hookDialogMethod(
             cl = cl,
             listenerClass = listenerClass,
-            wifiOnlyConfigMethod = wifiOnlyConfigMethod,
             restartSchedulersInvoker = restartSchedulersInvoker,
             flowAlertDialogPathInstalled = flowAlertDialogPathInstalled,
             className = className,
@@ -139,7 +136,6 @@ internal object IntlNonWifiDownloadDialogBlockHook {
     private fun hookDialogMethod(
         cl: ClassLoader,
         listenerClass: Class<*>,
-        wifiOnlyConfigMethod: Method?,
         restartSchedulersInvoker: RestartSchedulersInvoker?,
         flowAlertDialogPathInstalled: Boolean,
         className: String,
@@ -169,7 +165,7 @@ internal object IntlNonWifiDownloadDialogBlockHook {
             }
 
             val listener = chain.args.firstOrNull()
-            if (confirmDownload(listener, wifiOnlyConfigMethod, restartSchedulersInvoker, chain.thisObject, tag)) {
+            if (confirmDownload(listener, restartSchedulersInvoker, chain.thisObject, tag)) {
                 HookUtils.getDefaultReturnValue(method.returnType)
             } else {
                 chain.proceed()
@@ -180,7 +176,6 @@ internal object IntlNonWifiDownloadDialogBlockHook {
 
     private fun hookFlowAlertTransferFileDialog(
         cl: ClassLoader,
-        wifiOnlyConfigMethod: Method?,
         restartSchedulersInvoker: RestartSchedulersInvoker?,
     ): Boolean {
         val mod = XposedCompat.module ?: return false
@@ -239,6 +234,17 @@ internal object IntlNonWifiDownloadDialogBlockHook {
             val listener = chain.args.firstOrNull()
             if (dialog != null && listener != null) {
                 flowAlertUseTrafficListeners[dialog] = listener
+                if (
+                    HookSettings.isNonWifiDownloadDialogBlocked &&
+                    flowAlertDialogType(dialog) == FLOW_ALERT_DOWNLOAD_TYPE
+                ) {
+                    confirmFlowAlertUseTraffic(
+                        listener = listener,
+                        restartSchedulersInvoker = restartSchedulersInvoker,
+                        dialog = dialog,
+                        tag = "FlowAlertTransferFileDialog.setOnClickUseTraffic",
+                    )
+                }
             }
             result
         }
@@ -252,8 +258,17 @@ internal object IntlNonWifiDownloadDialogBlockHook {
                 return@intercept chain.proceed()
             }
 
+            if (isFlowAlertConfirmed(dialog)) {
+                removeFlowAlertDialogState(dialog)
+                XposedCompat.logD(
+                    "[IntlNonWifiDownloadDialogBlockHook] FlowAlertTransferFileDialog.show " +
+                        "suppressed after use-traffic auto click",
+                )
+                return@intercept HookUtils.getDefaultReturnValue(showMethod.returnType)
+            }
+
             val listener = removeFlowAlertUseTrafficListener(dialog)
-            removeFlowAlertDialogType(dialog)
+            removeFlowAlertDialogState(dialog)
             if (listener == null) {
                 XposedCompat.logW(
                     "[IntlNonWifiDownloadDialogBlockHook] FlowAlertTransferFileDialog.show " +
@@ -265,9 +280,9 @@ internal object IntlNonWifiDownloadDialogBlockHook {
             if (
                 confirmFlowAlertUseTraffic(
                     listener = listener,
-                    wifiOnlyConfigMethod = wifiOnlyConfigMethod,
                     restartSchedulersInvoker = restartSchedulersInvoker,
                     dialog = dialog,
+                    tag = "FlowAlertTransferFileDialog.show",
                 )
             ) {
                 HookUtils.getDefaultReturnValue(showMethod.returnType)
@@ -282,10 +297,23 @@ internal object IntlNonWifiDownloadDialogBlockHook {
 
     private fun confirmFlowAlertUseTraffic(
         listener: Any,
-        wifiOnlyConfigMethod: Method?,
         restartSchedulersInvoker: RestartSchedulersInvoker?,
         dialog: Any,
+        tag: String,
     ): Boolean {
+        if (isFlowAlertConfirmed(dialog)) {
+            XposedCompat.logD("[IntlNonWifiDownloadDialogBlockHook] $tag already confirmed by use-traffic path")
+            return true
+        }
+
+        allowMobileDataDownload(tag, dialog, listener)
+        if (performUseTrafficClick(dialog, tag)) {
+            markFlowAlertConfirmed(dialog)
+            restartTransferSchedulers(restartSchedulersInvoker, dialog, listener, tag)
+            XposedCompat.logD("[IntlNonWifiDownloadDialogBlockHook] $tag confirmed by bt_use_traffic click")
+            return true
+        }
+
         val invokeMethod = findNoArgMethodInHierarchy(
             listener.javaClass,
             BaiduIntlTransferHookPoints.FUNCTION0_INVOKE_METHOD,
@@ -293,11 +321,10 @@ internal object IntlNonWifiDownloadDialogBlockHook {
             XposedCompat.logW("[IntlNonWifiDownloadDialogBlockHook] Function0.invoke not found")
             return false
         }
-        val tag = "FlowAlertTransferFileDialog.show"
 
         return try {
-            allowMobileDataDownload(wifiOnlyConfigMethod, tag)
             invokeMethod.invoke(listener)
+            markFlowAlertConfirmed(dialog)
             restartTransferSchedulers(restartSchedulersInvoker, dialog, listener, tag)
             XposedCompat.logD("[IntlNonWifiDownloadDialogBlockHook] $tag confirmed by use-traffic listener")
             true
@@ -329,15 +356,28 @@ internal object IntlNonWifiDownloadDialogBlockHook {
         return flowAlertUseTrafficListeners.remove(dialog)
     }
 
+    private fun markFlowAlertConfirmed(dialog: Any) {
+        flowAlertConfirmedDialogs.add(dialog)
+    }
+
+    private fun isFlowAlertConfirmed(dialog: Any): Boolean {
+        return flowAlertConfirmedDialogs.contains(dialog)
+    }
+
+    private fun removeFlowAlertDialogState(dialog: Any) {
+        removeFlowAlertDialogType(dialog)
+        removeFlowAlertUseTrafficListener(dialog)
+        flowAlertConfirmedDialogs.remove(dialog)
+    }
+
     private fun confirmDownload(
         listener: Any?,
-        wifiOnlyConfigMethod: Method?,
         restartSchedulersInvoker: RestartSchedulersInvoker?,
         managerObject: Any?,
         tag: String,
     ): Boolean {
         if (listener == null) {
-            allowMobileDataDownload(wifiOnlyConfigMethod, tag)
+            allowMobileDataDownload(tag, managerObject, null)
             restartTransferSchedulers(restartSchedulersInvoker, managerObject, null, tag)
             XposedCompat.logD("[IntlNonWifiDownloadDialogBlockHook] $tag skipped with null listener")
             return true
@@ -352,7 +392,7 @@ internal object IntlNonWifiDownloadDialogBlockHook {
         }
 
         return try {
-            allowMobileDataDownload(wifiOnlyConfigMethod, tag)
+            allowMobileDataDownload(tag, managerObject, listener)
             onOkMethod.invoke(listener)
             restartTransferSchedulers(restartSchedulersInvoker, managerObject, listener, tag)
             XposedCompat.logD("[IntlNonWifiDownloadDialogBlockHook] $tag confirmed without dialog")
@@ -371,22 +411,6 @@ internal object IntlNonWifiDownloadDialogBlockHook {
                     "${e.javaClass.simpleName}: ${e.message}",
             )
             false
-        }
-    }
-
-    private fun findSetWifiOnlyConfigMethod(cl: ClassLoader): Method? {
-        val clazz = XposedCompat.findClassOrNull(BaiduIntlTransferHookPoints.NET_CONFIG_UTIL, cl)
-            ?: run {
-                XposedCompat.logD("[IntlNonWifiDownloadDialogBlockHook] NetConfigUtil class not found")
-                return null
-            }
-        return XposedCompat.findMethodOrNull(
-            clazz,
-            BaiduIntlTransferHookPoints.SET_WIFI_ONLY_CHECKED_CONFIG_METHOD,
-            Boolean::class.javaPrimitiveType!!,
-        )?.apply { isAccessible = true } ?: run {
-            XposedCompat.logW("[IntlNonWifiDownloadDialogBlockHook] setWiFiOnlyCheckedConfig not found")
-            null
         }
     }
 
@@ -417,24 +441,9 @@ internal object IntlNonWifiDownloadDialogBlockHook {
         }
     }
 
-    private fun allowMobileDataDownload(method: Method?, tag: String) {
-        if (method != null) {
-            try {
-                method.invoke(null, false)
-                XposedCompat.logD("[IntlNonWifiDownloadDialogBlockHook] $tag disabled wifi-only before confirm")
-            } catch (e: InvocationTargetException) {
-                XposedCompat.logW(
-                    "[IntlNonWifiDownloadDialogBlockHook] setWiFiOnlyCheckedConfig threw in $tag: " +
-                        "${e.targetException?.javaClass?.simpleName}: ${e.targetException?.message}",
-                )
-            } catch (e: ReflectiveOperationException) {
-                XposedCompat.logW(
-                    "[IntlNonWifiDownloadDialogBlockHook] setWiFiOnlyCheckedConfig failed in $tag: " +
-                        "${e.javaClass.simpleName}: ${e.message}",
-                )
-            }
-        }
+    private fun allowMobileDataDownload(tag: String, contextSource: Any?, listener: Any?) {
         broadcastWifiOnlyState(enabled = false, tag = tag)
+        resetTransferWaitingState(contextSource, listener, tag)
     }
 
     private fun broadcastWifiOnlyState(enabled: Boolean, tag: String) {
@@ -466,6 +475,47 @@ internal object IntlNonWifiDownloadDialogBlockHook {
         }
     }
 
+    private fun performUseTrafficClick(dialog: Any, tag: String): Boolean {
+        val button = findUseTrafficButton(dialog) ?: run {
+            XposedCompat.logW("[IntlNonWifiDownloadDialogBlockHook] $tag bt_use_traffic button unavailable")
+            return false
+        }
+        return try {
+            if (button.performClick()) {
+                true
+            } else {
+                XposedCompat.logW("[IntlNonWifiDownloadDialogBlockHook] $tag bt_use_traffic click not handled")
+                false
+            }
+        } catch (e: RuntimeException) {
+            XposedCompat.logW(
+                "[IntlNonWifiDownloadDialogBlockHook] $tag bt_use_traffic click failed: " +
+                    "${e.javaClass.simpleName}: ${e.message}",
+            )
+            false
+        }
+    }
+
+    private fun findUseTrafficButton(dialog: Any): View? {
+        val hostDialog = dialog as? Dialog ?: return null
+        val context = hostDialog.context ?: currentApplicationContext() ?: return null
+        val buttonId = context.resources.getIdentifier(
+            BaiduIntlTransferHookPoints.USE_TRAFFIC_BUTTON_ID_NAME,
+            "id",
+            context.packageName,
+        )
+        if (buttonId == 0) return null
+        return hostDialog.findViewById(buttonId)
+    }
+
+    private fun resetTransferWaitingState(contextSource: Any?, listener: Any?, tag: String): Boolean {
+        return startTransferServiceAction(
+            context = resolveHostContext(contextSource, listener),
+            action = BaiduIntlTransferHookPoints.TRANSFER_ACTION_RESET_SCHEDULERS,
+            tag = tag,
+        )
+    }
+
     private fun restartTransferSchedulers(
         invoker: RestartSchedulersInvoker?,
         managerObject: Any?,
@@ -474,6 +524,15 @@ internal object IntlNonWifiDownloadDialogBlockHook {
     ): Boolean {
         if (restartSchedulersByProvider(invoker, managerObject, listener, tag)) return true
         if (restartSchedulersByManager(managerObject, tag)) return true
+        if (
+            startTransferServiceAction(
+                context = resolveHostContext(managerObject, listener),
+                action = BaiduIntlTransferHookPoints.TRANSFER_ACTION_RESTART_SCHEDULERS,
+                tag = tag,
+            )
+        ) {
+            return true
+        }
 
         XposedCompat.logW("[IntlNonWifiDownloadDialogBlockHook] restart schedulers unavailable for $tag")
         return false
@@ -503,6 +562,31 @@ internal object IntlNonWifiDownloadDialogBlockHook {
         } catch (e: ReflectiveOperationException) {
             XposedCompat.logW(
                 "[IntlNonWifiDownloadDialogBlockHook] restartSchedulers failed in $tag: " +
+                    "${e.javaClass.simpleName}: ${e.message}",
+            )
+            false
+        }
+    }
+
+    private fun startTransferServiceAction(context: Context?, action: String, tag: String): Boolean {
+        val hostContext = context ?: run {
+            XposedCompat.logW("[IntlNonWifiDownloadDialogBlockHook] host context unavailable for $tag action=$action")
+            return false
+        }
+        val serviceClass = XposedCompat.findClassOrNull(
+            BaiduIntlTransferHookPoints.NETDISK_SERVICE,
+            hostContext.classLoader,
+        ) ?: run {
+            XposedCompat.logW("[IntlNonWifiDownloadDialogBlockHook] NetdiskService class not found for $tag")
+            return false
+        }
+        return try {
+            hostContext.startService(Intent(hostContext, serviceClass).setAction(action))
+            XposedCompat.logD("[IntlNonWifiDownloadDialogBlockHook] $tag started service action=$action")
+            true
+        } catch (e: RuntimeException) {
+            XposedCompat.logW(
+                "[IntlNonWifiDownloadDialogBlockHook] start service failed in $tag: " +
                     "${e.javaClass.simpleName}: ${e.message}",
             )
             false
