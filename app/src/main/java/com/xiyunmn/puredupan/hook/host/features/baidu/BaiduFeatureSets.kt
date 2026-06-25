@@ -12,7 +12,6 @@ internal object BaiduFeatureSets {
             baiduSharedFilePageCustomize,
             baiduSharedShareCustomize,
             baiduSharedMyPageCustomize,
-            baiduSharedUiBlock,
             baiduSharedMemberCardCustomize,
             baiduSharedBottomBarCustomize,
             baiduSharedPerformanceCustomize,
@@ -36,7 +35,6 @@ internal object BaiduFeatureSets {
             baiduSharedFilePageCustomize,
             baiduSharedShareCustomize,
             baiduSharedMyPageCustomize,
-            baiduSharedUiBlock,
             baiduSharedMemberCardCustomize,
             baiduSharedBottomBarCustomize,
             baiduSharedPerformanceCustomize,
@@ -60,7 +58,6 @@ internal object BaiduFeatureSets {
             baiduSharedFilePageCustomize,
             baiduSharedShareCustomize,
             baiduSharedMyPageCustomize,
-            baiduSharedUiBlock,
             baiduSharedMemberCardCustomize,
             baiduSharedBottomBarCustomize,
             baiduSharedPerformanceCustomize,
@@ -107,6 +104,7 @@ internal object BaiduFeatureSets {
 
     private val baiduSharedFilePageCustomize = listOf(
         FeatureKeys.KEY_FILE_PAGE_CUSTOMIZE,
+        FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR,
         FeatureKeys.KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP,
     )
 
@@ -120,10 +118,6 @@ internal object BaiduFeatureSets {
         FeatureKeys.KEY_REMOVE_ABOUT_ME_BANNER,
         FeatureKeys.KEY_REMOVE_GAME_CENTER,
         FeatureKeys.KEY_REMOVE_MY_SERVICE,
-    )
-
-    private val baiduSharedUiBlock = listOf(
-        FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR,
     )
 
     private val baiduSharedMemberCardCustomize = listOf(

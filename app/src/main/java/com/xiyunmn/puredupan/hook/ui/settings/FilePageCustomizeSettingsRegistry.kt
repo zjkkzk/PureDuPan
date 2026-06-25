@@ -16,5 +16,10 @@ internal object FilePageCustomizeSettingsRegistry {
             UiText.Settings.HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP_LABEL,
             UiText.Settings.HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP_DESC,
         ),
+        FilePageCustomizeSwitchSpec(
+            SettingsUserState.KEY_BLOCK_ALBUM_BACKUP_BAR,
+            UiText.Settings.BLOCK_ALBUM_BACKUP_BAR_LABEL,
+            UiText.Settings.BLOCK_ALBUM_BACKUP_BAR_DESC,
+        ),
     )
 }

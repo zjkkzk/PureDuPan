@@ -444,7 +444,8 @@ object ConfigManager {
                 featureBoolean(KEY_HIDE_HOME_SAVE_SECTION, false) ||
                 featureBoolean(KEY_HIDE_HOME_RECENT_SECTION, false)
         val hasFilePageOptionEnabled =
-            featureBoolean(KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP, false)
+            featureBoolean(KEY_HIDE_FILE_PAGE_BOTTOM_SAFETY_TIP, false) ||
+                featureBoolean(KEY_BLOCK_ALBUM_BACKUP_BAR, false)
         val hasSearchPageOptionEnabled =
             featureBoolean(KEY_HIDE_SEARCH_PAGE_AI_ENTRY, false) ||
                 featureBoolean(KEY_HIDE_SEARCH_PAGE_PLACEHOLDER, false) ||

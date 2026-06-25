@@ -145,13 +145,7 @@ internal object TopLevelSettingsRegistry {
         ),
     )
 
-    val uiSpecs: List<TopLevelSwitchSpec> = listOf(
-        TopLevelSwitchSpec(
-            SettingsUserState.KEY_BLOCK_ALBUM_BACKUP_BAR,
-            UiText.Settings.BLOCK_ALBUM_BACKUP_BAR_LABEL,
-            UiText.Settings.BLOCK_ALBUM_BACKUP_BAR_DESC,
-        ),
-    )
+    val uiSpecs: List<TopLevelSwitchSpec> = emptyList()
 
     fun themeSpecs(isIntlHost: Boolean): List<TopLevelSwitchSpec> = listOf(
         TopLevelSwitchSpec(
