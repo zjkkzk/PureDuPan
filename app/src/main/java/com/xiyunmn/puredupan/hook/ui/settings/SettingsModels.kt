@@ -10,6 +10,7 @@ internal data class SwitchItem(
     val supported: Boolean,
     val defaultValue: Boolean = false,
     val actionIcon: String? = null,
+    val actionButtonText: String? = null,
     val linkedPrefKeys: List<String> = emptyList(),
     val showSwitch: Boolean = true,
     val onActionClick: (() -> Unit)? = null,
@@ -41,6 +42,7 @@ internal data class TopLevelSettingsActionHandlers(
     val onMemberCardCustomizeClick: () -> Unit,
     val onBottomBarCustomizeClick: () -> Unit,
     val onPerformanceOptimizeClick: () -> Unit,
+    val onAutoDailySignInNowClick: () -> Unit,
 )
 
 internal data class DebugSettingsActionHandlers(

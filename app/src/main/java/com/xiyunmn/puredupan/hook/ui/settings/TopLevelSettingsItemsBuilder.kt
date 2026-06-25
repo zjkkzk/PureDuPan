@@ -138,14 +138,18 @@ internal object TopLevelSettingsItemsBuilder {
             prefKey = spec.key,
             supported = isFeatureVisible(spec.key),
             defaultValue = defaultValueForTopLevelSpec(spec, defaultValues),
-            actionIcon = if (spec.action == TopLevelSettingsAction.NONE) {
-                null
-            } else {
-                UiText.Settings.ACTION_ICON_SETTINGS
-            },
+            actionIcon = actionIconForTopLevelSpec(spec),
             onActionClick = actionClickForTopLevelSpec(spec, actionHandlers),
             visible = isFeatureVisible(spec.key),
         )
+    }
+
+    private fun actionIconForTopLevelSpec(spec: TopLevelSwitchSpec): String? {
+        return when (spec.action) {
+            TopLevelSettingsAction.AUTO_DAILY_SIGN_IN_NOW -> UiText.Settings.ACTION_ICON_SIGN_IN
+            TopLevelSettingsAction.NONE -> null
+            else -> UiText.Settings.ACTION_ICON_SETTINGS
+        }
     }
 
     private fun defaultValueForTopLevelSpec(
@@ -161,6 +165,7 @@ internal object TopLevelSettingsItemsBuilder {
             TopLevelSettingsAction.MEMBER_CARD_CUSTOMIZE -> defaultValues.memberCardCustomize
             TopLevelSettingsAction.BOTTOM_BAR_CUSTOMIZE -> defaultValues.bottomBarCustomize
             TopLevelSettingsAction.PERFORMANCE_OPTIMIZE -> defaultValues.performanceOptimize
+            TopLevelSettingsAction.AUTO_DAILY_SIGN_IN_NOW -> false
             TopLevelSettingsAction.NONE -> false
         }
     }
@@ -178,6 +183,7 @@ internal object TopLevelSettingsItemsBuilder {
             TopLevelSettingsAction.MEMBER_CARD_CUSTOMIZE -> actionHandlers.onMemberCardCustomizeClick
             TopLevelSettingsAction.BOTTOM_BAR_CUSTOMIZE -> actionHandlers.onBottomBarCustomizeClick
             TopLevelSettingsAction.PERFORMANCE_OPTIMIZE -> actionHandlers.onPerformanceOptimizeClick
+            TopLevelSettingsAction.AUTO_DAILY_SIGN_IN_NOW -> actionHandlers.onAutoDailySignInNowClick
             TopLevelSettingsAction.NONE -> null
         }
     }

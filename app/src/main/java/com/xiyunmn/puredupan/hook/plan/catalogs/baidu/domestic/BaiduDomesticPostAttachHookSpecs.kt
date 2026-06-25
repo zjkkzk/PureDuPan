@@ -14,9 +14,8 @@ import com.xiyunmn.puredupan.hook.plan.HookSpec
 
 internal object BaiduDomesticPostAttachHookSpecs {
     val automation = listOf(
-        HookSpec("DomesticAutoDailySignInHook", { context, settings, _ ->
-            context.isMain &&
-                settings.isAutoDailySignInEnabled
+        HookSpec("DomesticAutoDailySignInHook", { context, _, _ ->
+            context.isMain
         }, featureKey = FeatureKeys.KEY_AUTO_DAILY_SIGN_IN) { cl -> DomesticAutoDailySignInHook.hook(cl) },
     )
 

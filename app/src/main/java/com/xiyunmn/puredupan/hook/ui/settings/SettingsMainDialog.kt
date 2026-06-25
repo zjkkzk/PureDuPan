@@ -16,6 +16,7 @@ import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.runtime.AutoDailySignInRuntime
 import com.xiyunmn.puredupan.hook.settings.registry.SettingsDexKitState
 import com.xiyunmn.puredupan.hook.settings.registry.SettingsUserState
 import com.xiyunmn.puredupan.hook.settings.runtime.SettingsRuntimeSession
@@ -85,6 +86,15 @@ internal object SettingsMainDialog {
                     },
                     onPerformanceOptimizeClick = {
                         PerformanceOptimizeSettingsDialog.show(context, prefs, settingsSession, texts)
+                    },
+                    onAutoDailySignInNowClick = {
+                        if (!AutoDailySignInRuntime.triggerNow(context)) {
+                            Toast.makeText(
+                                context,
+                                UiText.Settings.AUTO_DAILY_SIGN_IN_FAILED_TOAST,
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
                     },
                 ),
                 texts = texts,
@@ -182,6 +192,7 @@ internal object SettingsMainDialog {
                         item.onActionClick,
                         item.linkedPrefKeys,
                         item.showSwitch,
+                        item.actionButtonText,
                     )
                     root.addView(rowView)
                     item.prefKey?.let { key ->

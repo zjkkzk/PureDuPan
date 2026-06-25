@@ -23,18 +23,23 @@ internal object AutoDailySignInStateStore {
     private const val HEX = "0123456789abcdef"
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
 
-    fun beginAttempt(context: Context, accountIdentity: String?, tag: String): Boolean {
-        if (!HookSettings.isAutoDailySignInEnabled) return false
+    fun beginAttempt(
+        context: Context,
+        accountIdentity: String?,
+        tag: String,
+        force: Boolean = false,
+    ): Boolean {
+        if (!force && !HookSettings.isAutoDailySignInEnabled) return false
         val prefs = HookSettings.getModuleStatePrefs(context)
         val suffix = accountSuffix(accountIdentity)
         val today = todayKey()
 
         synchronized(this) {
-            if (prefs.getInt(PREFIX_LAST_SUCCESS_DAY + suffix, 0) == today) {
+            if (!force && prefs.getInt(PREFIX_LAST_SUCCESS_DAY + suffix, 0) == today) {
                 XposedCompat.logD("[$tag] auto sign-in skipped: already successful today")
                 return false
             }
-            if (prefs.getInt(PREFIX_LAST_ATTEMPT_DAY + suffix, 0) == today) {
+            if (!force && prefs.getInt(PREFIX_LAST_ATTEMPT_DAY + suffix, 0) == today) {
                 XposedCompat.logD("[$tag] auto sign-in skipped: already attempted today")
                 return false
             }
@@ -55,6 +60,12 @@ internal object AutoDailySignInStateStore {
         XposedCompat.log("[$tag] auto sign-in finished: $detail")
     }
 
+    fun markAlreadySignedIn(context: Context, accountIdentity: String?, tag: String, detail: String) {
+        markFinished(context, accountIdentity, STATUS_SUCCESS, detail)
+        showToast(context, UiText.Settings.AUTO_DAILY_SIGN_IN_ALREADY_DONE_TOAST)
+        XposedCompat.log("[$tag] auto sign-in skipped: $detail")
+    }
+
     fun markSkipped(context: Context, accountIdentity: String?, tag: String, detail: String) {
         markFinished(context, accountIdentity, STATUS_SKIPPED, detail)
         XposedCompat.log("[$tag] auto sign-in skipped: $detail")
@@ -66,20 +77,29 @@ internal object AutoDailySignInStateStore {
         XposedCompat.log("[$tag] auto sign-in stopped: $detail")
     }
 
+    fun markRetryableFailed(context: Context, accountIdentity: String?, tag: String, detail: String) {
+        markFinished(context, accountIdentity, STATUS_FAILED, detail, clearAttempt = true)
+        showToast(context, UiText.Settings.AUTO_DAILY_SIGN_IN_FAILED_TOAST)
+        XposedCompat.log("[$tag] auto sign-in stopped, retry allowed: $detail")
+    }
+
     private fun markFinished(
         context: Context,
         accountIdentity: String?,
         status: String,
         detail: String,
+        clearAttempt: Boolean = false,
     ) {
         val suffix = accountSuffix(accountIdentity)
         val today = todayKey()
-        HookSettings.getModuleStatePrefs(context)
-            .edit()
+        val editor = HookSettings.getModuleStatePrefs(context).edit()
             .putInt(PREFIX_LAST_SUCCESS_DAY + suffix, if (status == STATUS_SUCCESS) today else 0)
             .putString(PREFIX_LAST_STATUS + suffix, "$status:$detail")
             .putLong(PREFIX_LAST_UPDATED_AT + suffix, System.currentTimeMillis())
-            .apply()
+        if (clearAttempt) {
+            editor.remove(PREFIX_LAST_ATTEMPT_DAY + suffix)
+        }
+        editor.apply()
     }
 
     private fun todayKey(): Int {

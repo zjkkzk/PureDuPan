@@ -97,7 +97,7 @@ internal object SettingsDebugActions {
                     append(path)
                 }
             }
-            AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
+            val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
                 .setTitle(UiText.Settings.CLEAR_LOGS_CONFIRM_TITLE)
                 .setMessage(message)
                 .setNegativeButton(UiText.Settings.BUTTON_CANCEL, null)
@@ -111,11 +111,19 @@ internal object SettingsDebugActions {
                     Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
                 }
                 .show()
-                .window
+            val density = context.resources.displayMetrics.density
+            UiStyle.paintAlertMaterialIconButton(
+                button = dialog.getButton(AlertDialog.BUTTON_POSITIVE),
+                density = density,
+                tokens = UiStyle.tokens(context),
+                icon = UiStyle.MaterialActionIcon.DELETE,
+                contentDescription = UiText.Settings.ACTION_ICON_CLEAR,
+            )
+            dialog.window
                 ?.let { window ->
                     SettingsDialogWindows.applyCardStyle(
                         window = window,
-                        density = window.context.resources.displayMetrics.density,
+                        density = density,
                         maxWidthDp = 360f,
                         horizontalMarginDp = 28f,
                     )
@@ -128,7 +136,7 @@ internal object SettingsDebugActions {
 
     fun showResetModuleSettingsConfirmDialog(context: Context, onRestart: () -> Unit) {
         try {
-            AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
+            val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
                 .setTitle(UiText.Settings.RESET_MODULE_SETTINGS_CONFIRM_TITLE)
                 .setMessage(UiText.Settings.RESET_MODULE_SETTINGS_CONFIRM_MESSAGE)
                 .setNegativeButton(UiText.Settings.BUTTON_CANCEL, null)
@@ -145,11 +153,19 @@ internal object SettingsDebugActions {
                     }
                 }
                 .show()
-                .window
+            val density = context.resources.displayMetrics.density
+            UiStyle.paintAlertMaterialIconButton(
+                button = dialog.getButton(AlertDialog.BUTTON_POSITIVE),
+                density = density,
+                tokens = UiStyle.tokens(context),
+                icon = UiStyle.MaterialActionIcon.REFRESH,
+                contentDescription = UiText.Settings.ACTION_ICON_RESET,
+            )
+            dialog.window
                 ?.let { window ->
                     SettingsDialogWindows.applyCardStyle(
                         window = window,
-                        density = window.context.resources.displayMetrics.density,
+                        density = density,
                         maxWidthDp = 360f,
                         horizontalMarginDp = 28f,
                     )

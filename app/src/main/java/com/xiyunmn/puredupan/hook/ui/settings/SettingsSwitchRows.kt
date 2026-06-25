@@ -10,6 +10,8 @@ import android.text.style.ForegroundColorSpan
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.Switch
 import android.widget.TextView
@@ -36,6 +38,7 @@ internal object SettingsSwitchRows {
         onActionClick: (() -> Unit)? = null,
         linkedPrefKeys: List<String> = emptyList(),
         showSwitch: Boolean = true,
+        actionButtonText: String? = null,
     ): View {
         val tokens = UiStyle.tokens(context)
         val density = context.resources.displayMetrics.density
@@ -74,18 +77,10 @@ internal object SettingsSwitchRows {
             LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f),
         )
 
-        if (actionIcon != null && onActionClick != null) {
-            row.addView(TextView(context).apply {
-                text = actionIcon
-                textSize = 18f
-                setTextColor(if (enabled) tokens.accent else tokens.textMuted)
-                gravity = Gravity.CENTER
-                setPadding(
-                    (12 * density).toInt(),
-                    (6 * density).toInt(),
-                    (12 * density).toInt(),
-                    (6 * density).toInt(),
-                )
+        if (actionButtonText != null && onActionClick != null) {
+            row.addView(Button(context).apply {
+                text = actionButtonText
+                UiStyle.paintScanActionButton(this, density, if (enabled) tokens.accent else tokens.textMuted)
                 setOnClickListener {
                     if (enabled) {
                         UiStyle.animateActionPress(this)
@@ -93,6 +88,49 @@ internal object SettingsSwitchRows {
                     }
                 }
             })
+        } else if (actionIcon != null && onActionClick != null) {
+            val materialIcon = materialActionIcon(actionIcon)
+            if (materialIcon != null) {
+                row.addView(ImageButton(context).apply {
+                    UiStyle.paintMaterialIconButton(
+                        button = this,
+                        density = density,
+                        tokens = tokens,
+                        icon = materialIcon,
+                        enabled = enabled,
+                        contentDescription = actionIcon,
+                    )
+                    setOnClickListener {
+                        if (enabled) {
+                            UiStyle.animateActionPress(this)
+                            onActionClick()
+                        }
+                    }
+                })
+            } else {
+                row.addView(TextView(context).apply {
+                    text = actionIcon
+                    gravity = Gravity.CENTER
+                    if (actionIcon == UiText.Settings.ACTION_ICON_SIGN_IN) {
+                        UiStyle.paintSignInActionIcon(this, density, tokens, enabled)
+                    } else {
+                        textSize = 18f
+                        setTextColor(if (enabled) tokens.accent else tokens.textMuted)
+                        setPadding(
+                            (12 * density).toInt(),
+                            (6 * density).toInt(),
+                            (12 * density).toInt(),
+                            (6 * density).toInt(),
+                        )
+                    }
+                    setOnClickListener {
+                        if (enabled) {
+                            UiStyle.animateActionPress(this)
+                            onActionClick()
+                        }
+                    }
+                })
+            }
         }
 
         if (!showSwitch) {
@@ -212,5 +250,14 @@ internal object SettingsSwitchRows {
         }
         if (prefs.getBoolean(prefKey, false)) return true
         return linkedPrefKeys.any { prefs.getBoolean(it, false) }
+    }
+
+    private fun materialActionIcon(actionIcon: String): UiStyle.MaterialActionIcon? {
+        return when (actionIcon) {
+            UiText.Settings.ACTION_ICON_SETTINGS -> UiStyle.MaterialActionIcon.SETTINGS
+            UiText.Settings.ACTION_ICON_CLEAR -> UiStyle.MaterialActionIcon.DELETE
+            UiText.Settings.ACTION_ICON_RESET -> UiStyle.MaterialActionIcon.REFRESH
+            else -> null
+        }
     }
 }

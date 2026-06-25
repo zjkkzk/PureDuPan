@@ -13,6 +13,7 @@ internal enum class TopLevelSettingsAction {
     MEMBER_CARD_CUSTOMIZE,
     BOTTOM_BAR_CUSTOMIZE,
     PERFORMANCE_OPTIMIZE,
+    AUTO_DAILY_SIGN_IN_NOW,
 }
 
 internal data class TopLevelSwitchSpec(
@@ -169,6 +170,7 @@ internal object TopLevelSettingsRegistry {
             SettingsUserState.KEY_AUTO_DAILY_SIGN_IN,
             UiText.Settings.AUTO_DAILY_SIGN_IN_LABEL,
             UiText.Settings.AUTO_DAILY_SIGN_IN_DESC,
+            action = TopLevelSettingsAction.AUTO_DAILY_SIGN_IN_NOW,
             restricted = true,
         ),
         TopLevelSwitchSpec(

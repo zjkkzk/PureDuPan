@@ -2,143 +2,194 @@ package com.xiyunmn.puredupan.hook.feature.baidu.shared.automation
 
 import android.app.Activity
 import android.content.Context
-import android.os.Build
+import android.content.ContextWrapper
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.ResultReceiver
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
+import com.xiyunmn.puredupan.hook.runtime.AutoDailySignInRuntime
 import com.xiyunmn.puredupan.hook.symbols.baidu.shared.BaiduAutomationHookPoints
-import java.lang.ref.WeakReference
 import java.lang.reflect.Method
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
 
 internal object DomesticAutoDailySignInHook {
     private const val TAG = "DomesticAutoDailySignInHook"
-    private const val TASK_TYPE_SIGN_IN = "132"
-    private const val TASK_FROM = "taskCenter"
-    private const val TASK_STATUS_NOT_COMPLETE = 0
-    private const val TASK_STATUS_COMPLETE = 1
-    private const val REFRESH_RETRY_DELAY_MS = 8_000L
+    private const val RESULT_CODE_SUCCESS = 1
+    private const val RESULT_KEY = "com.mars.RESULT"
+    private const val SIGN_IN_STATUS_LOOKBACK_MS = 604_800_000L
+    private const val SIGN_IN_STATUS_TIMEOUT_MS = 12_000L
     private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
+    private val membershipSignInRunning = AtomicBoolean(false)
 
     fun hook(cl: ClassLoader) {
+        AutoDailySignInRuntime.registerManualTrigger { context ->
+            val activity = findActivity(context)
+            if (activity == null) {
+                XposedCompat.logW("[$TAG] manual sign-in skipped: activity unavailable")
+                false
+            } else {
+                XposedCompat.log("[$TAG] manual sign-in requested")
+                run(activity, cl, force = true)
+                true
+            }
+        }
         AutoDailySignInScheduler.install(cl, TAG) { activity ->
             run(activity, cl)
         }
     }
 
-    private fun run(activity: Activity, cl: ClassLoader) {
-        if (!HookSettings.isAutoDailySignInEnabled) return
+    private fun run(activity: Activity, cl: ClassLoader, force: Boolean = false) {
+        if (!force && !HookSettings.isAutoDailySignInEnabled) return
 
         val context = activity.applicationContext ?: activity
         val account = AccountAccess.resolve(cl)
         if (account == null) {
-            if (AutoDailySignInStateStore.beginAttempt(context, null, TAG)) {
+            if (AutoDailySignInStateStore.beginAttempt(context, null, TAG, force = force)) {
                 AutoDailySignInStateStore.markFailed(context, null, TAG, "account state unavailable")
             }
             return
         }
         if (!account.isLogin) {
+            if (force && AutoDailySignInStateStore.beginAttempt(context, account.uid, TAG, force = true)) {
+                AutoDailySignInStateStore.markFailed(context, account.uid, TAG, "account not logged in")
+                return
+            }
             XposedCompat.logD("[$TAG] auto sign-in skipped: account not logged in")
             return
         }
-        if (!AutoDailySignInStateStore.beginAttempt(context, account.uid, TAG)) return
+        if (!AutoDailySignInStateStore.beginAttempt(context, account.uid, TAG, force = force)) return
 
-        val access = TaskScoreAccess.resolve(cl)
-        if (access == null) {
-            AutoDailySignInStateStore.markFailed(context, account.uid, TAG, "task manager unavailable")
-            return
-        }
-
-        dispatchOrRefresh(
-            activity = activity,
+        runMembershipSignIn(
             context = context,
-            accountIdentity = account.uid,
-            access = access,
-            allowRefresh = true,
+            account = account,
+            cookieAccess = DomesticCookieAccess.resolve(cl),
+            statusAccess = SignInStatusAccess.resolve(cl),
+            force = force,
         )
     }
 
-    private fun dispatchOrRefresh(
-        activity: Activity,
+    private fun runMembershipSignIn(
         context: Context,
-        accountIdentity: String?,
-        access: TaskScoreAccess,
-        allowRefresh: Boolean,
+        account: AccountState,
+        cookieAccess: DomesticCookieAccess?,
+        statusAccess: SignInStatusAccess?,
+        force: Boolean,
     ) {
-        val manager = access.manager() ?: run {
-            AutoDailySignInStateStore.markFailed(context, accountIdentity, TAG, "task manager instance unavailable")
+        val uid = account.uid
+        val bduss = account.bduss
+        if (bduss.isNullOrBlank()) {
+            AutoDailySignInStateStore.markFailed(context, uid, TAG, "bduss unavailable")
             return
         }
-        val task = access.findSignInTask(manager)
-        if (task == null) {
-            if (!allowRefresh) {
-                AutoDailySignInStateStore.markFailed(context, accountIdentity, TAG, "sign-in task unavailable")
-                return
-            }
-            access.syncTaskList(manager, context)
-            scheduleRetry(activity, context, accountIdentity, access)
-            XposedCompat.log("[$TAG] sign-in task missing, task list refresh requested")
+        if (!membershipSignInRunning.compareAndSet(false, true)) {
+            AutoDailySignInStateStore.markRetryableFailed(context, uid, TAG, "membership sign-in already running")
             return
         }
 
-        val status = access.taskStatus(task)
-        when (status) {
-            TASK_STATUS_COMPLETE -> {
-                AutoDailySignInStateStore.markSuccess(context, accountIdentity, TAG, "already complete")
-                return
-            }
-            TASK_STATUS_NOT_COMPLETE -> Unit
-            else -> {
-                AutoDailySignInStateStore.markFailed(context, accountIdentity, TAG, "unexpected task status $status")
-                return
-            }
+        fun startRequest() {
+            Thread({
+                try {
+                    if (!force && !HookSettings.isAutoDailySignInEnabled) {
+                        AutoDailySignInStateStore.markSkipped(context, uid, TAG, "disabled before membership request")
+                        return@Thread
+                    }
+                    val cookie = cookieAccess?.cookieFor(bduss).takeUnless { it.isNullOrBlank() } ?: "BDUSS=$bduss"
+                    when (val result = MembershipSignInClient.signIn(cookie, TAG)) {
+                        is MembershipSignInResult.Success -> {
+                            AutoDailySignInStateStore.markSuccess(
+                                context,
+                                uid,
+                                TAG,
+                                "membership endpoint signed in, points=${result.points ?: "unknown"}",
+                            )
+                        }
+                        is MembershipSignInResult.AlreadySignedIn -> {
+                            AutoDailySignInStateStore.markAlreadySignedIn(
+                                context,
+                                uid,
+                                TAG,
+                                "membership endpoint reports already signed: ${result.message}",
+                            )
+                        }
+                        is MembershipSignInResult.Failed -> {
+                            confirmMembershipFailure(
+                                context = context,
+                                account = account,
+                                statusAccess = statusAccess,
+                                fallbackDetail = result.detail,
+                            )
+                        }
+                    }
+                } finally {
+                    membershipSignInRunning.set(false)
+                }
+            }, "$TAG-MembershipSignIn").start()
         }
 
-        val taskId = access.taskId(task)
-        val taskClassId = access.taskClassId(task)
-        if (taskId <= 0L || taskClassId <= 0L) {
-            AutoDailySignInStateStore.markFailed(context, accountIdentity, TAG, "invalid task identifiers")
-            return
-        }
-
-        val dispatched = access.doTask(manager, activity, taskId, taskClassId)
-        if (dispatched) {
-            AutoDailySignInStateStore.markSuccess(context, accountIdentity, TAG, "task dispatched")
+        if (!force && statusAccess != null && !uid.isNullOrBlank()) {
+            statusAccess.queryTodaySignedIn(context, bduss, uid) { signedIn ->
+                if (signedIn == true) {
+                    membershipSignInRunning.set(false)
+                    AutoDailySignInStateStore.markAlreadySignedIn(
+                        context,
+                        uid,
+                        TAG,
+                        "signin list reports already signed before membership request",
+                    )
+                } else {
+                    startRequest()
+                }
+            }
         } else {
-            AutoDailySignInStateStore.markFailed(context, accountIdentity, TAG, "task dispatch rejected")
+            startRequest()
         }
     }
 
-    private fun scheduleRetry(
-        activity: Activity,
+    private fun confirmMembershipFailure(
         context: Context,
-        accountIdentity: String?,
-        access: TaskScoreAccess,
+        account: AccountState,
+        statusAccess: SignInStatusAccess?,
+        fallbackDetail: String,
     ) {
-        val activityRef = WeakReference(activity)
-        mainHandler.postDelayed({
-            val current = activityRef.get() ?: run {
-                AutoDailySignInStateStore.markFailed(context, accountIdentity, TAG, "activity released after refresh")
-                return@postDelayed
+        val uid = account.uid
+        val bduss = account.bduss
+        if (statusAccess == null || uid.isNullOrBlank() || bduss.isNullOrBlank()) {
+            AutoDailySignInStateStore.markRetryableFailed(context, uid, TAG, fallbackDetail)
+            return
+        }
+
+        statusAccess.queryTodaySignedIn(context, bduss, uid) { signedIn ->
+            if (signedIn == true) {
+                AutoDailySignInStateStore.markAlreadySignedIn(
+                    context,
+                    uid,
+                    TAG,
+                    "$fallbackDetail, signin list reports already signed after membership request",
+                )
+            } else {
+                AutoDailySignInStateStore.markRetryableFailed(context, uid, TAG, fallbackDetail)
             }
-            if (!HookSettings.isAutoDailySignInEnabled) return@postDelayed
-            if (current.isFinishing) return@postDelayed
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && current.isDestroyed) {
-                return@postDelayed
-            }
-            dispatchOrRefresh(
-                activity = current,
-                context = context,
-                accountIdentity = accountIdentity,
-                access = access,
-                allowRefresh = false,
-            )
-        }, REFRESH_RETRY_DELAY_MS)
+        }
+    }
+
+    private fun findActivity(context: Context): Activity? {
+        var current: Context? = context
+        while (current is ContextWrapper) {
+            if (current is Activity) return current
+            current = current.baseContext
+        }
+        return current as? Activity
     }
 
     private data class AccountState(
         val isLogin: Boolean,
         val uid: String?,
+        val bduss: String?,
     )
 
     private object AccountAccess {
@@ -151,7 +202,9 @@ internal object DomesticAutoDailySignInHook {
                     ?.invoke(instance) as? Boolean ?: return null
                 val uid = XposedCompat.findMethodOrNull(clazz, "getUid")
                     ?.invoke(instance) as? String
-                AccountState(isLogin = isLogin, uid = uid)
+                val bduss = XposedCompat.findMethodOrNull(clazz, "getBduss")
+                    ?.invoke(instance) as? String
+                AccountState(isLogin = isLogin, uid = uid, bduss = bduss)
             }.getOrElse { t ->
                 XposedCompat.logD("[$TAG] account state resolve failed: ${t.message}")
                 null
@@ -159,97 +212,157 @@ internal object DomesticAutoDailySignInHook {
         }
     }
 
-    private class TaskScoreAccess(
-        private val getInstance: Method,
-        private val findTaskScoreByType: Method,
-        private val syncTaskList: Method,
-        private val doTask: Method,
-        private val getTaskId: Method,
-        private val getTaskClassId: Method,
-        private val getTaskStatus: Method,
+    private class DomesticCookieAccess(
+        private val getCookieByBduss: Method,
     ) {
-        fun manager(): Any? = runCatching { getInstance.invoke(null) }.getOrNull()
-
-        fun findSignInTask(manager: Any): Any? =
-            runCatching { findTaskScoreByType.invoke(manager, TASK_TYPE_SIGN_IN, null) }.getOrNull()
-
-        fun syncTaskList(manager: Any, context: Context) {
-            runCatching { syncTaskList.invoke(manager, context, true) }
-                .onFailure { t -> XposedCompat.logD("[$TAG] syncTaskList failed: ${t.message}") }
-        }
-
-        fun taskId(task: Any): Long =
-            (runCatching { getTaskId.invoke(task) }.getOrNull() as? Number)?.toLong() ?: 0L
-
-        fun taskClassId(task: Any): Long =
-            (runCatching { getTaskClassId.invoke(task) }.getOrNull() as? Number)?.toLong() ?: 0L
-
-        fun taskStatus(task: Any): Int =
-            (runCatching { getTaskStatus.invoke(task) }.getOrNull() as? Number)?.toInt() ?: Int.MIN_VALUE
-
-        fun doTask(manager: Any, activity: Activity, taskId: Long, taskClassId: Long): Boolean {
-            return runCatching {
-                doTask.invoke(manager, activity, taskId, taskClassId, TASK_FROM, null, null) as? Boolean
-            }.getOrElse { t ->
-                XposedCompat.logD("[$TAG] doTask failed: ${t.message}")
-                null
-            } == true
+        fun cookieFor(bduss: String): String {
+            return runCatching { getCookieByBduss.invoke(null, bduss) as? String }
+                .getOrElse { t ->
+                    XposedCompat.logD("[$TAG] getCookieByBduss failed: ${t.message}")
+                    null
+                }
+                .orEmpty()
         }
 
         companion object {
-            fun resolve(cl: ClassLoader): TaskScoreAccess? {
+            fun resolve(cl: ClassLoader): DomesticCookieAccess? {
                 return runCatching {
-                    val managerClass = XposedCompat.findClassOrNull(
-                        BaiduAutomationHookPoints.TASK_SCORE_MANAGER,
+                    val cookieUtilsClass = XposedCompat.findClassOrNull(
+                        BaiduAutomationHookPoints.COOKIE_UTILS,
                         cl,
                     ) ?: return null
-                    val taskScoreClass = XposedCompat.findClassOrNull(BaiduAutomationHookPoints.TASK_SCORE, cl)
-                        ?: return null
-                    val function1Class = XposedCompat.findClassOrNull(BaiduAutomationHookPoints.KOTLIN_FUNCTION1, cl)
-                        ?: return null
-                    val getInstance = XposedCompat.findMethodOrNull(managerClass, "getInstance") ?: return null
-                    val findTaskScoreByType = XposedCompat.findMethodOrNull(
-                        managerClass,
-                        "findTaskScoreByType",
-                        String::class.java,
-                        function1Class,
-                    ) ?: return null
-                    val syncTaskList = XposedCompat.findMethodOrNull(
-                        managerClass,
-                        "syncTaskList",
-                        Context::class.java,
-                        Boolean::class.javaPrimitiveType!!,
-                    ) ?: return null
-                    val doTask = XposedCompat.findMethodOrNull(
-                        managerClass,
-                        "doTask",
-                        Activity::class.java,
-                        Long::class.javaPrimitiveType!!,
-                        Long::class.javaPrimitiveType!!,
-                        String::class.java,
-                        String::class.java,
+                    val getCookieByBduss = XposedCompat.findMethodOrNull(
+                        cookieUtilsClass,
+                        "getCookieByBduss",
                         String::class.java,
                     ) ?: return null
-                    val getTaskId = XposedCompat.findMethodOrNull(taskScoreClass, "getTaskId") ?: return null
-                    val getTaskClassId = XposedCompat.findMethodOrNull(
-                        taskScoreClass,
-                        "getTaskClassId",
-                    ) ?: return null
-                    val getTaskStatus = XposedCompat.findMethodOrNull(taskScoreClass, "getTaskStatus") ?: return null
-                    TaskScoreAccess(
-                        getInstance = getInstance,
-                        findTaskScoreByType = findTaskScoreByType,
-                        syncTaskList = syncTaskList,
-                        doTask = doTask,
-                        getTaskId = getTaskId,
-                        getTaskClassId = getTaskClassId,
-                        getTaskStatus = getTaskStatus,
-                    )
+                    DomesticCookieAccess(getCookieByBduss)
                 }.getOrElse { t ->
-                    XposedCompat.logD("[$TAG] task score access resolve failed: ${t.message}")
+                    XposedCompat.logD("[$TAG] cookie access resolve failed: ${t.message}")
                     null
                 }
             }
         }
+    }
+
+    private enum class SignInStatusResult {
+        ALREADY_SIGNED,
+        NOT_SIGNED,
+        UNKNOWN,
+    }
+
+    private class SignInStatusAccess(
+        private val managerConstructor: java.lang.reflect.Constructor<*>,
+        private val getSigninList: Method,
+        private val responseClass: Class<*>,
+        private val getTodaySignined: Method,
+    ) {
+        fun queryTodaySignedIn(
+            context: Context,
+            bduss: String,
+            uid: String,
+            callback: (Boolean?) -> Unit,
+        ) {
+            val appContext = context.applicationContext ?: context
+            val once = AtomicBoolean(false)
+
+            fun finish(result: SignInStatusResult) {
+                if (!once.compareAndSet(false, true)) return
+                val signedIn = when (result) {
+                    SignInStatusResult.ALREADY_SIGNED -> true
+                    SignInStatusResult.NOT_SIGNED -> false
+                    SignInStatusResult.UNKNOWN -> null
+                }
+                callback(signedIn)
+            }
+
+            val receiver = object : ResultReceiver(mainHandler) {
+                override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
+                    val result = parseResult(resultCode, resultData)
+                    XposedCompat.logD("[$TAG] signin list status result: $result")
+                    finish(result)
+                }
+            }
+
+            runCatching {
+                val manager = managerConstructor.newInstance()
+                val (startTime, endTime) = signInDateRange()
+                getSigninList.invoke(manager, appContext, receiver, bduss, uid, startTime, endTime)
+                mainHandler.postDelayed({
+                    if (!once.get()) {
+                        XposedCompat.logD("[$TAG] signin list status query timeout")
+                        finish(SignInStatusResult.UNKNOWN)
+                    }
+                }, SIGN_IN_STATUS_TIMEOUT_MS)
+            }.onFailure { t ->
+                XposedCompat.logD("[$TAG] signin list status query failed: ${t.message}")
+                finish(SignInStatusResult.UNKNOWN)
+            }
+        }
+
+        private fun parseResult(resultCode: Int, resultData: Bundle?): SignInStatusResult {
+            if (resultCode != RESULT_CODE_SUCCESS || resultData == null) {
+                return SignInStatusResult.UNKNOWN
+            }
+            return runCatching {
+                resultData.classLoader = responseClass.classLoader
+                @Suppress("DEPRECATION")
+                val response = resultData.getParcelable<android.os.Parcelable>(RESULT_KEY)
+                when (getTodaySignined.invoke(response) as? Boolean) {
+                    true -> SignInStatusResult.ALREADY_SIGNED
+                    false -> SignInStatusResult.NOT_SIGNED
+                    null -> SignInStatusResult.UNKNOWN
+                }
+            }.getOrElse { t ->
+                XposedCompat.logD("[$TAG] signin list status parse failed: ${t.message}")
+                SignInStatusResult.UNKNOWN
+            }
+        }
+
+        companion object {
+            fun resolve(cl: ClassLoader): SignInStatusAccess? {
+                return runCatching {
+                    val managerClass = XposedCompat.findClassOrNull(
+                        BaiduAutomationHookPoints.MY_POINT_MANAGER,
+                        cl,
+                    ) ?: return null
+                    val responseClass = XposedCompat.findClassOrNull(
+                        BaiduAutomationHookPoints.SIGNIN_LIST_RESPONSE,
+                        cl,
+                    ) ?: return null
+                    val managerConstructor = managerClass.getDeclaredConstructor()
+                    managerConstructor.isAccessible = true
+                    val getSigninList = XposedCompat.findMethodOrNull(
+                        managerClass,
+                        "getSigninList",
+                        Context::class.java,
+                        ResultReceiver::class.java,
+                        String::class.java,
+                        String::class.java,
+                        String::class.java,
+                        String::class.java,
+                    ) ?: return null
+                    val getTodaySignined = XposedCompat.findMethodOrNull(
+                        responseClass,
+                        "getTodaySignined",
+                    ) ?: return null
+                    SignInStatusAccess(
+                        managerConstructor = managerConstructor,
+                        getSigninList = getSigninList,
+                        responseClass = responseClass,
+                        getTodaySignined = getTodaySignined,
+                    )
+                }.getOrElse { t ->
+                    XposedCompat.logD("[$TAG] signin status access resolve failed: ${t.message}")
+                    null
+                }
+            }
+        }
+    }
+
+    private fun signInDateRange(): Pair<String, String> {
+        val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val now = System.currentTimeMillis()
+        return formatter.format(Date(now - SIGN_IN_STATUS_LOOKBACK_MS)) to formatter.format(Date(now))
     }
 }

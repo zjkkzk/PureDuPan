@@ -6,6 +6,8 @@ import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.InsetDrawable
@@ -16,6 +18,8 @@ import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import android.view.animation.PathInterpolator
 import android.widget.Button
+import android.widget.ImageButton
+import android.widget.TextView
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 
 /**
@@ -31,6 +35,12 @@ internal object UiStyle {
     private const val CARD_CORNER_DP = 22f
     private const val CARD_INSET_DP = 14f
     private const val HOST_NIGHT_CACHE_MS = 300L
+
+    internal enum class MaterialActionIcon {
+        SETTINGS,
+        DELETE,
+        REFRESH,
+    }
 
     @Volatile private var cachedHostNight: Boolean? = null
     @Volatile private var cachedHostNightAtMs = 0L
@@ -279,6 +289,78 @@ internal object UiStyle {
         button.minimumWidth = 0
         button.minimumHeight = 0
         button.setBackgroundColor(0x00000000)
+    }
+
+    internal fun paintSignInActionIcon(
+        view: TextView,
+        density: Float,
+        tokens: Tokens,
+        enabled: Boolean,
+    ) {
+        val size = (32 * density).toInt()
+        view.textSize = 17f
+        view.typeface = android.graphics.Typeface.DEFAULT_BOLD
+        view.includeFontPadding = false
+        view.minWidth = size
+        view.minHeight = size
+        view.setTextColor(if (enabled) Color.WHITE else tokens.textMuted)
+        view.background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(if (enabled) tokens.accent else tokens.surfaceAlt)
+            setStroke((1 * density).toInt().coerceAtLeast(1), if (enabled) tokens.accent else tokens.divider)
+        }
+    }
+
+    internal fun paintMaterialIconButton(
+        button: ImageButton,
+        density: Float,
+        tokens: Tokens,
+        icon: MaterialActionIcon,
+        enabled: Boolean,
+        contentDescription: String,
+    ) {
+        val size = (36 * density).toInt()
+        val padding = (6 * density).toInt()
+        button.contentDescription = contentDescription
+        button.isEnabled = enabled
+        button.alpha = if (enabled) 1f else 0.42f
+        button.setImageDrawable(
+            MaterialActionDrawable(
+                icon = icon,
+                color = if (enabled) tokens.textPrimary else tokens.textMuted,
+                density = density,
+            ),
+        )
+        button.setBackgroundColor(0x00000000)
+        button.scaleType = android.widget.ImageView.ScaleType.CENTER
+        button.adjustViewBounds = false
+        button.setPadding(padding, padding, padding, padding)
+        button.minimumWidth = size
+        button.minimumHeight = size
+        button.maxWidth = size
+        button.maxHeight = size
+    }
+
+    internal fun paintAlertMaterialIconButton(
+        button: Button?,
+        density: Float,
+        tokens: Tokens,
+        icon: MaterialActionIcon,
+        contentDescription: String,
+    ) {
+        if (button == null) return
+        val drawable = MaterialActionDrawable(icon, tokens.textPrimary, density)
+        drawable.setBounds(0, 0, (24 * density).toInt(), (24 * density).toInt())
+        button.text = ""
+        button.contentDescription = contentDescription
+        button.setCompoundDrawables(drawable, null, null, null)
+        button.setAllCaps(false)
+        button.minWidth = (48 * density).toInt()
+        button.minHeight = (40 * density).toInt()
+        button.minimumWidth = (48 * density).toInt()
+        button.minimumHeight = (40 * density).toInt()
+        val horizontal = (12 * density).toInt()
+        button.setPadding(horizontal, 0, horizontal, 0)
     }
 
     internal fun setButtonEnabledState(button: Button, enabled: Boolean) {
@@ -585,6 +667,92 @@ internal object UiStyle {
             paint.colorFilter = colorFilter
             invalidateSelf()
         }
+
+        @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
+        override fun getOpacity(): Int = android.graphics.PixelFormat.TRANSLUCENT
+    }
+
+    private class MaterialActionDrawable(
+        private val icon: MaterialActionIcon,
+        private val color: Int,
+        private val density: Float,
+    ) : Drawable() {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            this.color = this@MaterialActionDrawable.color
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+            strokeWidth = 1.9f
+        }
+        private val arcBounds = RectF(5.2f, 5.2f, 18.8f, 18.8f)
+
+        override fun draw(canvas: Canvas) {
+            val width = bounds.width().takeIf { it > 0 } ?: intrinsicWidth
+            val height = bounds.height().takeIf { it > 0 } ?: intrinsicHeight
+            val scale = minOf(width, height) / 24f
+            val dx = bounds.left + (width - 24f * scale) / 2f
+            val dy = bounds.top + (height - 24f * scale) / 2f
+
+            canvas.save()
+            canvas.translate(dx, dy)
+            canvas.scale(scale, scale)
+            paint.color = color
+            paint.strokeWidth = 1.9f
+            when (icon) {
+                MaterialActionIcon.SETTINGS -> drawSettings(canvas)
+                MaterialActionIcon.DELETE -> drawDelete(canvas)
+                MaterialActionIcon.REFRESH -> drawRefresh(canvas)
+            }
+            canvas.restore()
+        }
+
+        private fun drawSettings(canvas: Canvas) {
+            canvas.drawCircle(12f, 12f, 3.1f, paint)
+            for (index in 0 until 8) {
+                val angle = Math.toRadians((index * 45).toDouble())
+                val startX = 12f + kotlin.math.cos(angle).toFloat() * 6.2f
+                val startY = 12f + kotlin.math.sin(angle).toFloat() * 6.2f
+                val endX = 12f + kotlin.math.cos(angle).toFloat() * 8.2f
+                val endY = 12f + kotlin.math.sin(angle).toFloat() * 8.2f
+                canvas.drawLine(startX, startY, endX, endY, paint)
+            }
+            canvas.drawCircle(12f, 12f, 6.4f, paint)
+        }
+
+        private fun drawDelete(canvas: Canvas) {
+            canvas.drawLine(5f, 6f, 19f, 6f, paint)
+            canvas.drawLine(9f, 4f, 15f, 4f, paint)
+            canvas.drawLine(8f, 8f, 8f, 19f, paint)
+            canvas.drawLine(16f, 8f, 16f, 19f, paint)
+            canvas.drawLine(8f, 19f, 16f, 19f, paint)
+            canvas.drawLine(10.5f, 10f, 10.5f, 17f, paint)
+            canvas.drawLine(13.5f, 10f, 13.5f, 17f, paint)
+        }
+
+        private fun drawRefresh(canvas: Canvas) {
+            canvas.drawArc(arcBounds, 38f, 286f, false, paint)
+            val arrow = Path().apply {
+                moveTo(17.8f, 4.5f)
+                lineTo(19f, 8.2f)
+                lineTo(15.1f, 7.8f)
+            }
+            canvas.drawPath(arrow, paint)
+        }
+
+        override fun setAlpha(alpha: Int) {
+            paint.alpha = alpha
+            invalidateSelf()
+        }
+
+        @Suppress("DEPRECATION")
+        override fun setColorFilter(colorFilter: android.graphics.ColorFilter?) {
+            paint.colorFilter = colorFilter
+            invalidateSelf()
+        }
+
+        override fun getIntrinsicWidth(): Int = (24 * density).toInt()
+
+        override fun getIntrinsicHeight(): Int = (24 * density).toInt()
 
         @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
         override fun getOpacity(): Int = android.graphics.PixelFormat.TRANSLUCENT

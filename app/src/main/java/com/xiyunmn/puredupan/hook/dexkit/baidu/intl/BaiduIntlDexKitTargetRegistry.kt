@@ -5,6 +5,7 @@ import com.xiyunmn.puredupan.hook.dexkit.DexKitHostContext
 import com.xiyunmn.puredupan.hook.dexkit.DexKitTargetDescriptor
 import com.xiyunmn.puredupan.hook.dexkit.DexKitTargetRegistry
 import com.xiyunmn.puredupan.hook.dexkit.DexKitWarmUpTask
+import com.xiyunmn.puredupan.hook.feature.baidu.intl.automation.IntlCookieByBdussDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlAlbumAiInitBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlNonCoreDiffSocketDelayHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlStoryDouyinInitBlockHook
@@ -38,6 +39,11 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             target = "intl changeSkin method",
             feature = "夜间模式跟随系统",
         ),
+        DexKitTargetDescriptor(
+            id = IntlCookieByBdussDexKitResolver.CACHE_ID,
+            target = "intl cookie by BDUSS method",
+            feature = "自动签到",
+        ),
     )
 
     override fun buildTasks(host: DexKitHostContext, classLoader: ClassLoader): List<DexKitWarmUpTask> {
@@ -66,6 +72,11 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
         if (host.isFeatureAvailable(FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE)) {
             tasks += DexKitWarmUpTask(IntlChangeSkinDexKitResolver.CACHE_ID) {
                 IntlChangeSkinDexKitResolver.warmUpDexKitCache(classLoader)
+            }
+        }
+        if (host.isFeatureAvailable(FeatureKeys.KEY_AUTO_DAILY_SIGN_IN)) {
+            tasks += DexKitWarmUpTask(IntlCookieByBdussDexKitResolver.CACHE_ID) {
+                IntlCookieByBdussDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         return tasks
