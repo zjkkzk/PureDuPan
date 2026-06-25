@@ -79,7 +79,7 @@ internal object SettingsAboutSection {
             root = root,
             refreshDeviceFingerprintDescription = {
                 deviceFingerprintDescriptionView?.text =
-                    UiText.Settings.deviceFingerprintDesc(showDeviceFingerprint())
+                    deviceFingerprintDescription(context, showDeviceFingerprint())
             },
         )
     }
@@ -94,7 +94,7 @@ internal object SettingsAboutSection {
         return listOf(
             AboutInfoManager.AboutItem(
                 UiText.Settings.DEVICE_FINGERPRINT_LABEL,
-                UiText.Settings.deviceFingerprintDesc(showDeviceFingerprint()),
+                deviceFingerprintDescription(context, showDeviceFingerprint()),
                 null,
                 View.OnClickListener {
                     DeviceFingerprintDialog.show(
@@ -122,6 +122,16 @@ internal object SettingsAboutSection {
                 "https://github.com/xiyunmn/PureDuPan",
             ),
         ) + AboutInfoManager.loadCachedItemsForSettings()
+    }
+
+    private fun deviceFingerprintDescription(
+        context: Context,
+        showDeviceFingerprint: Boolean,
+    ): String {
+        if (!showDeviceFingerprint) return UiText.Settings.DEVICE_FINGERPRINT_DESC
+        return UiText.Settings.deviceFingerprintDesc(
+            DeviceFingerprintDialog.sensitiveSummaryLines(context)
+        )
     }
 
     private fun buildVersionDisplayInfo(context: Context, hostId: String?): VersionDisplayInfo {

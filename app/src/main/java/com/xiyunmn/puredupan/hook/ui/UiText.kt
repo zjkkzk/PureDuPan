@@ -293,7 +293,7 @@ object UiText {
         const val ABOUT = "关于"
         const val DEVICE_FINGERPRINT_LABEL = "设备指纹"
         const val DEVICE_FINGERPRINT_DESC = "点击查看环境信息"
-        const val DEVICE_FINGERPRINT_SENSITIVE_DESC = "Cuid、Android id、oaid"
+        const val DEVICE_FINGERPRINT_SENSITIVE_DESC = "CUID、Android ID、OAID"
         const val DEVICE_FINGERPRINT_DIALOG_TITLE = "设备指纹"
         const val DEVICE_FINGERPRINT_COPY = "复制"
         const val DEVICE_FINGERPRINT_SHOW_HIDDEN = "显示隐藏的信息"
@@ -308,9 +308,9 @@ object UiText {
         const val MODULE_DEBUG_VERSION = "Debug"
         const val MODULE_RELEASE_VERSION = "Release"
 
-        fun deviceFingerprintDesc(showDeviceFingerprint: Boolean): String {
-            return if (showDeviceFingerprint) {
-                "$DEVICE_FINGERPRINT_DESC\n$DEVICE_FINGERPRINT_SENSITIVE_DESC"
+        fun deviceFingerprintDesc(summaryLines: List<String>): String {
+            return if (summaryLines.isNotEmpty()) {
+                "$DEVICE_FINGERPRINT_DESC\n${summaryLines.joinToString("\n")}"
             } else {
                 DEVICE_FINGERPRINT_DESC
             }

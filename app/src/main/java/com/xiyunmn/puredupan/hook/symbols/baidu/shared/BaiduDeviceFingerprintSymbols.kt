@@ -8,16 +8,16 @@ internal object BaiduDeviceFingerprintSymbols {
     const val SWAN_UUID = "com.baidu.swan.uuid.SwanUUID"
 
     val appCommonStringFields: List<Pair<String, String>> = listOf(
-        "appCommonAndroidId" to "sAndroidId",
-        "appCommonOaid" to "OAID",
-        "appCommonHonorOaid" to "HONOR_OAID",
-        "appCommonDevuid" to "DEVUID",
-        "appCommonPdevuid" to "PDEVUID",
-        "appCommonC3Aid" to "C3_AID",
-        "appCommonDeviceId" to "sDeviceId",
-        "appCommonImei" to "sImei",
-        "appCommonImsi" to "sImsi",
-        "appCommonMac" to "sMac",
-        "appCommonChannel" to "CHANNEL_NUM",
+        "Host Android ID" to "sAndroidId",
+        "OAID" to "OAID",
+        "HONOR OAID" to "HONOR_OAID",
+        "DEVUID" to "DEVUID",
+        "PDEVUID" to "PDEVUID",
+        "C3 AID" to "C3_AID",
+        "Host Device ID" to "sDeviceId",
+        "IMEI" to "sImei",
+        "IMSI" to "sImsi",
+        "MAC" to "sMac",
+        "Channel" to "CHANNEL_NUM",
     )
 }

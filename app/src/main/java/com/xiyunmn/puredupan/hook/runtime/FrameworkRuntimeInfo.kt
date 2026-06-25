@@ -106,38 +106,105 @@ internal object FrameworkRuntimeInfo {
         val hostSourcePaths = collectPackageSourcePaths(context)
         val patchArtifacts = collectPatchArtifacts(context, hostSourcePaths)
         val hostSourceKind = classifyHostSource(context.applicationInfo?.sourceDir)
-
-        return linkedMapOf(
-            "xposedApiVersion" to runCatching { module?.apiVersion }.getOrNull(),
-            "xposedFrameworkName" to frameworkName,
-            "xposedFrameworkVersion" to runCatching { module?.frameworkVersion }.getOrNull().orUnknown(),
-            "xposedFrameworkVersionCode" to runCatching { module?.frameworkVersionCode }.getOrNull(),
-            "xposedFrameworkProperties" to frameworkProperties,
-            "xposedFrameworkCapabilities" to formatFrameworkCapabilities(frameworkProperties),
-            "runtimeKind" to classifyRuntimeKind(
-                frameworkName = frameworkName,
-                hostSourceKind = hostSourceKind,
-                patchArtifacts = patchArtifacts,
-                hostSourcePaths = hostSourcePaths,
-            ),
-            "patchMode" to classifyPatchMode(hostSourceKind, patchArtifacts),
-            "hostSourceKind" to hostSourceKind,
-            "hostSourcePaths" to hostSourcePaths,
-            "moduleSourceDir" to runCatching { module?.moduleApplicationInfo?.sourceDir }.getOrNull().orUnknown(),
-            "modulePublicSourceDir" to runCatching { module?.moduleApplicationInfo?.publicSourceDir }.getOrNull()
-                .orUnknown(),
-            "moduleNativeLibraryDir" to runCatching { module?.moduleApplicationInfo?.nativeLibraryDir }.getOrNull()
-                .orUnknown(),
-            "loadedClassHints" to collectLoadedClassHints(context),
-            "managerPackageVisibility" to collectManagerPackageVisibility(context),
-            "patchArtifactHints" to patchArtifacts.asMap(),
-            "keywordHints" to collectKeywordHints(
-                frameworkName = frameworkName,
-                hostSourcePaths = hostSourcePaths,
-                moduleSourceDir = runCatching { module?.moduleApplicationInfo?.sourceDir }.getOrNull(),
-            ),
-            "systemPropertyHints" to collectSystemPropertyHints(),
+        val runtimeKind = classifyRuntimeKind(
+            frameworkName = frameworkName,
+            hostSourceKind = hostSourceKind,
+            patchArtifacts = patchArtifacts,
+            hostSourcePaths = hostSourcePaths,
         )
+        val patchMode = classifyPatchMode(hostSourceKind, patchArtifacts)
+        return linkedMapOf<String, Any?>().apply {
+            putIfUseful("runtimeKind", runtimeKind)
+            putIfUseful("xposedApiVersion", runCatching { module?.apiVersion }.getOrNull())
+            putIfUseful("frameworkName", frameworkName)
+            putIfUseful("frameworkVersion", runCatching { module?.frameworkVersion }.getOrNull())
+            putIfUseful("frameworkVersionCode", runCatching { module?.frameworkVersionCode }.getOrNull())
+            putIfUseful("frameworkCapabilities", formatFrameworkCapabilities(frameworkProperties))
+            if (runtimeKind == "lspatch" || runtimeKind == "npatch") {
+                putIfUseful("patchMode", patchMode)
+                putIfUseful("patchArtifacts", patchArtifacts.currentArtifactSummary(runtimeKind))
+            }
+            putIfUseful("managerPackages", collectCurrentManagerPackageVisibility(context, runtimeKind))
+        }
+    }
+
+    private fun MutableMap<String, Any?>.putIfUseful(key: String, value: Any?) {
+        if (isUsefulRuntimeValue(value)) {
+            this[key] = value
+        }
+    }
+
+    private fun isUsefulRuntimeValue(value: Any?): Boolean {
+        return when (value) {
+            null -> false
+            is String -> value.isNotBlank() && value != UNKNOWN && value != MISSING
+            is Map<*, *> -> value.isNotEmpty()
+            is Iterable<*> -> value.any()
+            else -> true
+        }
+    }
+
+    private fun collectCurrentManagerPackageVisibility(
+        context: Context,
+        runtimeKind: String,
+    ): List<Map<String, Any?>> {
+        val hint = when (runtimeKind) {
+            "lsposed" -> managerPackageHints.firstOrNull { it.label == "LSPosed" }
+            "lspatch" -> managerPackageHints.firstOrNull { it.label == "LSPatch" }
+            "npatch" -> managerPackageHints.firstOrNull { it.label == "NPatch" }
+            else -> null
+        } ?: return emptyList()
+        return hint.packageNames.mapNotNull { packageName ->
+            packageInfoOrNull(context, packageName)?.let { packageInfo ->
+                linkedMapOf<String, Any?>().apply {
+                    put("packageName", packageName)
+                    putIfUseful("versionName", packageInfo.versionName)
+                    putIfUseful("versionCode", packageInfo.longVersionCodeCompat())
+                }
+            }
+        }
+    }
+
+    private fun PatchArtifactDetection.currentArtifactSummary(runtimeKind: String): Map<String, Any?> {
+        return linkedMapOf<String, Any?>().apply {
+            when (runtimeKind) {
+                "lspatch" -> {
+                    putIfTrue("manifestMetadata", lspatchManifestMetadata)
+                    putIfTrue("sourcePathHint", lspatchSourcePath)
+                    putIfTrue("configInApk", lspatchConfigInApk)
+                    putIfTrue("loaderDexInApk", lspatchLoaderDexInApk)
+                    putIfTrue("metaLoaderDexInApk", lspatchMetaLoaderDexInApk)
+                    putIfTrue("originApkInApk", lspatchOriginApkInApk)
+                    putIfPositive("embeddedModuleCountInApk", lspatchEmbeddedModuleCountInApk)
+                    putIfTrue("configInAssets", lspatchConfigInAssets)
+                    putIfPositive("embeddedModuleCountInAssets", lspatchEmbeddedModuleCountInAssets)
+                }
+                "npatch" -> {
+                    putIfTrue("manifestMetadata", npatchManifestMetadata)
+                    putIfTrue("sourcePathHint", npatchSourcePath)
+                    putIfTrue("configInApk", npatchConfigInApk)
+                    putIfTrue("loaderBinInApk", npatchLoaderBinInApk)
+                    putIfTrue("metaLoaderDexInApk", npatchMetaLoaderDexInApk)
+                    putIfTrue("providerDexInApk", npatchProviderDexInApk)
+                    putIfTrue("originApkInApk", npatchOriginApkInApk)
+                    putIfPositive("embeddedModuleCountInApk", npatchEmbeddedModuleCountInApk)
+                    putIfTrue("configInAssets", npatchConfigInAssets)
+                    putIfPositive("embeddedModuleCountInAssets", npatchEmbeddedModuleCountInAssets)
+                }
+            }
+        }
+    }
+
+    private fun MutableMap<String, Any?>.putIfTrue(key: String, value: Boolean) {
+        if (value) {
+            this[key] = true
+        }
+    }
+
+    private fun MutableMap<String, Any?>.putIfPositive(key: String, value: Int) {
+        if (value > 0) {
+            this[key] = value
+        }
     }
 
     private fun formatFrameworkCapabilities(properties: Long?): List<String> {
@@ -163,14 +230,14 @@ internal object FrameworkRuntimeInfo {
     ): String {
         val lowerName = frameworkName.lowercase(Locale.ROOT)
         return when {
-            lowerName.contains("lsposed") -> "lsposed"
-            lowerName.contains("edxposed") -> "edxposed"
-            lowerName.contains("xposed") -> "xposed"
-            lowerName.contains("vector") -> "vector"
             patchArtifacts.npatchDetected || hostSourceKind == "npatch-origin" -> "npatch"
             patchArtifacts.lspatchDetected || hostSourceKind == "lspatch-origin" -> "lspatch"
             containsKeyword(hostSourcePaths, listOf("fpa", "funpatch")) || lowerName.contains("fpa") -> "fpa-like"
             containsKeyword(hostSourcePaths, listOf("atom", "yuanzi")) || lowerName.contains("atom") -> "atom-like"
+            lowerName.contains("lsposed") -> "lsposed"
+            lowerName.contains("edxposed") -> "edxposed"
+            lowerName.contains("xposed") -> "xposed"
+            lowerName.contains("vector") -> "vector"
             frameworkName == UNKNOWN -> UNKNOWN
             else -> "xposed-compatible"
         }

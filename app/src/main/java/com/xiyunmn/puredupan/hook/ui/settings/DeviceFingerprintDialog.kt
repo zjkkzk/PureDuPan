@@ -27,6 +27,11 @@ import org.json.JSONObject
 
 internal object DeviceFingerprintDialog {
     private const val LOG_TAG = "[DeviceFingerprintDialog]"
+    private const val FIELD_CUID = "CUID"
+    private const val FIELD_DEVICE_ID = "Device ID"
+    private const val FIELD_ANDROID_ID = "Android ID"
+    private const val FIELD_OAID = "OAID"
+    private const val FIELD_HONOR_OAID = "HONOR OAID"
 
     fun show(
         context: Context,
@@ -140,6 +145,12 @@ internal object DeviceFingerprintDialog {
         Toast.makeText(context, UiText.Settings.DEVICE_FINGERPRINT_COPIED, Toast.LENGTH_SHORT).show()
     }
 
+    @SuppressLint("HardwareIds")
+    internal fun sensitiveSummaryLines(context: Context): List<String> {
+        val summary = buildSensitiveSummary(context)
+        return summary.map { (label, value) -> "$label: $value" }
+    }
+
     private fun buildPublicDeviceFingerprintJson(context: Context): String {
         return formatJsonObject(buildPublicDeviceFingerprintFields(context))
     }
@@ -157,33 +168,74 @@ internal object DeviceFingerprintDialog {
     }
 
     private fun buildHiddenDeviceFingerprint(context: Context): Map<String, Any?> {
-        val fields = linkedMapOf<String, Any?>(
-            "currentDeviceInfo" to buildCurrentDeviceInfo(context),
-        )
+        val fields = linkedMapOf<String, Any?>()
+        val summary = buildSensitiveSummary(context)
+        if (summary.isNotEmpty()) {
+            fields["deviceFingerprint"] = summary
+        }
+        fields["currentDeviceInfo"] = buildCurrentDeviceInfo(context)
         val hostFingerprint = SettingsHostState.deviceFingerprintFor(context)
-        if (hostFingerprint.isNotEmpty()) {
-            fields["hostDeviceFingerprint"] = hostFingerprint
+        val hostDetails = hostFingerprint
+            .filterKeys { key -> key != "deviceFingerprint" }
+        if (hostDetails.isNotEmpty()) {
+            fields["hostDeviceFingerprintDetails"] = hostDetails
         }
         return fields
     }
 
     @SuppressLint("HardwareIds")
+    private fun buildSensitiveSummary(context: Context): LinkedHashMap<String, String> {
+        val hostFingerprint = runCatching {
+            SettingsHostState.deviceFingerprintFor(context)
+        }.getOrDefault(emptyMap())
+        val hostDeviceFingerprint = mapValue(hostFingerprint, "deviceFingerprint")
+            ?: mapValue(hostFingerprint, "baiduDeviceInfo")
+            ?: emptyMap()
+        val androidId = firstDisplayString(
+            hostDeviceFingerprint[FIELD_ANDROID_ID],
+            hostDeviceFingerprint["Host Android ID"],
+            hostDeviceFingerprint["systemAndroidId"],
+            runCatching {
+                Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+            }.getOrNull(),
+        )
+        val cuid = firstDisplayString(
+            hostDeviceFingerprint[FIELD_CUID],
+            hostDeviceFingerprint["cuid"],
+            hostDeviceFingerprint[FIELD_DEVICE_ID],
+            hostDeviceFingerprint["device_id"],
+        )
+        val oaid = firstDisplayString(
+            hostDeviceFingerprint[FIELD_OAID],
+            hostDeviceFingerprint["appCommonOaid"],
+            hostDeviceFingerprint[FIELD_HONOR_OAID],
+            hostDeviceFingerprint["appCommonHonorOaid"],
+        )
+
+        return linkedMapOf<String, String>().apply {
+            putIfPresent(FIELD_CUID, cuid)
+            putIfPresent(FIELD_ANDROID_ID, androidId)
+            putIfPresent(FIELD_OAID, oaid)
+        }
+    }
+
+    @SuppressLint("HardwareIds")
     private fun buildCurrentDeviceInfo(context: Context): Map<String, Any?> {
         return linkedMapOf(
-            "systemAndroidId" to runCatching {
+            FIELD_ANDROID_ID to runCatching {
                 Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
             }.getOrElse(::unavailable),
-            "androidRelease" to Build.VERSION.RELEASE.orUnknown(),
-            "androidSdk" to Build.VERSION.SDK_INT,
-            "securityPatch" to Build.VERSION.SECURITY_PATCH.orUnknown(),
-            "buildFingerprint" to Build.FINGERPRINT.orUnknown(),
-            "buildBrand" to Build.BRAND.orUnknown(),
-            "buildManufacturer" to Build.MANUFACTURER.orUnknown(),
-            "buildModel" to Build.MODEL.orUnknown(),
-            "buildDevice" to Build.DEVICE.orUnknown(),
-            "buildProduct" to Build.PRODUCT.orUnknown(),
-            "buildHardware" to Build.HARDWARE.orUnknown(),
-            "supportedAbis" to Build.SUPPORTED_ABIS.toList(),
+            "Android Release" to Build.VERSION.RELEASE.orUnknown(),
+            "Android SDK" to Build.VERSION.SDK_INT,
+            "Security Patch" to Build.VERSION.SECURITY_PATCH.orUnknown(),
+            "Build Fingerprint" to Build.FINGERPRINT.orUnknown(),
+            "Brand" to Build.BRAND.orUnknown(),
+            "Manufacturer" to Build.MANUFACTURER.orUnknown(),
+            "Model" to Build.MODEL.orUnknown(),
+            "Device" to Build.DEVICE.orUnknown(),
+            "Product" to Build.PRODUCT.orUnknown(),
+            "Hardware" to Build.HARDWARE.orUnknown(),
+            "Supported ABIs" to Build.SUPPORTED_ABIS.toList(),
         )
     }
 
@@ -231,20 +283,23 @@ internal object DeviceFingerprintDialog {
     }
 
     private fun formatJsonObject(fields: Map<*, *>, indent: Int = 0): String {
-        if (fields.isEmpty()) return "{}"
+        val entries = fields.entries.mapNotNull { (key, value) ->
+            sanitizeJsonValue(value)?.let { key.toString() to it }
+        }
+        if (entries.isEmpty()) return "{}"
         val currentIndent = " ".repeat(indent)
         val childIndent = " ".repeat(indent + 2)
-        return fields.entries.joinToString(
+        return entries.joinToString(
             separator = ",\n",
             prefix = "{\n",
             postfix = "\n$currentIndent}",
         ) { (key, value) ->
-            "$childIndent${JSONObject.quote(key.toString())}: ${formatJsonValue(value, indent + 2)}"
+            "$childIndent${JSONObject.quote(key)}: ${formatJsonValue(value, indent + 2)}"
         }
     }
 
     private fun formatJsonArray(values: Iterable<*>, indent: Int): String {
-        val list = values.toList()
+        val list = values.mapNotNull(::sanitizeJsonValue)
         if (list.isEmpty()) return "[]"
         val currentIndent = " ".repeat(indent)
         val childIndent = " ".repeat(indent + 2)
@@ -267,6 +322,47 @@ internal object DeviceFingerprintDialog {
             is Number -> value.toString()
             else -> JSONObject.quote(value.toString())
         }
+    }
+
+    private fun sanitizeJsonValue(value: Any?): Any? {
+        return when (value) {
+            null -> null
+            is Map<*, *> -> value.entries.mapNotNull { (key, itemValue) ->
+                sanitizeJsonValue(itemValue)?.let { key.toString() to it }
+            }.toMap(LinkedHashMap()).takeIf { it.isNotEmpty() }
+            is Iterable<*> -> value.mapNotNull(::sanitizeJsonValue).takeIf { it.isNotEmpty() }
+            is Array<*> -> value.mapNotNull(::sanitizeJsonValue).takeIf { it.isNotEmpty() }
+            is String -> value.takeIf(::isDisplayString)
+            else -> value
+        }
+    }
+
+    private fun mapValue(map: Map<*, *>, key: String): Map<*, *>? {
+        return map[key] as? Map<*, *>
+    }
+
+    private fun firstDisplayString(vararg values: Any?): String? {
+        return values.firstNotNullOfOrNull { value ->
+            value?.toString()?.trim()?.takeIf(::isDisplayString)
+        }
+    }
+
+    private fun MutableMap<String, String>.putIfPresent(key: String, value: String?) {
+        if (!value.isNullOrBlank()) {
+            this[key] = value
+        }
+    }
+
+    private fun isDisplayString(value: String): Boolean {
+        val normalized = value.trim()
+        if (normalized.isEmpty()) return false
+        val lower = normalized.lowercase()
+        return normalized != UiText.Settings.UNKNOWN &&
+            lower != "unknown" &&
+            lower != "missing" &&
+            lower != "not_visible_or_missing" &&
+            !lower.startsWith("unavailable:") &&
+            !lower.startsWith("not_collected:")
     }
 
     private fun String?.orUnknown(): String = this?.takeIf { it.isNotBlank() } ?: UiText.Settings.UNKNOWN
