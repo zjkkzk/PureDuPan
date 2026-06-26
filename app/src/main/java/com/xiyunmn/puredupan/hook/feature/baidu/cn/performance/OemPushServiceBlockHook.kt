@@ -97,33 +97,33 @@ object OemPushServiceBlockHook {
         val configs = listOf(
             ServiceHookConfig(
                 classes = BaiduCnHookPoints.OEM_PUSH_ON_START_COMMAND_SERVICE_CLASSES,
-                methodName = "onStartCommand",
+                methodName = BaiduCnHookPoints.OEM_PUSH_SERVICE_ON_START_COMMAND_METHOD,
                 params = arrayOf(Intent::class.java, Integer.TYPE, Integer.TYPE),
                 returnValue = START_NOT_STICKY,
                 getStartId = { args -> args.getOrNull(2) as? Int },
             ),
             ServiceHookConfig(
                 classes = BaiduCnHookPoints.OEM_PUSH_ON_CREATE_SERVICE_CLASSES,
-                methodName = "onCreate",
+                methodName = BaiduCnHookPoints.OEM_PUSH_SERVICE_ON_CREATE_METHOD,
                 params = emptyArray(),
                 returnValue = null,
             ),
             ServiceHookConfig(
                 classes = BaiduCnHookPoints.OEM_PUSH_ON_START_SERVICE_CLASSES,
-                methodName = "onStart",
+                methodName = BaiduCnHookPoints.OEM_PUSH_SERVICE_ON_START_METHOD,
                 params = arrayOf(Intent::class.java, Integer.TYPE),
                 returnValue = null,
                 getStartId = { args -> args.getOrNull(1) as? Int },
             ),
             ServiceHookConfig(
                 classes = BaiduCnHookPoints.OEM_PUSH_ON_BIND_SERVICE_CLASSES,
-                methodName = "onBind",
+                methodName = BaiduCnHookPoints.OEM_PUSH_SERVICE_ON_BIND_METHOD,
                 params = arrayOf(Intent::class.java),
                 returnValue = null,
             ),
             ServiceHookConfig(
                 classes = BaiduCnHookPoints.OEM_PUSH_ON_HANDLE_INTENT_SERVICE_CLASSES,
-                methodName = "onHandleIntent",
+                methodName = BaiduCnHookPoints.OEM_PUSH_SERVICE_ON_HANDLE_INTENT_METHOD,
                 params = arrayOf(Intent::class.java),
                 returnValue = null,
             ),
@@ -148,7 +148,7 @@ object OemPushServiceBlockHook {
         return hookMultipleClasses(
             cl = cl,
             classNames = BaiduCnHookPoints.OEM_PUSH_RECEIVER_CLASSES,
-            methodName = "onReceive",
+            methodName = BaiduCnHookPoints.OEM_PUSH_RECEIVER_ON_RECEIVE_METHOD,
             params = arrayOf(Context::class.java, Intent::class.java),
             returnValue = null,
         )

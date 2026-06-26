@@ -13,25 +13,13 @@ internal object BaiduCnHookPoints {
     const val VERSION_UPDATE_HELPER = "com.baidu.netdisk.ui.versionupdate.VersionUpdateHelper"
     const val VERSION_UPDATE_HELPER_SHOW_LC_VERSION_DIALOG_METHOD = "showLCVersionDialog"
 
-    const val NEW_QUICK_SETTINGS_ACTIVITY = "com.baidu.netdisk.ui.NewQuickSettingsActivity"
-    const val NEW_QUICK_SETTINGS_ACTIVITY_ON_CREATE_METHOD = "onCreate"
-
     const val RECEIVE_COUPON_DIALOG_V3 =
         "com.baidu.netdisk.business.guide.dialog.lifeproduct.ReceiveCouponDialogV3"
     const val DIALOG_SHOW_METHOD = "show"
 
-    const val SVIP_ICON_GUIDE = "com.baidu.netdisk.ui.svipicon.SvipIconGuide"
-    const val SVIP_ICON_GUIDE_SHOW_GUIDE_METHOD = "showGuide"
-
     const val SHARE_TAB_PUSH_GUIDE_NORMAL_DIALOG =
         "com.baidu.netdisk.ui.cloudp2p.pushguide.ShareTabPushGuideNormalDialog"
     const val SHARE_TAB_PUSH_GUIDE_ON_START_METHOD = "onStart"
-
-    const val APP_STORE_REVIEW_DIALOG = "com.baidu.netdisk.ui.operation.storereview.AppStoreReviewDialog"
-    const val APP_STORE_REVIEW_DIALOG_SHOW_METHOD = "show"
-    const val APP_STORE_REVIEW_SHOW_STRATEGY =
-        "com.baidu.netdisk.ui.operation.storereview.AppStoreReviewShowStrategy"
-    const val APP_STORE_REVIEW_SHOW_CENTER_DIALOG_METHOD = "showCenterDialog"
 
     const val ABOUT_ME_TOP_FRAGMENT_HETEROMO =
         "com.baidu.netdisk.ui.aboutme.view.AboutMeTopFragmentHeteromo"

@@ -403,16 +403,6 @@ internal object SettingsDebugActions {
         }
     }
 
-    private fun stateColorFor(context: Context, state: String): Int {
-        val tokens = UiStyle.tokens(context)
-        return when (state) {
-            "success" -> tokens.accent
-            "error", "not_found" -> tokens.danger
-            "scanning" -> 0xFFF0A03A.toInt()
-            else -> tokens.textMuted
-        }
-    }
-
     private fun isDexKitFailure(item: SettingsDexKitState.TargetStatusView): Boolean {
         return item.state == "error" || item.state == "not_found"
     }
