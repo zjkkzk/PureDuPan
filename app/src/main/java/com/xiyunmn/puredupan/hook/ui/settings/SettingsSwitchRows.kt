@@ -23,6 +23,7 @@ import com.xiyunmn.puredupan.hook.ui.UiText
 
 internal object SettingsSwitchRows {
     private const val DEXKIT_EFFECTIVE_AFTER_ENABLE_PHRASE = "启用 DexKit 解析后生效"
+    private const val DEXKIT_ENHANCED_AFTER_ENABLE_PHRASE = "启用 DexKit 解析后增强覆盖"
 
     @Suppress("DEPRECATION")
     fun create(
@@ -218,6 +219,7 @@ internal object SettingsSwitchRows {
     ): CharSequence {
         val phrases = listOf(
             DEXKIT_EFFECTIVE_AFTER_ENABLE_PHRASE to tokens.accent,
+            DEXKIT_ENHANCED_AFTER_ENABLE_PHRASE to tokens.accent,
             UiText.Settings.SHOW_DEVICE_FINGERPRINT_PRIVACY_HINT to tokens.warning,
             UiText.Settings.AUTO_DAILY_SIGN_IN_RISK_HINT to tokens.warning,
             UiText.Settings.SIGN_IN_RISK_WARNING to tokens.warning,

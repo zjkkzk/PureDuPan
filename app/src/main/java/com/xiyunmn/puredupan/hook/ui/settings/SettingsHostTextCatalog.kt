@@ -42,6 +42,10 @@ internal object SettingsHostTextCatalog {
                 "会员卡片定制",
                 "管理「我的」页会员卡片背景、点击事件、等级福利和升级按钮",
             )
+            this[SettingsUserState.KEY_AUTO_DAILY_SIGN_IN] = text(
+                UiText.Settings.AUTO_DAILY_SIGN_IN_LABEL,
+                UiText.Settings.AUTO_DAILY_SIGN_IN_INTL_DESC,
+            )
         }
     }
 
