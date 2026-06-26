@@ -40,17 +40,19 @@ internal object IntlAutoDailySignInHook {
         val context = activity.applicationContext ?: activity
         val account = AccountAccess.resolve(cl)
         if (account == null) {
-            if (AutoDailySignInStateStore.beginAttempt(context, null, TAG, force = force)) {
+            if (force && AutoDailySignInStateStore.beginAttempt(context, null, TAG, force = true)) {
                 AutoDailySignInStateStore.markFailed(context, null, TAG, "account state unavailable")
+            } else {
+                XposedCompat.logD("[$TAG] auto sign-in skipped: account state unavailable")
             }
             return
         }
         if (!account.isLogin) {
             if (force && AutoDailySignInStateStore.beginAttempt(context, account.uid, TAG, force = true)) {
                 AutoDailySignInStateStore.markFailed(context, account.uid, TAG, "account not logged in")
-                return
+            } else {
+                XposedCompat.logD("[$TAG] auto sign-in skipped: account not logged in")
             }
-            XposedCompat.logD("[$TAG] auto sign-in skipped: account not logged in")
             return
         }
         if (!AutoDailySignInStateStore.beginAttempt(context, account.uid, TAG, force = force)) return
@@ -78,7 +80,13 @@ internal object IntlAutoDailySignInHook {
         Thread({
             try {
                 if (!force && !HookSettings.isAutoDailySignInEnabled) {
-                    AutoDailySignInStateStore.markSkipped(context, uid, TAG, "disabled before membership request")
+                    AutoDailySignInStateStore.markSkipped(
+                        context,
+                        uid,
+                        TAG,
+                        "disabled before membership request",
+                        clearAttempt = true,
+                    )
                     return@Thread
                 }
                 val cookie = IntlCookieByBdussDexKitResolver.cookieFor(cl, bduss)

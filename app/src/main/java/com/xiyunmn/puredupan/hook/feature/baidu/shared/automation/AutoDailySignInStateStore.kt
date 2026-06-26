@@ -66,8 +66,14 @@ internal object AutoDailySignInStateStore {
         XposedCompat.log("[$tag] auto sign-in skipped: $detail")
     }
 
-    fun markSkipped(context: Context, accountIdentity: String?, tag: String, detail: String) {
-        markFinished(context, accountIdentity, STATUS_SKIPPED, detail)
+    fun markSkipped(
+        context: Context,
+        accountIdentity: String?,
+        tag: String,
+        detail: String,
+        clearAttempt: Boolean = false,
+    ) {
+        markFinished(context, accountIdentity, STATUS_SKIPPED, detail, clearAttempt = clearAttempt)
         XposedCompat.log("[$tag] auto sign-in skipped: $detail")
     }
 
