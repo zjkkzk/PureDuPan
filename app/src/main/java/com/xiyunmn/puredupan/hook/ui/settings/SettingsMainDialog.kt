@@ -26,6 +26,7 @@ import com.xiyunmn.puredupan.hook.ui.UiText
 import com.xiyunmn.puredupan.hook.ui.showRestrictedFeatureWarningDialog
 
 private const val RESTRICTED_FEATURE_UNLOCK_TAP_COUNT = 5
+private const val DEXKIT_SUMMARY_REFRESH_MS = 1000L
 
 internal object SettingsMainDialog {
     @Volatile private var versionTapCount = 0
@@ -299,6 +300,12 @@ internal object SettingsMainDialog {
                 prefs = prefs,
                 refresh = aboutSection.refreshDeviceFingerprintDescription,
             )
+            val unregisterDexKitSummaryRefresh = bindDexKitSummaryRefresh(
+                context = context,
+                prefs = prefs,
+                showDexKitStatus = settingsSession.showDexKitStatus,
+                dexKitRow = rowsByPrefKey[SettingsUserState.KEY_ENABLE_EXPERIMENTAL_DEXKIT],
+            )
             val unregisterNightModeDependency = bindIntlNightModeDependency(
                 prefs = prefs,
                 isIntlHost = settingsSession.isIntlHost,
@@ -330,6 +337,7 @@ internal object SettingsMainDialog {
             }
             dialog.setOnDismissListener {
                 unregisterDeviceFingerprintVisibilityRefresh()
+                unregisterDexKitSummaryRefresh?.invoke()
                 unregisterNightModeDependency?.invoke()
                 unregisterThemeListener?.invoke()
                 unregisterThemeListener = null
@@ -342,6 +350,53 @@ internal object SettingsMainDialog {
         } catch (t: Throwable) {
             XposedCompat.log("[SettingsMainDialog] FAILED to show settings dialog: ${t.message}")
             XposedCompat.log(t)
+        }
+    }
+
+    private fun bindDexKitSummaryRefresh(
+        context: Context,
+        prefs: SharedPreferences,
+        showDexKitStatus: Boolean,
+        dexKitRow: View?,
+    ): (() -> Unit)? {
+        if (!showDexKitStatus) return null
+        val summaryView = dexKitRow?.let(SettingsSwitchRows::findActionTextView) ?: return null
+        val mainHandler = Handler(Looper.getMainLooper())
+
+        fun refreshSummary() {
+            summaryView.text = SettingsDexKitState.summaryText(context)
+        }
+
+        val refreshRunnable = object : Runnable {
+            override fun run() {
+                refreshSummary()
+                if (SettingsDexKitState.shouldContinueStatusRefresh(context)) {
+                    mainHandler.postDelayed(this, DEXKIT_SUMMARY_REFRESH_MS)
+                }
+            }
+        }
+
+        fun scheduleRefresh(forceNextTick: Boolean = false) {
+            mainHandler.removeCallbacks(refreshRunnable)
+            refreshSummary()
+            if (forceNextTick || SettingsDexKitState.shouldContinueStatusRefresh(context)) {
+                mainHandler.postDelayed(refreshRunnable, DEXKIT_SUMMARY_REFRESH_MS)
+            }
+        }
+
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPrefs, key ->
+            if (sharedPrefs !== prefs || key != SettingsUserState.KEY_ENABLE_EXPERIMENTAL_DEXKIT) {
+                return@OnSharedPreferenceChangeListener
+            }
+            val enabled = prefs.getBoolean(SettingsUserState.KEY_ENABLE_EXPERIMENTAL_DEXKIT, false)
+            mainHandler.post { scheduleRefresh(forceNextTick = enabled) }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        scheduleRefresh()
+
+        return {
+            prefs.unregisterOnSharedPreferenceChangeListener(listener)
+            mainHandler.removeCallbacks(refreshRunnable)
         }
     }
 

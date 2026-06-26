@@ -14,11 +14,25 @@ internal object SettingsDexKitState {
         val feature: String,
         val state: String,
         val detail: String?,
+        val updatedAt: Long,
     )
 
     fun summaryText(context: Context): String {
         val host = hostFor(context) ?: return "0/0"
         return DexKitCacheWarmUp.summaryText(host)
+    }
+
+    fun isExperimentalDexKitEnabled(context: Context): Boolean {
+        return SettingsHostState.isFeatureVisibleForContext(
+            context,
+            SettingsUserState.KEY_ENABLE_EXPERIMENTAL_DEXKIT,
+        ) && SettingsUserState.getPrefs(context)
+            .getBoolean(SettingsUserState.KEY_ENABLE_EXPERIMENTAL_DEXKIT, false)
+    }
+
+    fun shouldContinueStatusRefresh(context: Context): Boolean {
+        if (!isExperimentalDexKitEnabled(context)) return false
+        return statusViews(context).any { status -> status.state == "pending" || status.state == "scanning" }
     }
 
     fun statusViews(context: Context): List<TargetStatusView> {
@@ -30,6 +44,7 @@ internal object SettingsDexKitState {
                 feature = status.descriptor.feature,
                 state = status.state,
                 detail = status.detail,
+                updatedAt = status.updatedAt,
             )
         }
     }
@@ -44,6 +59,31 @@ internal object SettingsDexKitState {
             return
         }
         DexKitSettingsRuntime.markFullScanPendingFromSettings()
+    }
+
+    fun triggerFullScanFromSettings(context: Context): Boolean {
+        if (!SettingsHostState.isFeatureVisibleForContext(
+                context,
+                SettingsUserState.KEY_ENABLE_EXPERIMENTAL_DEXKIT,
+            )
+        ) {
+            XposedCompat.logW("[SettingsDexKitState] full scan trigger skipped: unsupported host")
+            return false
+        }
+        val host = hostFor(context) ?: run {
+            DexKitSettingsRuntime.markFullScanPendingFromSettings()
+            return false
+        }
+        val started = DexKitCacheWarmUp.scanNow(
+            host = host,
+            classLoader = context.classLoader,
+            forceFullScan = true,
+            reason = "settings switch enabled",
+        )
+        if (!started) {
+            DexKitSettingsRuntime.markFullScanPendingFromSettings()
+        }
+        return started
     }
 
     private fun hostFor(context: Context) =

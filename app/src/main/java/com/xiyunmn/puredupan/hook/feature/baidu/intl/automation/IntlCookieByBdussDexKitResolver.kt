@@ -14,6 +14,17 @@ internal object IntlCookieByBdussDexKitResolver {
     private const val TAG = "IntlCookieByBdussDexKitResolver"
     private const val PROBE_BDUSS = "__puredupan_cookie_probe__"
     private const val COOKIE_UTILS_TOKEN = "CookiesUtils"
+    private const val MAX_DIAGNOSTIC_CANDIDATES = 5
+    private val COOKIE_OWNER_EVIDENCE_STRINGS = listOf(
+        COOKIE_UTILS_TOKEN,
+        "getCookieByBduss",
+        "BDUSS=",
+        "Cookie: BDUSS=",
+    )
+    private val COOKIE_DETAIL_STRINGS = COOKIE_OWNER_EVIDENCE_STRINGS + listOf(
+        "STOKEN",
+        "PANPSC",
+    )
 
     private data class DexMethodCandidate(
         val className: String,
@@ -23,6 +34,11 @@ internal object IntlCookieByBdussDexKitResolver {
         val isConstructor: Boolean,
         val modifiers: Int,
         val usingStrings: Set<String>,
+    )
+
+    private data class DexScanResult(
+        val candidates: List<DexMethodCandidate>,
+        val evidenceMethods: List<DexMethodCandidate>,
     )
 
     fun cookieFor(cl: ClassLoader, bduss: String): String {
@@ -53,9 +69,9 @@ internal object IntlCookieByBdussDexKitResolver {
             DexKitCompat.CachedResult.Miss -> Unit
         }
 
-        val methods = DexKitCompat.withBridge(TAG, cl) { bridge ->
+        val scan = DexKitCompat.withBridge(TAG, cl) { bridge ->
             bridge.setThreadNum(1)
-            bridge.findMethod(
+            val candidates = bridge.findMethod(
                 FindMethod.create()
                     .matcher(
                         MethodMatcher.create()
@@ -74,23 +90,69 @@ internal object IntlCookieByBdussDexKitResolver {
                     usingStrings = methodData.usingStrings.toSet(),
                 )
             }
-        } ?: return null
+            val evidenceMethods = bridge.findMethod(
+                FindMethod.create()
+                    .matcher(
+                        MethodMatcher.create()
+                            .anyOf(
+                                COOKIE_OWNER_EVIDENCE_STRINGS.map { token ->
+                                    MethodMatcher.create().usingStrings(token)
+                                },
+                            ),
+                    ),
+            ).map { methodData ->
+                DexMethodCandidate(
+                    className = methodData.className,
+                    methodName = methodData.name,
+                    returnTypeName = methodData.returnTypeName,
+                    paramTypeNames = methodData.paramTypeNames,
+                    isConstructor = methodData.isConstructor,
+                    modifiers = methodData.modifiers,
+                    usingStrings = methodData.usingStrings.toSet(),
+                )
+            }
+            DexScanResult(
+                candidates = candidates,
+                evidenceMethods = evidenceMethods,
+            )
+        } ?: run {
+            DexKitCompat.markTargetError(
+                TAG,
+                CACHE_ID,
+                "DexKit bridge returned null before candidate enumeration",
+            )
+            return null
+        }
+        val methods = scan.candidates
 
-        val best = methods.mapNotNull { candidate ->
-            if (!candidate.isCookieHelperShape()) return@mapNotNull null
-            val method = validateCachedResult(
-                cl,
-                DexKitCompat.MethodRef(candidate.className, candidate.methodName),
-            ) ?: return@mapNotNull null
-            candidate to method
-        }.sortedWith(
+        val evidenceOwnerClasses = (methods + scan.evidenceMethods)
+            .filter { candidate -> candidate.hasCookieEvidence() }
+            .mapTo(mutableSetOf()) { candidate -> candidate.className }
+        val rejected = mutableListOf<String>()
+        val best = methods.asSequence()
+            .filter { candidate ->
+                candidate.isCookieHelperShape() &&
+                    (candidate.hasCookieEvidence() || candidate.className in evidenceOwnerClasses)
+            }
+            .mapNotNull { candidate ->
+                val method = validateCandidate(cl, candidate, rejected) ?: return@mapNotNull null
+                candidate to method
+            }
+            .sortedWith(
             compareByDescending<Pair<DexMethodCandidate, Method>> { score(it.first) }
                 .thenBy { it.first.className }
                 .thenBy { it.first.methodName },
         ).firstOrNull()
 
         if (best == null) {
-            XposedCompat.log("[$TAG] no cookie helper candidate matched")
+            val diagnostic = buildNoCandidateDiagnostic(
+                methods = methods,
+                evidenceMethods = scan.evidenceMethods,
+                evidenceOwnerClasses = evidenceOwnerClasses,
+                rejected = rejected,
+            )
+            XposedCompat.log("[$TAG] no cookie helper candidate matched: $diagnostic")
+            DexKitCompat.markTargetError(TAG, CACHE_ID, diagnostic)
             DexKitCompat.putCachedMethod(TAG, CACHE_ID, null)
             return null
         }
@@ -105,18 +167,47 @@ internal object IntlCookieByBdussDexKitResolver {
             CACHE_ID,
             DexKitCompat.MethodRef(method.declaringClass.name, method.name),
         )
+        DexKitCompat.markTargetSuccess(
+            TAG,
+            CACHE_ID,
+            buildResolvedDiagnostic(best.first, method, scan.evidenceMethods),
+        )
         return method
     }
 
     private fun validateCachedResult(cl: ClassLoader, ref: DexKitCompat.MethodRef): Method? {
-        val clazz = XposedCompat.findClassOrNull(ref.className, cl) ?: return null
-        if (COOKIE_UTILS_TOKEN !in staticStringConstants(clazz)) return null
-        val method = XposedCompat.findMethodOrNull(clazz, ref.methodName, String::class.java)
-            ?: return null
-        if (!Modifier.isStatic(method.modifiers)) return null
-        if (method.returnType != String::class.java) return null
-        if (!probeLooksLikeBdussCookie(method)) return null
-        return method
+        return runCatching {
+            val clazz = XposedCompat.findClassOrNull(ref.className, cl) ?: return@runCatching null
+            val method = XposedCompat.findMethodOrNull(clazz, ref.methodName, String::class.java)
+                ?: return@runCatching null
+            if (!Modifier.isStatic(method.modifiers)) return@runCatching null
+            if (method.returnType != String::class.java) return@runCatching null
+            if (!probeLooksLikeBdussCookie(method)) return@runCatching null
+            method
+        }.getOrElse { t ->
+            XposedCompat.logD("[$TAG] cached/candidate validation failed: ${ref.className}.${ref.methodName}, ${t.message}")
+            null
+        }
+    }
+
+    private fun validateCandidate(
+        cl: ClassLoader,
+        candidate: DexMethodCandidate,
+        rejected: MutableList<String>,
+    ): Method? {
+        return runCatching {
+            validateCachedResult(
+                cl,
+                DexKitCompat.MethodRef(candidate.className, candidate.methodName),
+            ) ?: run {
+                rejected += "${candidate.memberName()} rejected: method/probe mismatch, evidence=${candidate.evidenceText()}"
+                null
+            }
+        }.getOrElse { t ->
+            rejected += "${candidate.memberName()} rejected: ${t::class.java.simpleName}: " +
+                "${t.message ?: "-"}, evidence=${candidate.evidenceText()}"
+            null
+        }
     }
 
     private fun DexMethodCandidate.isCookieHelperShape(): Boolean =
@@ -125,12 +216,21 @@ internal object IntlCookieByBdussDexKitResolver {
             returnTypeName == "java.lang.String" &&
             paramTypeNames == listOf("java.lang.String")
 
+    private fun DexMethodCandidate.hasCookieEvidence(): Boolean {
+        return usingStrings.any { value ->
+            COOKIE_OWNER_EVIDENCE_STRINGS.any { token -> value.contains(token, ignoreCase = true) }
+        }
+    }
+
     private fun score(candidate: DexMethodCandidate): Int {
         var score = 0
-        if (COOKIE_UTILS_TOKEN in candidate.usingStrings) score += 200
-        if ("BDUSS" in candidate.usingStrings || "BDUSS=" in candidate.usingStrings) score += 100
-        if ("STOKEN" in candidate.usingStrings) score += 60
-        if ("PANPSC" in candidate.usingStrings) score += 40
+        if (candidate.containsEvidence(COOKIE_UTILS_TOKEN)) score += 200
+        if (candidate.containsEvidence("BDUSS") || candidate.containsEvidence("BDUSS=")) score += 100
+        if (candidate.containsEvidence("Cookie: BDUSS=")) score += 100
+        if (candidate.containsEvidence("getCookieByBduss")) score += 80
+        if (candidate.containsEvidence("STOKEN")) score += 60
+        if (candidate.containsEvidence("PANPSC")) score += 40
+        if (candidate.usingStrings.isEmpty()) score -= 10
         return score
     }
 
@@ -141,13 +241,92 @@ internal object IntlCookieByBdussDexKitResolver {
             (value.contains("BDUSS=$PROBE_BDUSS") || value.contains("Cookie: BDUSS=$PROBE_BDUSS"))
     }
 
-    private fun staticStringConstants(clazz: Class<*>): Set<String> {
-        return clazz.declaredFields.mapNotNull { field ->
-            if (!Modifier.isStatic(field.modifiers) || field.type != String::class.java) return@mapNotNull null
-            runCatching {
-                field.isAccessible = true
-                field.get(null) as? String
-            }.getOrNull()
-        }.toSet()
+    private fun buildResolvedDiagnostic(
+        candidate: DexMethodCandidate,
+        method: Method,
+        evidenceMethods: List<DexMethodCandidate>,
+    ): String {
+        return buildString {
+            append("resolved=").append(method.declaringClass.name).append('.').append(method.name).append('\n')
+            append("score=").append(score(candidate)).append('\n')
+            append("proof=probe returned BDUSS cookie for synthetic bduss").append('\n')
+            append("strings=").append(candidate.evidenceText()).append('\n')
+            append("ownerEvidence=").append(ownerEvidenceText(candidate.className, evidenceMethods))
+        }
+    }
+
+    private fun buildNoCandidateDiagnostic(
+        methods: List<DexMethodCandidate>,
+        evidenceMethods: List<DexMethodCandidate>,
+        evidenceOwnerClasses: Set<String>,
+        rejected: List<String>,
+    ): String {
+        val shaped = methods
+            .filter { it.isCookieHelperShape() }
+            .sortedByDescending(::score)
+        val ownerText = evidenceOwnerClasses
+            .sorted()
+            .joinToString()
+            .ifBlank { "-" }
+        val top = shaped
+            .take(MAX_DIAGNOSTIC_CANDIDATES)
+            .joinToString("\n") { candidate ->
+                "${candidate.memberName()} score=${score(candidate)} evidence=${candidate.evidenceText()}"
+            }
+            .ifBlank { "-" }
+        val evidenceText = evidenceMethods
+            .sortedWith(
+                compareByDescending<DexMethodCandidate> { score(it) }
+                    .thenBy { it.className }
+                    .thenBy { it.methodName },
+            )
+            .take(MAX_DIAGNOSTIC_CANDIDATES)
+            .joinToString("\n") { candidate ->
+                "${candidate.memberName()} evidence=${candidate.evidenceText()}"
+            }
+            .ifBlank { "-" }
+        val rejectedText = rejected
+            .take(MAX_DIAGNOSTIC_CANDIDATES)
+            .joinToString("\n")
+            .ifBlank { "-" }
+        return buildString {
+            append("candidateCount=").append(methods.size).append('\n')
+            append("evidenceMethodCount=").append(evidenceMethods.size).append('\n')
+            append("shapeMatched=").append(shaped.size).append('\n')
+            append("evidenceOwnerClasses=").append(ownerText).append('\n')
+            append("evidenceMethods=\n").append(evidenceText).append('\n')
+            append("topCandidates=\n").append(top).append('\n')
+            append("rejected=\n").append(rejectedText)
+        }
+    }
+
+    private fun DexMethodCandidate.memberName(): String = "$className.$methodName"
+
+    private fun DexMethodCandidate.containsEvidence(token: String): Boolean {
+        return usingStrings.any { value -> value.contains(token, ignoreCase = true) }
+    }
+
+    private fun DexMethodCandidate.evidenceText(): String {
+        return usingStrings
+            .filter { value ->
+                COOKIE_DETAIL_STRINGS.any { token -> value.contains(token, ignoreCase = true) } ||
+                    value.contains("BDUSS", ignoreCase = true) ||
+                    value.contains("Cookie", ignoreCase = true)
+            }
+            .sorted()
+            .joinToString(prefix = "[", postfix = "]")
+    }
+
+    private fun ownerEvidenceText(
+        className: String,
+        evidenceMethods: List<DexMethodCandidate>,
+    ): String {
+        return evidenceMethods
+            .filter { candidate -> candidate.className == className }
+            .sortedWith(compareByDescending<DexMethodCandidate> { score(it) }.thenBy { it.methodName })
+            .take(MAX_DIAGNOSTIC_CANDIDATES)
+            .joinToString(prefix = "[", postfix = "]") { candidate ->
+                "${candidate.methodName}:${candidate.evidenceText()}"
+            }
     }
 }

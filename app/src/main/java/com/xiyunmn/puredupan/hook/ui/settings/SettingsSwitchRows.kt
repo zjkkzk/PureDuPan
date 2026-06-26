@@ -24,6 +24,7 @@ import com.xiyunmn.puredupan.hook.ui.UiText
 internal object SettingsSwitchRows {
     private const val DEXKIT_EFFECTIVE_AFTER_ENABLE_PHRASE = "启用 DexKit 解析后生效"
     private const val DEXKIT_ENHANCED_AFTER_ENABLE_PHRASE = "启用 DexKit 解析后增强覆盖"
+    private const val ACTION_TEXT_VIEW_TAG = "settings_action_text"
 
     @Suppress("DEPRECATION")
     fun create(
@@ -110,6 +111,7 @@ internal object SettingsSwitchRows {
                 })
             } else {
                 row.addView(TextView(context).apply {
+                    tag = ACTION_TEXT_VIEW_TAG
                     text = actionIcon
                     gravity = Gravity.CENTER
                     if (actionIcon == UiText.Settings.ACTION_ICON_SIGN_IN) {
@@ -169,6 +171,7 @@ internal object SettingsSwitchRows {
             setOnCheckedChangeListener { _, isChecked ->
                 if (enabled && !reverting) {
                     if (prefKey != null) {
+                        val wasChecked = resolveSwitchChecked(prefs, prefKey, linkedPrefKeys, defaultValue)
                         val editor = prefs.edit().putBoolean(prefKey, isChecked)
                         for (linkedPrefKey in linkedPrefKeys) {
                             editor.putBoolean(linkedPrefKey, isChecked)
@@ -184,9 +187,10 @@ internal object SettingsSwitchRows {
                             ).show()
                         } else if (
                             prefKey == SettingsUserState.KEY_ENABLE_EXPERIMENTAL_DEXKIT &&
+                            !wasChecked &&
                             isChecked
                         ) {
-                            SettingsDexKitState.markFullScanPendingFromSettings(context)
+                            SettingsDexKitState.triggerFullScanFromSettings(context)
                         }
                     }
                 }
@@ -202,6 +206,16 @@ internal object SettingsSwitchRows {
         if (root !is ViewGroup) return null
         for (index in 0 until root.childCount) {
             val found = findSwitchView(root.getChildAt(index))
+            if (found != null) return found
+        }
+        return null
+    }
+
+    fun findActionTextView(root: View): TextView? {
+        if (root is TextView && root.tag == ACTION_TEXT_VIEW_TAG) return root
+        if (root !is ViewGroup) return null
+        for (index in 0 until root.childCount) {
+            val found = findActionTextView(root.getChildAt(index))
             if (found != null) return found
         }
         return null
