@@ -46,6 +46,13 @@ internal object HostRuntimeState {
             ?: HostUiHookPoints()
     }
 
+    private fun currentStartupHookPoints(): HostStartupHookPoints {
+        return XposedCompat.currentPackageName()
+            ?.let(::capabilitiesForPackage)
+            ?.startupHookPoints
+            ?: HostStartupHookPoints()
+    }
+
     fun currentMainActivityClassName(): String? {
         return currentUiHookPoints().mainActivityClassName
     }
@@ -80,6 +87,14 @@ internal object HostRuntimeState {
 
     fun currentHomeCustomizeHookPoints(): HomeCustomizeHookPoints {
         return currentUiHookPoints().homeCustomize
+    }
+
+    fun currentHotStartSplashLifecycleManagerClassName(): String? {
+        return currentStartupHookPoints().hotStartSplashLifecycleManagerClassName
+    }
+
+    fun currentHotStartSplashBackgroundResumeAdStartMethodName(): String? {
+        return currentStartupHookPoints().hotStartSplashBackgroundResumeAdStartMethodName
     }
 
     fun supportsExperimentalDexKit(packageName: String): Boolean {

@@ -38,6 +38,10 @@ internal object BaiduSharedHookPoints {
 
     const val MAIN_ACTIVITY_PRESENTER = "com.baidu.netdisk.ui.presenter.MainActivityPresenter"
 
+    const val SPLASH_LIFECYCLE_MANAGER =
+        "com.baidu.netdisk.advertise.splash.SplashLifecycleManager"
+    const val SPLASH_LIFECYCLE_BACKGROUND_RESUME_AD_START_METHOD = "n"
+
     const val NEW_HOME_FAB_FRAGMENT =
         "com.baidu.netdisk.homepage.ui.fab.NewHomePageFabFragment"
     const val POPUP_RESPONSE = "com.baidu.netdisk.operation.io.PopupResponse"

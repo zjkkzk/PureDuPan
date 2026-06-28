@@ -9,6 +9,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.cn.ui.RenewButtonHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.cn.ui.SystemNightModeSyncHook
 import com.xiyunmn.puredupan.hook.feature.baidu.cn.ui.entry.CnHomeTitleBarModuleEntryHook
 import com.xiyunmn.puredupan.hook.feature.baidu.cn.ui.membercard.CnMemberCardCustomizeHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.DomesticHotStartSplashCompatHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.search.SearchPageCustomizeHook
 import com.xiyunmn.puredupan.hook.plan.HookSpec
 
@@ -20,6 +21,12 @@ internal object BaiduDomesticPostAttachHookSpecs {
     )
 
     val preAd = listOf(
+        HookSpec("DomesticHotStartSplashCompatHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isSplashInterstitialBlockEnabled
+        }, featureKey = FeatureKeys.KEY_BLOCK_SPLASH_INTERSTITIAL) { cl ->
+            DomesticHotStartSplashCompatHook.hook(cl)
+        },
         HookSpec("RenewButtonHideHook", { context, settings, _ ->
             context.isMain &&
                 settings.isMyPageCustomizeEnabled &&

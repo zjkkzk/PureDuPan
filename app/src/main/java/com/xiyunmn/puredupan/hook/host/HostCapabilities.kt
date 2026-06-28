@@ -6,6 +6,7 @@ internal data class HostCapabilities(
     val features: HostFeatureCapabilities = HostFeatureCapabilities(),
     val hooks: HostHookCapabilities = HostHookCapabilities(),
     val uiHookPoints: HostUiHookPoints = HostUiHookPoints(),
+    val startupHookPoints: HostStartupHookPoints = HostStartupHookPoints(),
     val settings: HostSettingsCapabilities = HostSettingsCapabilities(),
     val dexKit: HostDexKitCapabilities = HostDexKitCapabilities(),
     val diagnostics: HostDiagnosticsCapabilities = HostDiagnosticsCapabilities(),
@@ -18,6 +19,11 @@ internal data class HostFeatureCapabilities(
 internal data class HostHookCapabilities(
     val catalogId: String? = null,
     val supportsOemPushHook: Boolean = false,
+)
+
+internal data class HostStartupHookPoints(
+    val hotStartSplashLifecycleManagerClassName: String? = null,
+    val hotStartSplashBackgroundResumeAdStartMethodName: String? = null,
 )
 
 internal data class HostSettingsCapabilities(

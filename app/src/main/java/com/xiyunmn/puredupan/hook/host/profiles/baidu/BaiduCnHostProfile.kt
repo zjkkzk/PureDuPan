@@ -10,6 +10,7 @@ import com.xiyunmn.puredupan.hook.host.HostIds
 import com.xiyunmn.puredupan.hook.host.HostPackages
 import com.xiyunmn.puredupan.hook.host.HostProfile
 import com.xiyunmn.puredupan.hook.host.HostSettingsCapabilities
+import com.xiyunmn.puredupan.hook.host.HostStartupHookPoints
 import com.xiyunmn.puredupan.hook.host.HostUiHookPoints
 import com.xiyunmn.puredupan.hook.host.features.baidu.BaiduFeatureSets
 import com.xiyunmn.puredupan.hook.host.runtime.baidu.BaiduDomesticDeviceFingerprintRuntime
@@ -66,6 +67,11 @@ internal val BaiduCnHostProfile = HostProfile(
                 home25aiContextCompanionClassName = BaiduSharedHookPoints.HOME25AI_CONTEXT_COMPANION,
                 loadHomeBannerMethodName = BaiduSharedHookPoints.HOME25AI_LOAD_HOME_BANNER_METHOD,
             ),
+        ),
+        startupHookPoints = HostStartupHookPoints(
+            hotStartSplashLifecycleManagerClassName = BaiduSharedHookPoints.SPLASH_LIFECYCLE_MANAGER,
+            hotStartSplashBackgroundResumeAdStartMethodName =
+                BaiduSharedHookPoints.SPLASH_LIFECYCLE_BACKGROUND_RESUME_AD_START_METHOD,
         ),
         diagnostics = HostDiagnosticsCapabilities(
             deviceFingerprintCollector = BaiduDomesticDeviceFingerprintRuntime,

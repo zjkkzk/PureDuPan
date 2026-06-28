@@ -29,6 +29,12 @@ internal object BaiduFeatureRuntime {
     fun currentHomeCustomizeHookPoints() =
         HostRuntimeState.currentHomeCustomizeHookPoints()
 
+    fun currentHotStartSplashLifecycleManagerClassName(): String? =
+        HostRuntimeState.currentHotStartSplashLifecycleManagerClassName()
+
+    fun currentHotStartSplashBackgroundResumeAdStartMethodName(): String? =
+        HostRuntimeState.currentHotStartSplashBackgroundResumeAdStartMethodName()
+
     fun skinConfigClassNameFor(context: Context): String? =
         HostRuntimeState.skinConfigClassNameFor(context)
 
