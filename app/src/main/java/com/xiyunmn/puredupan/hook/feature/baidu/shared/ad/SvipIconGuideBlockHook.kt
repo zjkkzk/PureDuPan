@@ -25,7 +25,8 @@ internal object SvipIconGuideBlockHook {
                 BaiduDialogHookPoints.SVIP_ICON_GUIDE,
                 cl,
             ) ?: run {
-                XposedCompat.log("[SvipIconGuideBlockHook] SvipIconGuide class NOT FOUND")
+                hookState.reset()
+                XposedCompat.logD("[SvipIconGuideBlockHook] SvipIconGuide class not found")
                 return
             }
 

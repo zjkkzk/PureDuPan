@@ -11,7 +11,11 @@ internal object BaiduCnHookPoints {
     const val BUSINESS_OP_DIALOG_ON_CREATE_VIEW_METHOD = "onCreateView"
 
     const val VERSION_UPDATE_HELPER = "com.baidu.netdisk.ui.versionupdate.VersionUpdateHelper"
+    const val VERSION_UPDATE_HELPER_13_27_8 = "kotlin.sov0"
     const val VERSION_UPDATE_HELPER_SHOW_LC_VERSION_DIALOG_METHOD = "showLCVersionDialog"
+    const val ILC_UPDATE_HELPER = "com.baidu.netdisk.ui.versionupdate.ILCUpdateHelper"
+    const val UPDATE_INFO = "com.baidu.netdisk.ui.versionupdate.UpdateInfo"
+    const val PRIORITY_DIALOG_INFO = "com.baidu.netdisk.prioritydialog.model.PriorityDialogInfo"
 
     const val RECEIVE_COUPON_DIALOG_V3 =
         "com.baidu.netdisk.business.guide.dialog.lifeproduct.ReceiveCouponDialogV3"
@@ -29,6 +33,7 @@ internal object BaiduCnHookPoints {
     const val SETTINGS_ACTIVITY = "com.baidu.netdisk.ui.SettingsActivity"
     const val CHANGE_SKIN_KT = "com.baidu.netdisk.themskin.ChangeSkinKt"
     const val SKIN_LOADER_LISTENER = "com.netdisk.themeskin.listener.SkinLoaderListener"
+    const val SKIN_MANAGER = "com.netdisk.themeskin.loader.SkinManager"
     const val SETTINGS_ITEM_VIEW = "com.baidu.netdisk.ui.widget.SettingsItemView"
 
     const val ABOUT_ME_GAME_CENTER_FRAGMENT =
@@ -39,6 +44,7 @@ internal object BaiduCnHookPoints {
     const val ANDROIDX_LIFECYCLE_OWNER = "androidx.lifecycle.LifecycleOwner"
 
     const val AI_CLOUD_TAB_AMIS_KT = "com.baidu.netdisk.main.model.data.tool.AiCloudTabAmisKt"
+    const val AI_CLOUD_TAB_AMIS_KT_13_27_8 = "kotlin.cd1"
 
     const val FILE_TAB_BOTTOM_BAR_FACTORY =
         "com.baidu.netdisk.allfiles.listfragment.extraview.floatingbar.FileTabBottomBarFactory"

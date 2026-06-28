@@ -11,6 +11,7 @@ object SystemNightModeSyncHook {
             baseActivityClassName = BaiduCnHookPoints.BASE_ACTIVITY,
             settingsActivityClassName = BaiduCnHookPoints.SETTINGS_ACTIVITY,
             changeSkinKtClassName = BaiduCnHookPoints.CHANGE_SKIN_KT,
+            skinManagerClassName = BaiduCnHookPoints.SKIN_MANAGER,
             skinLoaderListenerClassName = BaiduCnHookPoints.SKIN_LOADER_LISTENER,
             settingsItemViewClassName = BaiduCnHookPoints.SETTINGS_ITEM_VIEW,
         ),

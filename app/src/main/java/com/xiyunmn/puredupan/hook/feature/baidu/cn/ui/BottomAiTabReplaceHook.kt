@@ -4,6 +4,9 @@ import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.symbols.baidu.cn.BaiduCnHookPoints
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.resolver.KotlinMetadataUtils
+import java.lang.reflect.Method
+import java.lang.reflect.Modifier
 
 /**
  * 底栏 AI Tab 替换为会员 Hook。
@@ -22,25 +25,45 @@ object BottomAiTabReplaceHook {
         if (!hookState.markInstalled()) return
 
         try {
-            val clazz = XposedCompat.findClassOrNull(
-                BaiduCnHookPoints.AI_CLOUD_TAB_AMIS_KT, cl
-            ) ?: run {
-                XposedCompat.log("[BottomAiTabReplaceHook] AiCloudTabAmisKt class NOT FOUND")
+            val method = resolveAiCloudTabModeMethod(cl) ?: run {
+                XposedCompat.log("[BottomAiTabReplaceHook] getAiCloudTabMode equivalent NOT FOUND")
+                hookState.reset()
                 return
-            }
-            val method = XposedCompat.findMethodOrNull(clazz, "getAiCloudTabMode")
-                ?: run {
-                    XposedCompat.log("[BottomAiTabReplaceHook] getAiCloudTabMode NOT FOUND")
-                    return
             }
             mod.hook(method).intercept {
                 if (isEnabled()) 0L else it.proceed()
             }
-            XposedCompat.log("[BottomAiTabReplaceHook] hook INSTALLED")
+            XposedCompat.log(
+                "[BottomAiTabReplaceHook] hook INSTALLED: " +
+                    "${method.declaringClass.name}.${method.name}",
+            )
         } catch (e: Exception) {
             hookState.reset()
             XposedCompat.log("[BottomAiTabReplaceHook] FAILED: ${e.message}")
         }
+    }
+
+    private fun resolveAiCloudTabModeMethod(cl: ClassLoader): Method? {
+        XposedCompat.findClassOrNull(BaiduCnHookPoints.AI_CLOUD_TAB_AMIS_KT, cl)
+            ?.let { clazz ->
+                XposedCompat.findMethodOrNull(clazz, "getAiCloudTabMode")?.let { return it }
+            }
+
+        val clazz = XposedCompat.findClassOrNull(BaiduCnHookPoints.AI_CLOUD_TAB_AMIS_KT_13_27_8, cl)
+            ?: return null
+        if (!KotlinMetadataUtils.metadataContainsAll(
+                clazz,
+                listOf("AI_CLOUD_TAB_NODE", "getAiCloudTabMode", "aiCloudTabMode"),
+            )
+        ) {
+            XposedCompat.logD("[BottomAiTabReplaceHook] kotlin.cd1 metadata mismatch")
+            return null
+        }
+        return clazz.declaredMethods.firstOrNull { method ->
+            Modifier.isStatic(method.modifiers) &&
+                method.parameterTypes.isEmpty() &&
+                method.returnType == Long::class.javaPrimitiveType
+        }?.apply { isAccessible = true }
     }
 
     private fun isEnabled(): Boolean =

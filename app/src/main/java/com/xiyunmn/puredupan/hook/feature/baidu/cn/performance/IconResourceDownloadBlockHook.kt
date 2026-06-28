@@ -24,7 +24,7 @@ object IconResourceDownloadBlockHook {
                 BaiduCnHookPoints.ICON_DOWNLOAD_MANAGER,
                 cl,
             ) ?: run {
-                XposedCompat.log("[IconResourceDownloadBlockHook] IconDownloadManager class NOT FOUND")
+                XposedCompat.logD("[IconResourceDownloadBlockHook] IconDownloadManager class not found")
                 hookState.reset()
                 return
             }

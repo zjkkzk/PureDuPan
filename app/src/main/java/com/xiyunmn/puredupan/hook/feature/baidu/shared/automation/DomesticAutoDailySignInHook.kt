@@ -182,18 +182,24 @@ internal object DomesticAutoDailySignInHook {
         fun resolve(cl: ClassLoader): AccountState? {
             return runCatching {
                 val clazz = XposedCompat.findClassOrNull(BaiduAutomationHookPoints.ACCOUNT_UTILS, cl) ?: return null
-                val getInstance = XposedCompat.findMethodOrNull(clazz, "getInstance") ?: return null
+                val getInstance = findFirstMethod(clazz, "getInstance", "k") ?: return null
                 val instance = getInstance.invoke(null) ?: return null
-                val isLogin = XposedCompat.findMethodOrNull(clazz, "isLogin")
+                val isLogin = findFirstMethod(clazz, "isLogin", "Q")
                     ?.invoke(instance) as? Boolean ?: return null
-                val uid = XposedCompat.findMethodOrNull(clazz, "getUid")
+                val uid = findFirstMethod(clazz, "getUid", "x")
                     ?.invoke(instance) as? String
-                val bduss = XposedCompat.findMethodOrNull(clazz, "getBduss")
+                val bduss = findFirstMethod(clazz, "getBduss", "d")
                     ?.invoke(instance) as? String
                 AccountState(isLogin = isLogin, uid = uid, bduss = bduss)
             }.getOrElse { t ->
                 XposedCompat.logD("[$TAG] account state resolve failed: ${t.message}")
                 null
+            }
+        }
+
+        private fun findFirstMethod(clazz: Class<*>, vararg names: String): Method? {
+            return names.firstNotNullOfOrNull { name ->
+                XposedCompat.findMethodOrNull(clazz, name)
             }
         }
     }
