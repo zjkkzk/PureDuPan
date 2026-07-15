@@ -8,7 +8,6 @@ internal data class DerivedSettings(
     val hasFilePageCustomizeOption: Boolean,
     val hasSearchPageCustomizeOption: Boolean,
     val hasMyPageCustomizeOption: Boolean,
-    val hasBottomBarTabOption: Boolean,
 )
 
 internal data class HookSpec(

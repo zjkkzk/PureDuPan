@@ -6,12 +6,13 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.runtime.BaiduFeatureRuntime
-import java.util.Collections
-import java.util.WeakHashMap
+import java.lang.reflect.Field
+import java.lang.reflect.Method
 
 /**
  * 顶部 AI 控件移除 Hook。
@@ -19,15 +20,13 @@ import java.util.WeakHashMap
  * 受首页定制配置控制，默认隐藏顶部动态推广。
  */
 object HomeCustomizeHook {
-    private const val SEARCH_PLACEHOLDER_ID = "title_bar_search_place_holder_text"
-    private const val SEARCH_AIGC_ICON_ID = "searchbox_aigc_icon"
-    private const val SEARCH_AIGC_VIDEO_ID = "searchbox_aigc_video"
-    private const val SEARCH_AIGC_BORDER_ANIM_ID = "searchbox_border_anim_view"
+    private const val SET_SEARCH_TEXT_METHOD = "setSearchText"
+    private const val SEARCH_PLACEHOLDER_BINDING_FIELD = "titleBarSearchPlaceHolderText"
+    private const val TEXT_FLIPPER_CLASS_TOKEN = "TextFlipper"
     private const val HOME25_TOP_CONTAINER_ID = "home25ai_v1"
     private const val HOME25_CONTENT_ID = "home25ai_content"
     private const val HOME25_SEARCHBOX_CONTENT_ID = "searchbox_content"
-    private const val FEED_TIP_ID = "cl_feed_tip"
-    private const val FEED_TIP_RECOMMENDATION_TEXT_ID = "recommendation_text"
+    private const val FEED_CONTAINER_ID = "feed_container"
     private const val FEED_TIP_HEADER_FIELD = "feedSettingTipViewHeader"
     private const val INIT_FEED_SETTING_TIP_HEADER_METHOD = "initFeedSettingTipHeader"
     private const val INIT_BANNER_CARD_VIEW_METHOD = "initBannerCardView"
@@ -38,8 +37,6 @@ object HomeCustomizeHook {
     private const val HOME_RECENT_CARD_FIELD = "headerRecent"
     private const val HOME_SAVE_CARD_FIELD = "headerMySaves"
     private const val HOME_MEMORIES_CARD_FIELD = "headerMemories"
-
-    private val attachedRoots = Collections.newSetFromMap(WeakHashMap<View, Boolean>())
 
     private val hookState = HookState()
 
@@ -54,8 +51,9 @@ object HomeCustomizeHook {
         try {
             var installedCount = 0
             installedCount += hookTopBannerView(cl)
-            installedCount += hookHomeRootView(cl)
-            installedCount += hookHomeSearchboxView(cl)
+            installedCount += hookHomeSearchPlaceholderText(cl)
+            installedCount += hookHomeToolbarRenderEntry(cl)
+            installedCount += hookHomeToolbarRootLayout(cl)
             installedCount += hookSearchboxAigcAnimation(cl)
             installedCount += hookFeedRecommendView(cl)
             installedCount += hookStartupHomeBannerPreload(cl)
@@ -104,8 +102,122 @@ object HomeCustomizeHook {
         return 1
     }
 
-    private fun hookHomeRootView(cl: ClassLoader): Int {
-        if (!hasHomeRootViewCleanupOption()) return 0
+    private fun hookHomeSearchPlaceholderText(cl: ClassLoader): Int {
+        if (!isSearchPlaceholderHidden()) return 0
+        val mod = XposedCompat.module ?: return 0
+        val points = homeCustomizeHookPoints()
+        val fragmentClasses = (
+            points.searchTextFragmentClassNames.ifEmpty {
+                listOfNotNull(points.searchboxFragmentClassName)
+            }
+            ).distinct()
+        if (fragmentClasses.isEmpty()) {
+            XposedCompat.log("[HomeCustomizeHook] search text fragment host capabilities missing")
+            return 0
+        }
+
+        var count = 0
+        fragmentClasses.forEach { className ->
+            val clazz = XposedCompat.findClassOrNull(className, cl) ?: run {
+                XposedCompat.logD("[HomeCustomizeHook] $className not found for search placeholder hook")
+                return@forEach
+            }
+            val method = findSearchTextMethod(clazz) ?: run {
+                XposedCompat.logD("[HomeCustomizeHook] $className.$SET_SEARCH_TEXT_METHOD not found")
+                return@forEach
+            }
+            mod.hook(method).intercept { chain ->
+                val result = chain.proceed()
+                if (isSearchPlaceholderHidden() && hideSearchPlaceholderBindingView(chain.thisObject)) {
+                    XposedCompat.logD("[HomeCustomizeHook] $className.$SET_SEARCH_TEXT_METHOD placeholder collapsed")
+                }
+                result
+            }
+            count += 1
+        }
+        return count
+    }
+
+    private fun hookHomeToolbarRenderEntry(cl: ClassLoader): Int {
+        if (!isHomeToolbarHidden()) return 0
+        val mod = XposedCompat.module ?: return 0
+        val toolbarFragmentClasses = homeCustomizeHookPoints().toolbarFragmentClassNames.distinct()
+        if (toolbarFragmentClasses.isEmpty()) {
+            XposedCompat.log("[HomeCustomizeHook] home toolbar fragment host capabilities missing")
+            return 0
+        }
+
+        var count = 0
+        toolbarFragmentClasses.forEach { className ->
+            val clazz = XposedCompat.findClassOrNull(className, cl) ?: run {
+                XposedCompat.logD("[HomeCustomizeHook] $className not found for toolbar render hook")
+                return@forEach
+            }
+
+            val onCreateView = XposedCompat.findMethodOrNull(
+                clazz,
+                "onCreateView",
+                LayoutInflater::class.java,
+                ViewGroup::class.java,
+                Bundle::class.java,
+            )
+            if (onCreateView != null) {
+                mod.hook(onCreateView).intercept { chain ->
+                    if (isHomeToolbarHidden()) {
+                        XposedCompat.logD("[HomeCustomizeHook] $className.onCreateView blocked")
+                        createCollapsedView(
+                            inflaterArg = chain.args.getOrNull(0),
+                            containerArg = chain.args.getOrNull(1),
+                        ) ?: chain.proceed()
+                    } else {
+                        chain.proceed()
+                    }
+                }
+                count += 1
+            } else {
+                XposedCompat.logD("[HomeCustomizeHook] $className.onCreateView not found for toolbar render hook")
+            }
+
+            val onViewCreated = XposedCompat.findMethodOrNull(
+                clazz,
+                "onViewCreated",
+                View::class.java,
+                Bundle::class.java,
+            )
+            if (onViewCreated != null) {
+                mod.hook(onViewCreated).intercept { chain ->
+                    if (isHomeToolbarHidden()) {
+                        XposedCompat.logD("[HomeCustomizeHook] $className.onViewCreated blocked")
+                        null
+                    } else {
+                        chain.proceed()
+                    }
+                }
+                count += 1
+            } else {
+                XposedCompat.logD("[HomeCustomizeHook] $className.onViewCreated not found for toolbar render hook")
+            }
+
+            val onResume = XposedCompat.findMethodOrNull(clazz, "onResume")
+            if (onResume != null) {
+                mod.hook(onResume).intercept { chain ->
+                    if (isHomeToolbarHidden()) {
+                        XposedCompat.logD("[HomeCustomizeHook] $className.onResume blocked")
+                        null
+                    } else {
+                        chain.proceed()
+                    }
+                }
+                count += 1
+            } else {
+                XposedCompat.logD("[HomeCustomizeHook] $className.onResume not found for toolbar render hook")
+            }
+        }
+        return count
+    }
+
+    private fun hookHomeToolbarRootLayout(cl: ClassLoader): Int {
+        if (!isHomeToolbarHidden()) return 0
         val mod = XposedCompat.module ?: return 0
         val rootFragmentClasses = homeCustomizeHookPoints().homeRootFragmentClassNames.distinct()
         if (rootFragmentClasses.isEmpty()) {
@@ -116,7 +228,7 @@ object HomeCustomizeHook {
         var count = 0
         rootFragmentClasses.forEach { className ->
             val clazz = XposedCompat.findClassOrNull(className, cl) ?: run {
-                XposedCompat.logD("[HomeCustomizeHook] $className not found, skipped")
+                XposedCompat.logD("[HomeCustomizeHook] $className not found for toolbar root layout hook")
                 return@forEach
             }
 
@@ -130,12 +242,12 @@ object HomeCustomizeHook {
             if (onCreateView != null) {
                 mod.hook(onCreateView).intercept { chain ->
                     val result = chain.proceed()
-                    attachHomeCustomizeWatcher(result as? View)
+                    adjustHomeToolbarRootLayout(result as? View)
                     result
                 }
                 count += 1
             } else {
-                XposedCompat.logD("[HomeCustomizeHook] $className.onCreateView not found for root cleanup")
+                XposedCompat.logD("[HomeCustomizeHook] $className.onCreateView not found for toolbar root layout hook")
             }
 
             val onViewCreated = XposedCompat.findMethodOrNull(
@@ -147,105 +259,55 @@ object HomeCustomizeHook {
             if (onViewCreated != null) {
                 mod.hook(onViewCreated).intercept { chain ->
                     val result = chain.proceed()
-                    attachHomeCustomizeWatcher(chain.args.firstOrNull() as? View)
+                    adjustHomeToolbarRootLayout(chain.args.firstOrNull() as? View)
                     result
                 }
                 count += 1
             } else {
-                XposedCompat.logD("[HomeCustomizeHook] $className.onViewCreated not found for root cleanup")
-            }
-
-            val onResume = XposedCompat.findMethodOrNull(clazz, "onResume")
-            if (onResume != null) {
-                mod.hook(onResume).intercept { chain ->
-                    val result = chain.proceed()
-                    val root = runCatching {
-                        val getView = chain.thisObject.javaClass.methods.firstOrNull {
-                            it.name == "getView" && it.parameterTypes.isEmpty()
-                        }
-                        getView?.invoke(chain.thisObject) as? View
-                    }.getOrNull()
-                    attachHomeCustomizeWatcher(root)
-                    result
-                }
-                count += 1
-            } else {
-                XposedCompat.logD("[HomeCustomizeHook] $className.onResume not found for root cleanup")
+                XposedCompat.logD("[HomeCustomizeHook] $className.onViewCreated not found for toolbar root layout hook")
             }
         }
         return count
     }
 
-    private fun hookHomeSearchboxView(cl: ClassLoader): Int {
-        if (!hasHomeSearchboxViewCleanupOption()) return 0
-        val mod = XposedCompat.module ?: return 0
-        val searchboxFragmentClassName = homeCustomizeHookPoints().searchboxFragmentClassName
-        if (searchboxFragmentClassName == null) {
-            XposedCompat.log("[HomeCustomizeHook] HomeSearchboxFragment host capability missing for view cleanup")
-            return 0
+    private fun findSearchTextMethod(clazz: Class<*>): Method? {
+        val methods = clazz.declaredMethods.filter { method ->
+            method.name == SET_SEARCH_TEXT_METHOD &&
+                method.returnType == Void.TYPE &&
+                method.parameterTypes.size == 1
         }
-        val clazz = XposedCompat.findClassOrNull(
-            searchboxFragmentClassName,
-            cl,
-        ) ?: run {
-            XposedCompat.log("[HomeCustomizeHook] HomeSearchboxFragment class NOT FOUND for view cleanup")
-            return 0
-        }
+        return (
+            methods.firstOrNull { method -> isSearchWordType(method.parameterTypes[0]) }
+                ?: methods.singleOrNull()
+            )?.apply { isAccessible = true }
+    }
 
-        var count = 0
-        val onCreateView = XposedCompat.findMethodOrNull(
-            clazz,
-            "onCreateView",
-            LayoutInflater::class.java,
-            ViewGroup::class.java,
-            Bundle::class.java,
-        )
-        if (onCreateView != null) {
-            mod.hook(onCreateView).intercept { chain ->
-                val result = chain.proceed()
-                attachHomeCustomizeWatcher(result as? View)
-                result
-            }
-            count += 1
-        } else {
-            XposedCompat.log("[HomeCustomizeHook] onCreateView(LayoutInflater, ViewGroup, Bundle) NOT FOUND")
-        }
+    private fun isSearchWordType(type: Class<*>): Boolean {
+        val typeName = type.name
+        return typeName.contains("FHHomeTitleViewModel\$SearchWord") ||
+            (
+                typeName.endsWith("\$SearchWord") &&
+                    typeName.contains("FHHomeTitleViewModel")
+                )
+    }
 
-        val onViewCreated = XposedCompat.findMethodOrNull(
-            clazz,
-            "onViewCreated",
-            View::class.java,
-            Bundle::class.java,
-        )
-        if (onViewCreated != null) {
-            mod.hook(onViewCreated).intercept { chain ->
-                val result = chain.proceed()
-                attachHomeCustomizeWatcher(chain.args.firstOrNull() as? View)
-                result
-            }
-            count += 1
-        } else {
-            XposedCompat.log("[HomeCustomizeHook] onViewCreated(View, Bundle) NOT FOUND")
-        }
+    private fun createCollapsedView(inflaterArg: Any?, containerArg: Any?): View? {
+        val context = (inflaterArg as? LayoutInflater)?.context
+            ?: (containerArg as? View)?.context
+            ?: return null
+        return createCollapsedFrameLayout(context)
+    }
 
-        val onResume = XposedCompat.findMethodOrNull(clazz, "onResume")
-        if (onResume != null) {
-            mod.hook(onResume).intercept { chain ->
-                val result = chain.proceed()
-                val root = runCatching {
-                    val getView = chain.thisObject.javaClass.methods.firstOrNull {
-                        it.name == "getView" && it.parameterTypes.isEmpty()
-                    }
-                    getView?.invoke(chain.thisObject) as? View
-                }.getOrNull()
-                attachHomeCustomizeWatcher(root)
-                result
-            }
-            count += 1
-        } else {
-            XposedCompat.logD("[HomeCustomizeHook] onResume not found for view cleanup")
+    private fun createCollapsedFrameLayout(context: Context): FrameLayout {
+        return FrameLayout(context).apply {
+            visibility = View.GONE
+            alpha = 0f
+            isEnabled = false
+            isClickable = false
+            minimumHeight = 0
+            setPadding(0, 0, 0, 0)
+            layoutParams = ViewGroup.LayoutParams(0, 0)
         }
-        return count
     }
 
     private fun hookSearchboxAigcAnimation(cl: ClassLoader): Int {
@@ -281,7 +343,7 @@ object HomeCustomizeHook {
     }
 
     private fun hookFeedRecommendView(cl: ClassLoader): Int {
-        if (!hasFeedViewCleanupOption()) return 0
+        if (!hasFeedRenderHookOption()) return 0
         val mod = XposedCompat.module ?: return 0
         var count = 0
         val feedFragmentClasses = homeCustomizeHookPoints().feedFragmentClassNames.distinct()
@@ -324,6 +386,15 @@ object HomeCustomizeHook {
             )
             if (initBannerCardView != null) {
                 mod.hook(initBannerCardView).intercept { chain ->
+                    if (isHomeBannerHidden()) {
+                        createCollapsedReturnView(
+                            fragment = chain.thisObject,
+                            returnType = initBannerCardView.returnType,
+                        )?.let { collapsed ->
+                            XposedCompat.logD("[HomeCustomizeHook] $className.$INIT_BANNER_CARD_VIEW_METHOD blocked")
+                            return@intercept collapsed
+                        }
+                    }
                     val result = chain.proceed()
                     if (isHomeBannerHidden()) {
                         hideView(result as? View)
@@ -336,129 +407,31 @@ object HomeCustomizeHook {
             } else {
                 XposedCompat.logD("[HomeCustomizeHook] $className.$INIT_BANNER_CARD_VIEW_METHOD not found")
             }
-
-            val onCreateView = XposedCompat.findMethodOrNull(
-                clazz,
-                "onCreateView",
-                LayoutInflater::class.java,
-                ViewGroup::class.java,
-                Bundle::class.java,
-            )
-            if (onCreateView != null) {
-                mod.hook(onCreateView).intercept { chain ->
-                    val result = chain.proceed()
-                    attachHomeCustomizeWatcher(result as? View)
-                    hideFeedTipHeaderField(chain.thisObject)
-                    hideHomeBannerField(chain.thisObject)
-                    hideHomeSectionFields(chain.thisObject)
-                    result
-                }
-                count += 1
-            } else {
-                XposedCompat.logD("[HomeCustomizeHook] $className.onCreateView not found")
-            }
-
-            val onViewCreated = XposedCompat.findMethodOrNull(
-                clazz,
-                "onViewCreated",
-                View::class.java,
-                Bundle::class.java,
-            )
-            if (onViewCreated != null) {
-                mod.hook(onViewCreated).intercept { chain ->
-                    val result = chain.proceed()
-                    attachHomeCustomizeWatcher(chain.args.firstOrNull() as? View)
-                    hideFeedTipHeaderField(chain.thisObject)
-                    hideHomeBannerField(chain.thisObject)
-                    hideHomeSectionFields(chain.thisObject)
-                    result
-                }
-                count += 1
-            } else {
-                XposedCompat.logD("[HomeCustomizeHook] $className.onViewCreated not found")
-            }
         }
         return count
     }
 
-    private fun attachHomeCustomizeWatcher(root: View?) {
-        if (root == null) return
-        if (!hasViewCleanupOption()) return
-
-        scheduleApplyHomeCustomize(root)
-        if (!attachedRoots.add(root)) return
-
-        root.viewTreeObserver.addOnGlobalLayoutListener {
-            runCatching { applyHomeCustomize(root) }
-        }
-        root.viewTreeObserver.addOnPreDrawListener {
-            runCatching { applyHomeCustomize(root) }
-            true
-        }
-        XposedCompat.log("[HomeCustomizeHook] home customize watcher attached")
+    private fun adjustHomeToolbarRootLayout(root: View?) {
+        if (!isHomeToolbarHidden() || root == null) return
+        adjustHomeToolbarRootLayoutNow(root)
+        root.post { runCatching { adjustHomeToolbarRootLayoutNow(root) } }
     }
 
-    private fun scheduleApplyHomeCustomize(root: View) {
-        runCatching { applyHomeCustomize(root) }
-        root.post { runCatching { applyHomeCustomize(root) } }
-        for (delay in listOf(80L, 240L, 600L, 1200L)) {
-            root.postDelayed({ runCatching { applyHomeCustomize(root) } }, delay)
-        }
-    }
-
-    private fun applyHomeCustomize(root: View) {
-        if (!HookSettings.isHomeCustomizeEnabled) return
+    private fun adjustHomeToolbarRootLayoutNow(root: View) {
+        if (!isHomeToolbarHidden()) return
         val resources = root.resources ?: return
         val packageName = root.context?.packageName ?: return
 
-        if (HookSettings.isHomeSearchPlaceholderHidden) {
-            hideViewByEntryName(root, resources, packageName, SEARCH_PLACEHOLDER_ID) {
-                XposedCompat.logD("[HomeCustomizeHook] search placeholder hidden")
-            }
-        }
-        if (HookSettings.isHomeSearchAigcIconHidden) {
-            hideViewByEntryName(root, resources, packageName, SEARCH_AIGC_ICON_ID) {
-                XposedCompat.logD("[HomeCustomizeHook] search AIGC icon hidden")
-            }
-            hideViewByEntryName(root, resources, packageName, SEARCH_AIGC_VIDEO_ID) {
-                XposedCompat.logD("[HomeCustomizeHook] search AIGC video hidden")
-            }
-            hideViewByEntryName(root, resources, packageName, SEARCH_AIGC_BORDER_ANIM_ID) {
-                XposedCompat.logD("[HomeCustomizeHook] search AIGC border animation hidden")
-            }
-        }
-        if (HookSettings.isHomeToolbarHidden) {
-            hideHomeToolbarViews(root, resources, packageName)
-        }
-        if (HookSettings.isHomeFeedTipHidden) {
-            hideFeedTipViews(root, resources, packageName)
-        }
-        if (HookSettings.isHomeBannerHidden) {
-            hideHomeBannerViews(root, resources, packageName)
-        }
-        hideHomeSectionCards(root)
-    }
-
-    private fun hideHomeToolbarViews(
-        root: View,
-        resources: android.content.res.Resources,
-        packageName: String,
-    ) {
-        var changed = false
-        var foundToolbar = false
         homeCustomizeHookPoints().toolbarViewIdNames.forEach { idName ->
             val id = resources.getIdentifier(idName, "id", packageName)
             if (id == 0) return@forEach
             val view = root.findViewById<View>(id) ?: return@forEach
-            foundToolbar = true
             if (collapseView(view)) {
-                changed = true
-                XposedCompat.logD("[HomeCustomizeHook] home toolbar hidden by id: $idName")
+                XposedCompat.logD("[HomeCustomizeHook] home toolbar container collapsed: $idName")
             }
         }
-        if (foundToolbar || changed) {
-            collapseHome25ContentOffset(root, resources, packageName)
-        }
+        adjustHome25ContentOffset(root, resources, packageName)
+        adjustIntlFeedContainerOffset(root, resources, packageName)
     }
 
     private fun hookHomeSectionCreatorMethods(
@@ -476,6 +449,15 @@ object HomeCustomizeHook {
             methods.forEach { method ->
                 method.isAccessible = true
                 mod.hook(method).intercept { chain ->
+                    if (isHomeSectionHidden(target)) {
+                        createCollapsedReturnView(
+                            fragment = chain.thisObject,
+                            returnType = method.returnType,
+                        )?.let { collapsed ->
+                            XposedCompat.logD("[HomeCustomizeHook] ${target.label} section creator blocked")
+                            return@intercept collapsed
+                        }
+                    }
                     val result = chain.proceed()
                     if (isHomeSectionHidden(target)) {
                         hideView(result as? View)
@@ -490,25 +472,31 @@ object HomeCustomizeHook {
         return count
     }
 
-    private fun hideFeedTipViews(
-        root: View,
-        resources: android.content.res.Resources,
-        packageName: String,
-    ) {
-        hideViewByEntryName(root, resources, packageName, FEED_TIP_ID) {
-            XposedCompat.logD("[HomeCustomizeHook] feed tip container hidden")
-        }
-        hideViewByEntryName(root, resources, packageName, FEED_TIP_RECOMMENDATION_TEXT_ID) {
-            XposedCompat.logD("[HomeCustomizeHook] feed tip recommendation text hidden")
-        }
-        val recommendationTextId = resources.getIdentifier(
-            FEED_TIP_RECOMMENDATION_TEXT_ID,
-            "id",
-            packageName,
-        )
-        if (recommendationTextId == 0) return
-        val recommendationText = root.findViewById<View>(recommendationTextId) ?: return
-        hideView(recommendationText.parent as? View)
+    private fun createCollapsedReturnView(fragment: Any?, returnType: Class<*>): View? {
+        if (!View::class.java.isAssignableFrom(returnType)) return null
+        if (!returnType.isAssignableFrom(FrameLayout::class.java)) return null
+        val context = fragmentContext(fragment) ?: return null
+        return createCollapsedFrameLayout(context)
+    }
+
+    private fun fragmentContext(fragment: Any?): Context? {
+        if (fragment == null) return null
+        return runCatching {
+            val requireContext = fragment.javaClass.methods.firstOrNull { method ->
+                method.name == "requireContext" &&
+                    method.parameterTypes.isEmpty() &&
+                    Context::class.java.isAssignableFrom(method.returnType)
+            }
+            (requireContext?.invoke(fragment) as? Context)
+                ?: run {
+                    val getContext = fragment.javaClass.methods.firstOrNull { method ->
+                        method.name == "getContext" &&
+                            method.parameterTypes.isEmpty() &&
+                            Context::class.java.isAssignableFrom(method.returnType)
+                    }
+                    getContext?.invoke(fragment) as? Context
+                }
+        }.getOrNull()
     }
 
     private fun hideFeedTipHeaderField(fragment: Any?) {
@@ -543,15 +531,6 @@ object HomeCustomizeHook {
         }
     }
 
-    private fun hideHomeSectionFields(fragment: Any?) {
-        if (fragment == null) return
-        homeSectionTargets().forEach { target ->
-            if (isHomeSectionHidden(target)) {
-                hideHomeSectionFields(fragment, target)
-            }
-        }
-    }
-
     private fun hideHomeSectionFields(fragment: Any?, target: HomeSectionTarget) {
         if (fragment == null) return
         runCatching {
@@ -569,65 +548,6 @@ object HomeCustomizeHook {
         }
     }
 
-    private fun hideHomeSectionCards(root: View) {
-        if (HookSettings.isHomeBannerHidden) {
-            hideHomeBannerCards(root)
-        }
-        homeSectionTargets().forEach { target ->
-            if (isHomeSectionHidden(target)) {
-                hideHomeSectionCards(root, target)
-            }
-        }
-    }
-
-    private fun hideHomeSectionCards(view: View, target: HomeSectionTarget) {
-        if (matchesHomeSectionTarget(view, target)) {
-            hideView(view)
-        }
-        val group = view as? ViewGroup ?: return
-        for (index in 0 until group.childCount) {
-            hideHomeSectionCards(group.getChildAt(index), target)
-        }
-    }
-
-    private fun matchesHomeSectionTarget(view: View, target: HomeSectionTarget): Boolean {
-        val className = view.javaClass.name
-        val simpleName = view.javaClass.simpleName
-        return target.classNames.any { targetClassName ->
-            className == targetClassName || simpleName == targetClassName.substringAfterLast('.')
-        }
-    }
-
-    private fun hideHomeBannerViews(
-        root: View,
-        resources: android.content.res.Resources,
-        packageName: String,
-    ) {
-        hideViewByEntryName(root, resources, packageName, "header_banner") {
-            XposedCompat.logD("[HomeCustomizeHook] home banner hidden by id: header_banner")
-        }
-        hideViewByEntryName(root, resources, packageName, "banner") {
-            XposedCompat.logD("[HomeCustomizeHook] home banner hidden by id: banner")
-        }
-    }
-
-    private fun hideHomeBannerCards(view: View) {
-        val viewIdName = runCatching {
-            if (view.id == View.NO_ID) null
-            else view.resources.getResourceEntryName(view.id)
-        }.getOrNull()
-        if (
-            viewIdName == "header_banner" ||
-            viewIdName == "banner"
-        ) {
-            hideView(view)
-        }
-        val group = view as? ViewGroup ?: return
-        for (index in 0 until group.childCount) {
-            hideHomeBannerCards(group.getChildAt(index))
-        }
-    }
-
     private fun hideSearchboxAigcBindingViews(fragment: Any?) {
         val binding = getBindingObject(fragment) ?: return
         hideBindingView(binding, "searchboxAigcIcon")
@@ -635,27 +555,48 @@ object HomeCustomizeHook {
         hideBindingView(binding, "searchboxBorderAnimView")
     }
 
+    private fun hideSearchPlaceholderBindingView(fragment: Any?): Boolean {
+        val binding = getBindingObject(fragment) ?: return false
+        return hideBindingView(binding, SEARCH_PLACEHOLDER_BINDING_FIELD) ||
+            hideFirstBindingViewByType(binding, TEXT_FLIPPER_CLASS_TOKEN)
+    }
+
     private fun getBindingObject(fragment: Any?): Any? {
         if (fragment == null) return null
         return runCatching {
-            fragment.javaClass.fields.firstOrNull { it.name == "binding" }?.get(fragment)
-                ?: fragment.javaClass.declaredFields.firstOrNull { it.name == "binding" }?.let { field ->
-                    field.isAccessible = true
-                    field.get(fragment)
-                }
+            findFieldInHierarchy(fragment.javaClass) { it.name == "binding" }?.get(fragment)
         }.getOrNull()
     }
 
-    private fun hideBindingView(binding: Any, fieldName: String) {
-        runCatching {
-            val field = binding.javaClass.fields.firstOrNull { it.name == fieldName }
-                ?: binding.javaClass.declaredFields.firstOrNull { it.name == fieldName }?.apply {
-                    isAccessible = true
-                }
-                ?: return
-            val view = field.get(binding) as? View ?: return
-            hideView(view)
+    private fun hideBindingView(binding: Any, fieldName: String): Boolean {
+        return runCatching {
+            val field = findFieldInHierarchy(binding.javaClass) { it.name == fieldName } ?: return false
+            val view = field.get(binding) as? View ?: return false
+            collapseView(view)
+        }.getOrDefault(false)
+    }
+
+    private fun hideFirstBindingViewByType(binding: Any, classNameToken: String): Boolean {
+        return runCatching {
+            val field = findFieldInHierarchy(binding.javaClass) { field ->
+                View::class.java.isAssignableFrom(field.type) &&
+                    field.type.name.contains(classNameToken)
+            } ?: return false
+            val view = field.get(binding) as? View ?: return false
+            collapseView(view)
+        }.getOrDefault(false)
+    }
+
+    private fun findFieldInHierarchy(clazz: Class<*>, predicate: (Field) -> Boolean): Field? {
+        var current: Class<*>? = clazz
+        while (current != null) {
+            current.declaredFields.firstOrNull(predicate)?.let { field ->
+                field.isAccessible = true
+                return field
+            }
+            current = current.superclass
         }
+        return null
     }
 
     private fun hideView(view: View?): Boolean {
@@ -712,7 +653,7 @@ object HomeCustomizeHook {
         return changed
     }
 
-    private fun collapseHome25ContentOffset(
+    private fun adjustHome25ContentOffset(
         root: View,
         resources: android.content.res.Resources,
         packageName: String,
@@ -742,19 +683,46 @@ object HomeCustomizeHook {
         content.post { adjustContentOffset() }
     }
 
-    private fun hideViewByEntryName(
+    private fun adjustIntlFeedContainerOffset(
         root: View,
         resources: android.content.res.Resources,
         packageName: String,
-        idName: String,
-        onHidden: (() -> Unit)? = null,
     ) {
-        val id = resources.getIdentifier(idName, "id", packageName)
-        if (id == 0) return
-        val view = root.findViewById<View>(id) ?: return
-        if (hideView(view)) {
-            onHidden?.invoke()
+        val feedId = resources.getIdentifier(FEED_CONTAINER_ID, "id", packageName)
+        if (feedId == 0) return
+        val feed = root.findViewById<View>(feedId) ?: return
+        var changed = false
+        if (feed.translationY != 0f) {
+            feed.translationY = 0f
+            changed = true
         }
+        val params = feed.layoutParams ?: return
+        if (params is ViewGroup.MarginLayoutParams && params.topMargin != 0) {
+            params.topMargin = 0
+            changed = true
+        }
+        if (setIntFieldIfPresent(params, "topToTop", 0)) {
+            changed = true
+        }
+        if (setIntFieldIfPresent(params, "topToBottom", -1)) {
+            changed = true
+        }
+        if (changed) {
+            feed.layoutParams = params
+            feed.requestLayout()
+            (feed.parent as? ViewGroup)?.requestLayout()
+            XposedCompat.logD("[HomeCustomizeHook] intl feed container offset collapsed")
+        }
+    }
+
+    private fun setIntFieldIfPresent(target: Any, fieldName: String, value: Int): Boolean {
+        return runCatching {
+            val field = findFieldInHierarchy(target.javaClass) { it.name == fieldName } ?: return false
+            val currentValue = field.getInt(target)
+            if (currentValue == value) return false
+            field.setInt(target, value)
+            true
+        }.getOrDefault(false)
     }
 
     private fun hookStartupHomeBannerPreload(cl: ClassLoader): Int {
@@ -798,33 +766,14 @@ object HomeCustomizeHook {
         return HookSettings.isHomeCustomizeEnabled &&
             (
                 HookSettings.isHomeTopPromotionHidden ||
-                    hasViewCleanupOption()
+                    HookSettings.isHomeSearchPlaceholderHidden ||
+                    HookSettings.isHomeSearchAigcIconHidden ||
+                    HookSettings.isHomeToolbarHidden ||
+                    hasFeedRenderHookOption()
             )
     }
 
-    private fun hasViewCleanupOption(): Boolean {
-        return HookSettings.isHomeCustomizeEnabled &&
-            (
-                hasHomeRootViewCleanupOption() ||
-                    hasHomeSearchboxViewCleanupOption() ||
-                    hasFeedViewCleanupOption() ||
-                    hasHomeSectionHiddenOption()
-            )
-    }
-
-    private fun hasHomeRootViewCleanupOption(): Boolean {
-        return HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeToolbarHidden
-    }
-
-    private fun hasHomeSearchboxViewCleanupOption(): Boolean {
-        return HookSettings.isHomeCustomizeEnabled &&
-            (
-                HookSettings.isHomeSearchPlaceholderHidden ||
-                    HookSettings.isHomeSearchAigcIconHidden
-            )
-    }
-
-    private fun hasFeedViewCleanupOption(): Boolean {
+    private fun hasFeedRenderHookOption(): Boolean {
         return HookSettings.isHomeCustomizeEnabled &&
             (
                 HookSettings.isHomeFeedTipHidden ||
@@ -845,6 +794,14 @@ object HomeCustomizeHook {
         return HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeBannerHidden
     }
 
+    private fun isSearchPlaceholderHidden(): Boolean {
+        return HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeSearchPlaceholderHidden
+    }
+
+    private fun isHomeToolbarHidden(): Boolean {
+        return HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeToolbarHidden
+    }
+
     private fun hasHomeSectionHiddenOption(): Boolean {
         return HookSettings.isHomeCustomizeEnabled &&
             (
@@ -859,27 +816,23 @@ object HomeCustomizeHook {
     }
 
     private fun homeSectionTargets(): List<HomeSectionTarget> {
-        val points = homeCustomizeHookPoints()
         return listOf(
             HomeSectionTarget(
                 label = "memories",
                 methodName = INIT_STORY_CARD_VIEW_METHOD,
                 fieldNames = listOf(HOME_MEMORIES_CARD_FIELD),
-                classNames = points.storyCardViewClassNames,
                 isHidden = { HookSettings.isHomeMemoriesSectionHidden },
             ),
             HomeSectionTarget(
                 label = "save",
                 methodName = INIT_SAVE_CARD_VIEW_METHOD,
                 fieldNames = listOf(HOME_SAVE_CARD_FIELD),
-                classNames = points.saveCardViewClassNames,
                 isHidden = { HookSettings.isHomeSaveSectionHidden },
             ),
             HomeSectionTarget(
                 label = "recent",
                 methodName = INIT_RECENT_CARD_VIEW_METHOD,
                 fieldNames = listOf(HOME_RECENT_CARD_FIELD),
-                classNames = points.recentCardViewClassNames,
                 isHidden = { HookSettings.isHomeRecentSectionHidden },
             ),
         )
@@ -892,7 +845,6 @@ object HomeCustomizeHook {
         val label: String,
         val methodName: String,
         val fieldNames: List<String>,
-        val classNames: List<String>,
         val isHidden: () -> Boolean,
     )
 }

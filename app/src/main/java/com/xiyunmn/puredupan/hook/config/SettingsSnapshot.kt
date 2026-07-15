@@ -129,6 +129,7 @@ data class SettingsSnapshot(
             FeatureKeys.KEY_REMOVE_HOT_START_SPLASH -> isHotStartSplashRemoveEnabled
             FeatureKeys.KEY_BLOCK_UPDATE_DIALOG -> isUpdateDialogBlocked
             FeatureKeys.KEY_REPLACE_BOTTOM_AI -> isBottomAiReplaced
+            FeatureKeys.KEY_HIDE_TAB_AIGC -> isBottomBarTabAigcHidden
             FeatureKeys.KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE -> isThumbnailOperatorServiceDisabled
             FeatureKeys.KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART -> isMediaBrowserServiceAutostartDisabled
             FeatureKeys.KEY_DISABLE_VIDEO_AD_PRELOAD -> isVideoAdPreloadDisabled
@@ -157,6 +158,7 @@ data class SettingsSnapshot(
             FeatureKeys.KEY_REMOVE_HOT_START_SPLASH,
             FeatureKeys.KEY_BLOCK_UPDATE_DIALOG,
             FeatureKeys.KEY_REPLACE_BOTTOM_AI,
+            FeatureKeys.KEY_HIDE_TAB_AIGC,
             FeatureKeys.KEY_DISABLE_THUMBNAIL_OPERATOR_SERVICE,
             FeatureKeys.KEY_DISABLE_MEDIA_BROWSER_SERVICE_AUTOSTART,
             FeatureKeys.KEY_DISABLE_VIDEO_AD_PRELOAD,

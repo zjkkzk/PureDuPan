@@ -49,9 +49,10 @@ internal val BaiduIntlHostProfile = HostProfile(
             ),
             skinConfigClassName = BaiduSharedHookPoints.SKIN_CONFIG_CLASS,
             homeCustomize = HomeCustomizeHookPoints(
-                searchboxFragmentClassName = BaiduSharedHookPoints.HOME_SEARCHBOX_FRAGMENT,
+                searchTextFragmentClassNames = listOf(BaiduSharedHookPoints.INTL_FH_TITLE_BAR_FRAGMENT),
                 homeRootFragmentClassNames = listOf(BaiduSharedHookPoints.NEW_FH_HOME_FRAGMENT),
                 feedFragmentClassNames = BaiduSharedHookPoints.FEED_FRAGMENT_CLASSES,
+                toolbarFragmentClassNames = listOf(BaiduSharedHookPoints.INTL_FH_VAJRA_BAR_FRAGMENT),
                 toolbarViewIdNames = listOf(BaiduSharedHookPoints.INTL_VAJRA_AREA_ID),
                 storyCardViewClassNames = listOf(BaiduSharedHookPoints.HOME_STORY_CARD_VIEW),
                 saveCardViewClassNames = BaiduSharedHookPoints.HOME_SAVE_CARD_VIEWS,

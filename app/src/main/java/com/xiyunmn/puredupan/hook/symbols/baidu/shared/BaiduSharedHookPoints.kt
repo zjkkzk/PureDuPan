@@ -11,8 +11,13 @@ internal object BaiduSharedHookPoints {
 
     const val HOME_SEARCHBOX_FRAGMENT = "com.baidu.netdisk.home25ai.fragment.HomeSearchboxFragment"
     const val HOME25_FRAGMENT = "com.baidu.netdisk.home25ai.Home25Fragment"
+    const val HOME25_KINGKONG_FRAGMENT = "com.baidu.netdisk.home25ai.fragment.Home25KingKongFragment"
     const val NEW_FH_HOME_FRAGMENT =
         "com.baidu.netdisk.newfeedhome.feedhome.ui.view.fragment.NewFHHomeFragment"
+    const val INTL_FH_TITLE_BAR_FRAGMENT =
+        "com.baidu.netdisk.newfeedhome.feedhome.ui.view.fragment.FHTitleBarFragment"
+    const val INTL_FH_VAJRA_BAR_FRAGMENT =
+        "com.baidu.netdisk.newfeedhome.feedhome.ui.view.fragment.FHVajraBarFragment"
     const val HOME25_KINGKONG_CONTENT_LAYOUT_ID = "home25ai_kingkong_content_layout"
     const val INTL_VAJRA_AREA_ID = "cl_vajra_Area"
     const val HOME25AI_CONTEXT_COMPANION =

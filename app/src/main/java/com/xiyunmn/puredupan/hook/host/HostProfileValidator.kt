@@ -128,8 +128,10 @@ internal object HostProfileValidator {
     private fun requireHomeCustomizeHookPoints(profile: HostProfile) {
         val points = profile.capabilities.uiHookPoints.homeCustomize
         requireOptionalClassName(profile, points.searchboxFragmentClassName, "home searchbox fragment")
+        requireOptionalClassNames(profile, points.searchTextFragmentClassNames, "home search text fragment")
         requireOptionalClassNames(profile, points.homeRootFragmentClassNames, "home root fragment")
         requireOptionalClassNames(profile, points.feedFragmentClassNames, "home feed fragment")
+        requireOptionalClassNames(profile, points.toolbarFragmentClassNames, "home toolbar fragment")
         requireOptionalIdNames(profile, points.toolbarViewIdNames, "home toolbar view")
         requireOptionalClassNames(profile, points.storyCardViewClassNames, "home story card view")
         requireOptionalClassNames(profile, points.saveCardViewClassNames, "home save card view")
@@ -214,12 +216,14 @@ internal object HostProfileValidator {
         val needsSearchbox = featureKeys.any {
             it in setOf(
                 FeatureKeys.KEY_HIDE_HOME_TOP_PROMOTION,
-                FeatureKeys.KEY_HIDE_HOME_SEARCH_PLACEHOLDER,
                 FeatureKeys.KEY_HIDE_HOME_SEARCH_AIGC_ICON,
             )
         }
         if (needsSearchbox) {
             requireRequiredClassName(profile, points.searchboxFragmentClassName, "home searchbox fragment")
+        }
+        if (FeatureKeys.KEY_HIDE_HOME_SEARCH_PLACEHOLDER in featureKeys) {
+            requireRequiredClassNames(profile, points.searchTextFragmentClassNames, "home search text fragment")
         }
 
         val needsFeedFragment = featureKeys.any {
@@ -236,6 +240,7 @@ internal object HostProfileValidator {
         }
         if (FeatureKeys.KEY_HIDE_HOME_TOOLBAR in featureKeys) {
             requireRequiredClassNames(profile, points.homeRootFragmentClassNames, "home root fragment")
+            requireRequiredClassNames(profile, points.toolbarFragmentClassNames, "home toolbar fragment")
             requireRequiredIdNames(profile, points.toolbarViewIdNames, "home toolbar view")
         }
         if (FeatureKeys.KEY_HIDE_HOME_MEMORIES_SECTION in featureKeys) {

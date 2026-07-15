@@ -16,6 +16,7 @@ internal object BaiduIntlHookCatalog : HookCatalog {
             BaiduIntlPostAttachHookSpecs.memberCard +
             BaiduIntlPostAttachHookSpecs.searchPage +
             BaiduSharedPostAttachHookSpecs.postMemberLead +
+            BaiduIntlPostAttachHookSpecs.bottomBar +
             BaiduSharedPostAttachHookSpecs.postMemberTail +
             BaiduIntlPostAttachHookSpecs.theme +
             BaiduIntlPostAttachHookSpecs.automation +

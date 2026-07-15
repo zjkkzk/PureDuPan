@@ -142,9 +142,10 @@ internal object BaiduFeatureSets {
     private val baiduSharedBottomBarCustomize = listOf(
         FeatureKeys.KEY_BLOCK_BOTTOM_BADGE,
         FeatureKeys.KEY_CUSTOM_BOTTOM_BAR,
+        FeatureKeys.KEY_HIDE_TAB_HOME,
         FeatureKeys.KEY_HIDE_TAB_FILE,
         FeatureKeys.KEY_HIDE_TAB_SHARE,
-        FeatureKeys.KEY_HIDE_TAB_HOME,
+        FeatureKeys.KEY_HIDE_TAB_VIP,
         FeatureKeys.KEY_HIDE_TAB_MINE,
     )
 
@@ -191,7 +192,6 @@ internal object BaiduFeatureSets {
 
     private val baiduDomesticBottomBarCustomize = listOf(
         FeatureKeys.KEY_HIDE_TAB_AIGC,
-        FeatureKeys.KEY_HIDE_TAB_VIP,
         FeatureKeys.KEY_REPLACE_BOTTOM_AI,
     )
 

@@ -17,6 +17,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlStoryDouyin
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlTaskScoreRefreshDelayHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.IntlLaunchHandoffOptimizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.hotstart.IntlHotStartSplashRemoveHook
+import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlBottomAiTabHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.NightModeSupportHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.SystemNightModeSyncHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.entry.IntlAboutMeModuleEntryHook
@@ -91,6 +92,16 @@ internal object BaiduIntlPostAttachHookSpecs {
                 derived.hasSearchPageCustomizeOption
         }, featureKey = FeatureKeys.KEY_SEARCH_PAGE_CUSTOMIZE) { cl ->
             IntlSearchPageCustomizeHook.hook(cl)
+        },
+    )
+
+    val bottomBar = listOf(
+        HookSpec("IntlBottomAiTabHideHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isBottomBarCustomEnabled &&
+                settings.isBottomBarTabAigcHidden
+        }, featureKey = FeatureKeys.KEY_HIDE_TAB_AIGC) { cl ->
+            IntlBottomAiTabHideHook.hook(cl)
         },
     )
 

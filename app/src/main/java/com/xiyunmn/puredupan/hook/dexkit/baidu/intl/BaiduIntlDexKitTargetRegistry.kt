@@ -11,6 +11,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlAlbumAiInit
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlNonCoreDiffSocketDelayHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlStoryDouyinInitBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.hotstart.IntlHotStartSplashDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlBottomAiTabModeDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlChangeSkinDexKitResolver
 
 internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
@@ -44,6 +45,12 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             target = "intl changeSkin method",
             featureKey = FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE,
             feature = "夜间模式跟随系统",
+        ),
+        DexKitTargetDescriptor(
+            id = IntlBottomAiTabModeDexKitResolver.CACHE_ID,
+            target = "intl bottom AI tab mode getter",
+            featureKey = FeatureKeys.KEY_HIDE_TAB_AIGC,
+            feature = "隐藏底栏 AIGC",
         ),
         DexKitTargetDescriptor(
             id = IntlCookieByBdussDexKitResolver.CACHE_ID,
@@ -84,6 +91,11 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
         if (available(FeatureKeys.KEY_FOLLOW_SYSTEM_NIGHT_MODE)) {
             tasks += DexKitWarmUpTask(IntlChangeSkinDexKitResolver.CACHE_ID) {
                 IntlChangeSkinDexKitResolver.warmUpDexKitCache(classLoader)
+            }
+        }
+        if (available(FeatureKeys.KEY_HIDE_TAB_AIGC)) {
+            tasks += DexKitWarmUpTask(IntlBottomAiTabModeDexKitResolver.CACHE_ID) {
+                IntlBottomAiTabModeDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         if (available(FeatureKeys.KEY_AUTO_DAILY_SIGN_IN)) {

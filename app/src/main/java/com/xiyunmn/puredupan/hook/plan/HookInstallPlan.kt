@@ -103,13 +103,6 @@ internal object HookInstallPlanner {
                         FeatureKeys.KEY_HIDE_ABOUT_ME_FREE_DATA_CARD_TEXT,
                         settings.isAboutMeFreeDataCardTextHidden,
                     ),
-            hasBottomBarTabOption =
-                enabled(FeatureKeys.KEY_HIDE_TAB_FILE, settings.isBottomBarTabFileHidden) ||
-                    enabled(FeatureKeys.KEY_HIDE_TAB_AIGC, settings.isBottomBarTabAigcHidden) ||
-                    enabled(FeatureKeys.KEY_HIDE_TAB_SHARE, settings.isBottomBarTabShareHidden) ||
-                    enabled(FeatureKeys.KEY_HIDE_TAB_VIP, settings.isBottomBarTabVipHidden) ||
-                    enabled(FeatureKeys.KEY_HIDE_TAB_HOME, settings.isBottomBarTabHomeHidden) ||
-                    enabled(FeatureKeys.KEY_HIDE_TAB_MINE, settings.isBottomBarTabMineHidden),
         )
     }
 }

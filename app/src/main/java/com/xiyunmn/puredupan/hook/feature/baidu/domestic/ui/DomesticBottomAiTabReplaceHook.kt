@@ -5,9 +5,9 @@ import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
 
 /**
- * 底栏 AI Tab 替换为会员 Hook。
+ * 底栏 AI Tab 模式 Hook。
  *
- * 受 [HookSettings.isBottomAiReplaced] 控制，默认开启。
+ * 通过宿主 AIGC tab mode provider 阻断 AIGC raised slot 生成。
  */
 internal object DomesticBottomAiTabReplaceHook {
     private val hookState = HookState()
@@ -43,5 +43,6 @@ internal object DomesticBottomAiTabReplaceHook {
         BottomAiTabDexKitResolver.resolve(cl)
 
     private fun isEnabled(): Boolean =
-        HookSettings.isBottomBarCustomEnabled && HookSettings.isBottomAiReplaced
+        HookSettings.isBottomBarCustomEnabled &&
+            (HookSettings.isBottomAiReplaced || HookSettings.isBottomBarTabAigcHidden)
 }

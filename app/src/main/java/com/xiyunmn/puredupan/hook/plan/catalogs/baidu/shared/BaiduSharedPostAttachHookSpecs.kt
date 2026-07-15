@@ -5,7 +5,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.SplashBypassCore
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AboutMeGodModeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarBlockHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BottomBarBadgeBlockHook
-import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BottomBarSimplifyFeature
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.BottomBarStaticTabHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.FilePageCustomizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.HomeCustomizeHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.NewHomeFabRemoveHook
@@ -26,6 +26,21 @@ internal object BaiduSharedPostAttachHookSpecs {
     )
 
     val middle = listOf(
+        HookSpec("BottomBarStaticTabHideHook", { context, settings, _ ->
+            fun enabled(featureKey: String, value: Boolean): Boolean {
+                return context.isFeatureAvailable(featureKey) && value
+            }
+
+            context.isMain &&
+                settings.isBottomBarCustomEnabled &&
+                (
+                    enabled(FeatureKeys.KEY_HIDE_TAB_HOME, settings.isBottomBarTabHomeHidden) ||
+                        enabled(FeatureKeys.KEY_HIDE_TAB_FILE, settings.isBottomBarTabFileHidden) ||
+                        enabled(FeatureKeys.KEY_HIDE_TAB_SHARE, settings.isBottomBarTabShareHidden) ||
+                        enabled(FeatureKeys.KEY_HIDE_TAB_VIP, settings.isBottomBarTabVipHidden) ||
+                        enabled(FeatureKeys.KEY_HIDE_TAB_MINE, settings.isBottomBarTabMineHidden)
+                    )
+        }, featureKey = FeatureKeys.KEY_CUSTOM_BOTTOM_BAR) { cl -> BottomBarStaticTabHideHook.hook(cl) },
         HookSpec("BottomBarBadgeBlockHook", { context, settings, _ ->
             context.isMain &&
                 settings.isBottomBarCustomEnabled &&
@@ -62,12 +77,6 @@ internal object BaiduSharedPostAttachHookSpecs {
         }, featureKey = FeatureKeys.KEY_REMOVE_HOME_FAB) { cl -> NewHomeFabRemoveHook.hook(cl) },
     )
 
-    val postMemberTail = listOf(
-        HookSpec("BottomBarSimplifyFeature", { context, settings, derived ->
-            context.isMain &&
-                settings.isBottomBarCustomEnabled &&
-                derived.hasBottomBarTabOption
-        }, featureKey = FeatureKeys.KEY_CUSTOM_BOTTOM_BAR) { cl -> BottomBarSimplifyFeature.hook(cl) },
-    )
+    val postMemberTail = emptyList<HookSpec>()
 
 }
