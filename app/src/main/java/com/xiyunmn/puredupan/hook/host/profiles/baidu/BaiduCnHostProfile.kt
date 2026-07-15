@@ -65,7 +65,13 @@ internal val BaiduCnHostProfile = HostProfile(
                 toolbarFragmentClassNames = listOf(BaiduSharedHookPoints.HOME25_KINGKONG_FRAGMENT),
                 toolbarViewIdNames = listOf(BaiduSharedHookPoints.HOME25_KINGKONG_CONTENT_LAYOUT_ID),
                 storyCardViewClassNames = listOf(BaiduSharedHookPoints.HOME_STORY_CARD_VIEW),
-                saveCardViewClassNames = BaiduSharedHookPoints.HOME_SAVE_CARD_VIEWS,
+                saveCardViewModelClassName = BaiduSharedHookPoints.HOME_SAVE_CARD_VIEW_MODEL,
+                saveCardNoArgBlockedMethodNames =
+                    BaiduSharedHookPoints.HOME_SAVE_CARD_DOMESTIC_NO_ARG_BLOCKED_METHODS,
+                saveCardSetListMethodNames = BaiduSharedHookPoints.HOME_SAVE_CARD_DOMESTIC_SET_LIST_METHODS,
+                saveCardSetRecommendMethodNames =
+                    BaiduSharedHookPoints.HOME_SAVE_CARD_DOMESTIC_SET_RECOMMEND_METHODS,
+                saveCardRedPotMethodNames = BaiduSharedHookPoints.HOME_SAVE_CARD_DOMESTIC_RED_POT_METHODS,
                 recentCardDataUseCaseClassName = BaiduSharedHookPoints.HOME_RECENT_CARD_DATA_USE_CASE,
                 home25aiContextCompanionClassName = BaiduSharedHookPoints.HOME25AI_CONTEXT_COMPANION,
                 loadHomeBannerMethodName = BaiduSharedHookPoints.HOME25AI_LOAD_HOME_BANNER_METHOD,

@@ -31,10 +31,8 @@ object HomeCustomizeHook {
     private const val FEED_TIP_HEADER_FIELD = "feedSettingTipViewHeader"
     private const val INIT_FEED_SETTING_TIP_HEADER_METHOD = "initFeedSettingTipHeader"
     private const val INIT_BANNER_CARD_VIEW_METHOD = "initBannerCardView"
-    private const val INIT_SAVE_CARD_VIEW_METHOD = "initSaveCardView"
     private const val INIT_STORY_CARD_VIEW_METHOD = "initStoryCardView"
     private const val HOME_BANNER_FIELD = "headerBanner"
-    private const val HOME_SAVE_CARD_FIELD = "headerMySaves"
     private const val HOME_MEMORIES_CARD_FIELD = "headerMemories"
     private const val EXPECT_KT_CLASS = "com.mars.united.core.architecture.ExpectKt"
     private const val EXPECT_SUCCESS_METHOD = "success"
@@ -57,6 +55,7 @@ object HomeCustomizeHook {
             installedCount += hookHomeToolbarRootLayout(cl)
             installedCount += hookSearchboxAigcAnimation(cl)
             installedCount += hookRecentCardDataUseCase(cl)
+            installedCount += hookSaveCardViewModel(cl)
             installedCount += hookFeedRecommendView(cl)
             installedCount += hookStartupHomeBannerPreload(cl)
 
@@ -386,6 +385,118 @@ object HomeCustomizeHook {
             method.parameterTypes.size == 2 &&
             ArrayList::class.java.isAssignableFrom(method.parameterTypes[0]) &&
             method.parameterTypes[1].name == "kotlin.coroutines.Continuation"
+    }
+
+    private fun hookSaveCardViewModel(cl: ClassLoader): Int {
+        if (!HookSettings.isHomeSaveSectionHidden) return 0
+        val mod = XposedCompat.module ?: return 0
+        val points = homeCustomizeHookPoints()
+        val className = points.saveCardViewModelClassName
+        if (className == null) {
+            XposedCompat.log("[HomeCustomizeHook] save card view model host capability missing")
+            return 0
+        }
+        val clazz = XposedCompat.findClassOrNull(className, cl) ?: run {
+            XposedCompat.log("[HomeCustomizeHook] save card view model class NOT FOUND")
+            return 0
+        }
+
+        val hookedMethods = mutableSetOf<Method>()
+        var count = 0
+        count += hookSaveCardViewModelMethods(
+            mod = mod,
+            clazz = clazz,
+            methodNames = points.saveCardNoArgBlockedMethodNames,
+            label = "save card no-arg data method",
+            hookedMethods = hookedMethods,
+            matcher = ::isSaveCardNoArgVoidMethod,
+        )
+        count += hookSaveCardViewModelMethods(
+            mod = mod,
+            clazz = clazz,
+            methodNames = points.saveCardSetListMethodNames,
+            label = "save card set list method",
+            hookedMethods = hookedMethods,
+            matcher = ::isSaveCardSetListMethod,
+        )
+        count += hookSaveCardViewModelMethods(
+            mod = mod,
+            clazz = clazz,
+            methodNames = points.saveCardSetRecommendMethodNames,
+            label = "save card recommend method",
+            hookedMethods = hookedMethods,
+            matcher = ::isSaveCardSetRecommendMethod,
+        )
+        count += hookSaveCardViewModelMethods(
+            mod = mod,
+            clazz = clazz,
+            methodNames = points.saveCardRedPotMethodNames,
+            label = "save card red pot method",
+            hookedMethods = hookedMethods,
+            matcher = ::isSaveCardRedPotMethod,
+        )
+        if (count == 0) {
+            XposedCompat.log("[HomeCustomizeHook] save card view model methods NOT FOUND")
+        }
+        return count
+    }
+
+    private fun hookSaveCardViewModelMethods(
+        mod: io.github.libxposed.api.XposedModule,
+        clazz: Class<*>,
+        methodNames: List<String>,
+        label: String,
+        hookedMethods: MutableSet<Method>,
+        matcher: (Method) -> Boolean,
+    ): Int {
+        var count = 0
+        methodNames.forEach { methodName ->
+            val methods = clazz.declaredMethods.filter { method ->
+                method.name == methodName && matcher(method)
+            }
+            if (methods.isEmpty()) {
+                XposedCompat.logD("[HomeCustomizeHook] $label not found: ${clazz.name}.$methodName")
+                return@forEach
+            }
+            methods.forEach { method ->
+                if (!hookedMethods.add(method)) return@forEach
+                method.isAccessible = true
+                mod.hook(method).intercept { chain ->
+                    if (HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeSaveSectionHidden) {
+                        XposedCompat.logD("[HomeCustomizeHook] $label blocked: ${clazz.name}.${method.name}")
+                        null
+                    } else {
+                        chain.proceed()
+                    }
+                }
+                count += 1
+            }
+        }
+        return count
+    }
+
+    private fun isSaveCardNoArgVoidMethod(method: Method): Boolean {
+        return method.returnType == Void.TYPE && method.parameterTypes.isEmpty()
+    }
+
+    private fun isSaveCardSetListMethod(method: Method): Boolean {
+        return method.returnType == Void.TYPE &&
+            method.parameterTypes.size == 2 &&
+            method.parameterTypes[0] == Boolean::class.javaPrimitiveType &&
+            java.util.List::class.java.isAssignableFrom(method.parameterTypes[1])
+    }
+
+    private fun isSaveCardSetRecommendMethod(method: Method): Boolean {
+        return method.returnType == Void.TYPE &&
+            method.parameterTypes.size == 2 &&
+            method.parameterTypes[0] == Boolean::class.javaPrimitiveType &&
+            method.parameterTypes[1].name.endsWith(".SaveCardState")
+    }
+
+    private fun isSaveCardRedPotMethod(method: Method): Boolean {
+        return method.returnType == Void.TYPE &&
+            method.parameterTypes.size == 1 &&
+            method.parameterTypes[0] == Boolean::class.javaPrimitiveType
     }
 
     private fun hookFeedRecommendView(cl: ClassLoader): Int {
@@ -815,6 +926,8 @@ object HomeCustomizeHook {
                     HookSettings.isHomeSearchPlaceholderHidden ||
                     HookSettings.isHomeSearchAigcIconHidden ||
                     HookSettings.isHomeToolbarHidden ||
+                    HookSettings.isHomeSaveSectionHidden ||
+                    HookSettings.isHomeRecentSectionHidden ||
                     hasFeedRenderHookOption()
             )
     }
@@ -824,7 +937,7 @@ object HomeCustomizeHook {
             (
                 HookSettings.isHomeFeedTipHidden ||
                     HookSettings.isHomeBannerHidden ||
-                    hasHomeSectionHiddenOption()
+                    HookSettings.isHomeMemoriesSectionHidden
             )
     }
 
@@ -848,15 +961,6 @@ object HomeCustomizeHook {
         return HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeToolbarHidden
     }
 
-    private fun hasHomeSectionHiddenOption(): Boolean {
-        return HookSettings.isHomeCustomizeEnabled &&
-            (
-                HookSettings.isHomeMemoriesSectionHidden ||
-                    HookSettings.isHomeSaveSectionHidden ||
-                    HookSettings.isHomeRecentSectionHidden
-            )
-    }
-
     private fun isHomeSectionHidden(target: HomeSectionTarget): Boolean {
         return HookSettings.isHomeCustomizeEnabled && target.isHidden()
     }
@@ -868,12 +972,6 @@ object HomeCustomizeHook {
                 methodName = INIT_STORY_CARD_VIEW_METHOD,
                 fieldNames = listOf(HOME_MEMORIES_CARD_FIELD),
                 isHidden = { HookSettings.isHomeMemoriesSectionHidden },
-            ),
-            HomeSectionTarget(
-                label = "save",
-                methodName = INIT_SAVE_CARD_VIEW_METHOD,
-                fieldNames = listOf(HOME_SAVE_CARD_FIELD),
-                isHidden = { HookSettings.isHomeSaveSectionHidden },
             ),
         )
     }

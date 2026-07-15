@@ -32,10 +32,20 @@ internal object BaiduSharedHookPoints {
         FEED_RECOMMEND_TAB_FRAGMENT,
     )
     const val HOME_STORY_CARD_VIEW = "com.baidu.netdisk.newstory.ui.view.home.HomeStoryCardView"
-    val HOME_SAVE_CARD_VIEWS = listOf(
-        "com.baidu.netdisk.home25ai.feedhome.ui.view.fragment.NewHomeSaveCardView",
-        "com.baidu.netdisk.newfeedhome.feedhome.ui.view.fragment.NewHomeSaveCardView",
+    const val HOME_SAVE_CARD_VIEW_MODEL =
+        "com.baidu.netdisk.newfeedhome.feedhome.ui.viewmodels.NewHomeSaveCardViewModel"
+    val HOME_SAVE_CARD_DOMESTIC_NO_ARG_BLOCKED_METHODS = listOf(
+        "cacheHomeSaveCard",
+        "homeSaveCardInfo",
+        "updateCardInfo",
     )
+    val HOME_SAVE_CARD_INTL_NO_ARG_BLOCKED_METHODS = listOf("N0", "X0", "t1")
+    val HOME_SAVE_CARD_DOMESTIC_SET_LIST_METHODS = listOf("setListData")
+    val HOME_SAVE_CARD_INTL_SET_LIST_METHODS = listOf("o1")
+    val HOME_SAVE_CARD_DOMESTIC_SET_RECOMMEND_METHODS = listOf("setRecommendLink")
+    val HOME_SAVE_CARD_INTL_SET_RECOMMEND_METHODS = listOf("p1")
+    val HOME_SAVE_CARD_DOMESTIC_RED_POT_METHODS = listOf("saveRedPot")
+    val HOME_SAVE_CARD_INTL_RED_POT_METHODS = listOf("n1")
     const val HOME_RECENT_CARD_DATA_USE_CASE =
         "com.baidu.netdisk.newfeedhome.feedhome.domain.GetRecentCardDataUseCase"
 

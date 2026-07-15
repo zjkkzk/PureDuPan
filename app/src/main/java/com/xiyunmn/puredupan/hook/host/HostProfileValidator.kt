@@ -106,11 +106,15 @@ internal object HostProfileValidator {
     }
 
     private fun requireOptionalClassNames(profile: HostProfile, classNames: List<String>, label: String) {
-        require(classNames.none { it.isBlank() }) {
-            "Host ${profile.id} $label class names must not be blank"
+        requireOptionalNames(profile, classNames, label)
+    }
+
+    private fun requireOptionalNames(profile: HostProfile, values: List<String>, label: String) {
+        require(values.none { it.isBlank() }) {
+            "Host ${profile.id} $label names must not be blank"
         }
         requireUnique(
-            values = classNames,
+            values = values,
             label = "$label for host ${profile.id}",
         )
     }
@@ -134,7 +138,11 @@ internal object HostProfileValidator {
         requireOptionalClassNames(profile, points.toolbarFragmentClassNames, "home toolbar fragment")
         requireOptionalIdNames(profile, points.toolbarViewIdNames, "home toolbar view")
         requireOptionalClassNames(profile, points.storyCardViewClassNames, "home story card view")
-        requireOptionalClassNames(profile, points.saveCardViewClassNames, "home save card view")
+        requireOptionalClassName(profile, points.saveCardViewModelClassName, "home save card view model")
+        requireOptionalNames(profile, points.saveCardNoArgBlockedMethodNames, "home save no-arg block method")
+        requireOptionalNames(profile, points.saveCardSetListMethodNames, "home save set list method")
+        requireOptionalNames(profile, points.saveCardSetRecommendMethodNames, "home save set recommend method")
+        requireOptionalNames(profile, points.saveCardRedPotMethodNames, "home save red pot method")
         requireOptionalClassName(profile, points.recentCardDataUseCaseClassName, "home recent card data use case")
         requireOptionalClassName(
             profile,
@@ -231,8 +239,6 @@ internal object HostProfileValidator {
                 FeatureKeys.KEY_HIDE_HOME_FEED_TIP,
                 FeatureKeys.KEY_HIDE_HOME_BANNER,
                 FeatureKeys.KEY_HIDE_HOME_MEMORIES_SECTION,
-                FeatureKeys.KEY_HIDE_HOME_SAVE_SECTION,
-                FeatureKeys.KEY_HIDE_HOME_RECENT_SECTION,
             )
         }
         if (needsFeedFragment) {
@@ -247,7 +253,15 @@ internal object HostProfileValidator {
             requireRequiredClassNames(profile, points.storyCardViewClassNames, "home story card view")
         }
         if (FeatureKeys.KEY_HIDE_HOME_SAVE_SECTION in featureKeys) {
-            requireRequiredClassNames(profile, points.saveCardViewClassNames, "home save card view")
+            requireRequiredClassName(profile, points.saveCardViewModelClassName, "home save card view model")
+            requireRequiredNames(profile, points.saveCardNoArgBlockedMethodNames, "home save no-arg block method")
+            requireRequiredNames(profile, points.saveCardSetListMethodNames, "home save set list method")
+            requireRequiredNames(
+                profile,
+                points.saveCardSetRecommendMethodNames,
+                "home save set recommend method",
+            )
+            requireRequiredNames(profile, points.saveCardRedPotMethodNames, "home save red pot method")
         }
         if (FeatureKeys.KEY_HIDE_HOME_RECENT_SECTION in featureKeys) {
             requireRequiredClassName(profile, points.recentCardDataUseCaseClassName, "home recent card data use case")
@@ -271,6 +285,13 @@ internal object HostProfileValidator {
             "Host ${profile.id} requires $label class names"
         }
         requireOptionalClassNames(profile, classNames, label)
+    }
+
+    private fun requireRequiredNames(profile: HostProfile, values: List<String>, label: String) {
+        require(values.isNotEmpty()) {
+            "Host ${profile.id} requires $label names"
+        }
+        requireOptionalNames(profile, values, label)
     }
 
     private fun requireRequiredIdNames(profile: HostProfile, idNames: List<String>, label: String) {
