@@ -4,7 +4,7 @@ import android.view.View
 import com.xiyunmn.puredupan.hook.config.runtime.HookSettings
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.core.HookState
-import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.membercard.AboutMeTopHeteromoDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.aboutme.AboutMeTopHeteromoDexKitResolver
 
 /**
  * 隐藏我的页顶部会员卡上的 AI 硬币入口（layout_ai_coin）。

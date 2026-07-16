@@ -1,9 +1,9 @@
-package com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.membercard
+package com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.aboutme
 
 import com.xiyunmn.puredupan.hook.core.XposedCompat
 import com.xiyunmn.puredupan.hook.dexkit.DexKitCompat
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.resolver.KotlinMetadataUtils
-import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduMemberCardHeteromoHookPoints
+import com.xiyunmn.puredupan.hook.symbols.baidu.domestic.BaiduAboutMeTopHeteromoHookPoints
 import java.lang.reflect.Method
 import org.luckypray.dexkit.query.FindClass
 import org.luckypray.dexkit.query.FindMethod
@@ -32,10 +32,10 @@ internal object AboutMeTopHeteromoDexKitResolver {
     private const val KOTLIN_METADATA = "kotlin.Metadata"
 
     private val HETEROMO_METADATA_TOKENS = listOf(
-        BaiduMemberCardHeteromoHookPoints.HETEROMO_METADATA_TOKEN,
-        BaiduMemberCardHeteromoHookPoints.SET_CARD_TEXT_METADATA_TOKEN,
-        BaiduMemberCardHeteromoHookPoints.SET_CARD_UI_METADATA_TOKEN,
-        BaiduMemberCardHeteromoHookPoints.MY_CARD_HAS_OPERATION_METADATA_TOKEN,
+        BaiduAboutMeTopHeteromoHookPoints.HETEROMO_METADATA_TOKEN,
+        BaiduAboutMeTopHeteromoHookPoints.SET_CARD_TEXT_METADATA_TOKEN,
+        BaiduAboutMeTopHeteromoHookPoints.SET_CARD_UI_METADATA_TOKEN,
+        BaiduAboutMeTopHeteromoHookPoints.MY_CARD_HAS_OPERATION_METADATA_TOKEN,
     )
 
     private data class DexMethodCandidate(
@@ -120,7 +120,7 @@ internal object AboutMeTopHeteromoDexKitResolver {
 
     private fun resolveStableFallback(cl: ClassLoader): Class<*>? {
         val clazz = XposedCompat.findClassOrNull(
-            BaiduMemberCardHeteromoHookPoints.ABOUT_ME_TOP_FRAGMENT_HETEROMO,
+            BaiduAboutMeTopHeteromoHookPoints.ABOUT_ME_TOP_FRAGMENT_HETEROMO,
             cl,
         ) ?: return null
         if (!isHeteromoOwner(clazz)) return null
@@ -134,7 +134,7 @@ internal object AboutMeTopHeteromoDexKitResolver {
         return clazz.declaredMethods.firstOrNull { method ->
             method.returnType == Boolean::class.javaPrimitiveType &&
                 method.parameterTypes.size == 1 &&
-                method.parameterTypes[0].name == BaiduMemberCardHeteromoHookPoints.POPUP_RESPONSE
+                method.parameterTypes[0].name == BaiduAboutMeTopHeteromoHookPoints.POPUP_RESPONSE
         }?.apply { isAccessible = true }
     }
 
@@ -143,7 +143,7 @@ internal object AboutMeTopHeteromoDexKitResolver {
         return clazz.declaredMethods.firstOrNull { method ->
             method.returnType == Void.TYPE &&
                 method.parameterTypes.size == 1 &&
-                method.parameterTypes[0].name == BaiduMemberCardHeteromoHookPoints.CENTER_CONFIG
+                method.parameterTypes[0].name == BaiduAboutMeTopHeteromoHookPoints.CENTER_CONFIG
         }?.apply { isAccessible = true }
     }
 
@@ -152,8 +152,8 @@ internal object AboutMeTopHeteromoDexKitResolver {
         return clazz.declaredMethods.firstOrNull { method ->
             method.returnType == Void.TYPE &&
                 method.parameterTypes.size == 2 &&
-                method.parameterTypes[0].name == BaiduMemberCardHeteromoHookPoints.CENTER_CONFIG &&
-                method.parameterTypes[1].name == BaiduMemberCardHeteromoHookPoints.POPUP_RESPONSE
+                method.parameterTypes[0].name == BaiduAboutMeTopHeteromoHookPoints.CENTER_CONFIG &&
+                method.parameterTypes[1].name == BaiduAboutMeTopHeteromoHookPoints.POPUP_RESPONSE
         }?.apply { isAccessible = true }
     }
 
@@ -179,12 +179,12 @@ internal object AboutMeTopHeteromoDexKitResolver {
             method.name == ref.methodName &&
                 method.returnType == Boolean::class.javaPrimitiveType &&
                 method.parameterTypes.size == 1 &&
-                method.parameterTypes[0].name == BaiduMemberCardHeteromoHookPoints.POPUP_RESPONSE
+                method.parameterTypes[0].name == BaiduAboutMeTopHeteromoHookPoints.POPUP_RESPONSE
         }?.apply { isAccessible = true }
     }
 
     private fun isHeteromoOwner(clazz: Class<*>): Boolean {
-        if (clazz.name == BaiduMemberCardHeteromoHookPoints.ABOUT_ME_TOP_FRAGMENT_HETEROMO) return true
+        if (clazz.name == BaiduAboutMeTopHeteromoHookPoints.ABOUT_ME_TOP_FRAGMENT_HETEROMO) return true
         return KotlinMetadataUtils.metadataContainsAll(clazz, HETEROMO_METADATA_TOKENS)
     }
 
@@ -209,14 +209,14 @@ internal object AboutMeTopHeteromoDexKitResolver {
     private fun myCardHasOperationMatcher(): MethodMatcher {
         return MethodMatcher.create()
             .returnType(Boolean::class.javaPrimitiveType!!)
-            .paramTypes(BaiduMemberCardHeteromoHookPoints.POPUP_RESPONSE)
+            .paramTypes(BaiduAboutMeTopHeteromoHookPoints.POPUP_RESPONSE)
     }
 
     private fun DexMethodCandidate.isMyCardHasOperationShape(): Boolean =
         !isConstructor &&
             returnTypeName == "boolean" &&
             paramTypeNames.size == 1 &&
-            paramTypeNames[0] == BaiduMemberCardHeteromoHookPoints.POPUP_RESPONSE
+            paramTypeNames[0] == BaiduAboutMeTopHeteromoHookPoints.POPUP_RESPONSE
 
     private fun DexMethodCandidate.isBridgeOrSynthetic(): Boolean =
         (modifiers and 0x40) != 0 || (modifiers and 0x1000) != 0

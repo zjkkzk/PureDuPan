@@ -1,14 +1,16 @@
 package com.xiyunmn.puredupan.hook.symbols.baidu.domestic
 
 /**
- * 国内版/三星版会员卡（AboutMeTopFragmentHeteromo）渲染入口落点。
+ * 国内版/三星版我的页顶部卡片（AboutMeTopFragmentHeteromo）渲染入口落点。
  *
+ * 该 fragment 承载会员卡与 AI 硬币入口（layout_ai_coin），符号由会员卡定制与我的页 AI 硬币隐藏共用。
  * 整卡由三个渲染入口 + 一个逻辑门驱动：
  * - [MY_CARD_HAS_OPERATION_METHOD](PopupResponse):boolean —— 运营位显隐逻辑门；返回 false 时
  *   宿主自身 GONE operationLayout + ivBgOperation（B 类，纯逻辑层）。
  * - [SET_CARD_TEXT_METHOD](CenterConfig):void —— 写 tvEnter/tvDurationContent/tvVipNumber/
  *   viewLine/clFirst..clFifthCard/clAboutmeTop 点击。
- * - [SET_CARD_UI_METHOD](CenterConfig, PopupResponse):void —— 调 setCardText 后设 ivVipImage、ivBg、主题。
+ * - [SET_CARD_UI_METHOD](CenterConfig, PopupResponse):void —— 调 setCardText 后设 ivVipImage、ivBg、主题，
+ *   并调 initAiPoint() 渲染 layout_ai_coin。
  *
  * 混淆兼容：百度弱混淆分支与强混淆分支都会发布正式版。
  * - 弱/未混淆分支（国内 13.28.9/13.27.8、三星 13.27.8 已核验）：类名、方法名全明文，走稳定直连。
@@ -17,7 +19,7 @@ package com.xiyunmn.puredupan.hook.symbols.baidu.domestic
  *   方法 token 定位类，锚点方法 [MY_CARD_HAS_OPERATION_METHOD] 形状 (PopupResponse)->boolean。
  * 隐藏 binding 视图统一用明文资源 ID（resources.getIdentifier），不依赖 binding 字段反射，本就抗混淆。
  */
-internal object BaiduMemberCardHeteromoHookPoints {
+internal object BaiduAboutMeTopHeteromoHookPoints {
     /** 稳定直连类名（弱/未混淆分支）。 */
     const val ABOUT_ME_TOP_FRAGMENT_HETEROMO =
         "com.baidu.netdisk.ui.aboutme.view.AboutMeTopFragmentHeteromo"
