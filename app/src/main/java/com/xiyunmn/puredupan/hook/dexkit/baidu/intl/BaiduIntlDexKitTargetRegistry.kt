@@ -13,6 +13,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlStoryDouyin
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.hotstart.IntlHotStartSplashDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlBottomAiTabModeDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlChangeSkinDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarAddUseCaseDexKitResolver
 
 internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
     override val descriptors = listOf(
@@ -58,6 +59,12 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             featureKey = FeatureKeys.KEY_AUTO_DAILY_SIGN_IN,
             feature = "自动签到",
         ),
+        DexKitTargetDescriptor(
+            id = AlbumBackupBarAddUseCaseDexKitResolver.CACHE_ID,
+            target = "intl album backup bar add use case",
+            featureKey = FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR,
+            feature = "屏蔽相册备份栏",
+        ),
     )
 
     override fun buildTasks(
@@ -101,6 +108,11 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
         if (available(FeatureKeys.KEY_AUTO_DAILY_SIGN_IN)) {
             tasks += DexKitWarmUpTask(IntlCookieByBdussDexKitResolver.CACHE_ID) {
                 IntlCookieByBdussDexKitResolver.warmUpDexKitCache(classLoader)
+            }
+        }
+        if (available(FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR)) {
+            tasks += DexKitWarmUpTask(AlbumBackupBarAddUseCaseDexKitResolver.CACHE_ID) {
+                AlbumBackupBarAddUseCaseDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         return tasks

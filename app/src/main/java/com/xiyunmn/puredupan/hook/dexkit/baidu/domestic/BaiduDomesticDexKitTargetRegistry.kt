@@ -8,6 +8,7 @@ import com.xiyunmn.puredupan.hook.dexkit.DexKitTargetRegistry
 import com.xiyunmn.puredupan.hook.dexkit.DexKitWarmUpTask
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ad.DomesticUpdateDialogDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.BottomAiTabDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarAddUseCaseDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.ui.DomesticChangeSkinDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticDynamicPluginAutoDecisionDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.domestic.performance.DomesticFloatViewStartupDexKitResolver
@@ -123,6 +124,12 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             target = "domestic search page voice search screen",
             feature = "search page voice search",
             featureKey = FeatureKeys.KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH,
+        ),
+        DexKitTargetDescriptor(
+            id = AlbumBackupBarAddUseCaseDexKitResolver.CACHE_ID,
+            target = "album backup bar add use case realExecute",
+            feature = "album backup bar block",
+            featureKey = FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR,
         ),
     )
 
