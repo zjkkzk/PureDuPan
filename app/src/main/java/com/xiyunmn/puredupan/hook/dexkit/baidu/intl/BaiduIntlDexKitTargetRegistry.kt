@@ -13,6 +13,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.performance.IntlStoryDouyin
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.startup.hotstart.IntlHotStartSplashDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlBottomAiTabModeDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.IntlChangeSkinDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.membercard.IntlAboutMeTopFragmentDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarAddUseCaseDexKitResolver
 
 internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
@@ -65,6 +66,12 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             featureKey = FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR,
             feature = "屏蔽相册备份栏",
         ),
+        DexKitTargetDescriptor(
+            id = IntlAboutMeTopFragmentDexKitResolver.CACHE_ID,
+            target = "intl about me top fragment member card setCardUi",
+            featureKey = FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE,
+            feature = "会员卡定制",
+        ),
     )
 
     override fun buildTasks(
@@ -113,6 +120,11 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
         if (available(FeatureKeys.KEY_BLOCK_ALBUM_BACKUP_BAR)) {
             tasks += DexKitWarmUpTask(AlbumBackupBarAddUseCaseDexKitResolver.CACHE_ID) {
                 AlbumBackupBarAddUseCaseDexKitResolver.warmUpDexKitCache(classLoader)
+            }
+        }
+        if (available(FeatureKeys.KEY_MEMBER_CARD_CUSTOMIZE)) {
+            tasks += DexKitWarmUpTask(IntlAboutMeTopFragmentDexKitResolver.CACHE_ID) {
+                IntlAboutMeTopFragmentDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         return tasks
