@@ -126,13 +126,35 @@ object HomeCustomizeHook {
                 return@forEach
             }
             mod.hook(method).intercept { chain ->
-                val result = chain.proceed()
-                if (isSearchPlaceholderHidden() && hideSearchPlaceholderBindingView(chain.thisObject)) {
-                    XposedCompat.logD("[HomeCustomizeHook] $className.$SET_SEARCH_TEXT_METHOD placeholder collapsed")
+                if (isSearchPlaceholderHidden()) {
+                    // 渲染入口 no-op：阻断 TextFlipper 文案与右侧 Drawable 写入。
+                    // 布局默认文案由 onViewCreated 一次性折叠处理，不再在每次 setSearchText 后做 View 兜底。
+                    XposedCompat.logD("[HomeCustomizeHook] $className.$SET_SEARCH_TEXT_METHOD blocked")
+                    null
+                } else {
+                    chain.proceed()
                 }
-                result
             }
             count += 1
+
+            val onViewCreated = XposedCompat.findMethodOrNull(
+                clazz,
+                "onViewCreated",
+                View::class.java,
+                Bundle::class.java,
+            )
+            if (onViewCreated != null) {
+                mod.hook(onViewCreated).intercept { chain ->
+                    val result = chain.proceed()
+                    if (isSearchPlaceholderHidden() && hideSearchPlaceholderBindingView(chain.thisObject)) {
+                        XposedCompat.logD(
+                            "[HomeCustomizeHook] $className.onViewCreated placeholder collapsed",
+                        )
+                    }
+                    result
+                }
+                count += 1
+            }
         }
         return count
     }
@@ -312,6 +334,7 @@ object HomeCustomizeHook {
     private fun hookSearchboxAigcAnimation(cl: ClassLoader): Int {
         if (!HookSettings.isHomeSearchAigcIconHidden) return 0
         val mod = XposedCompat.module ?: return 0
+        var count = 0
         val searchboxFragmentClassName = homeCustomizeHookPoints().searchboxFragmentClassName
         if (searchboxFragmentClassName == null) {
             XposedCompat.log("[HomeCustomizeHook] HomeSearchboxFragment host capability missing for AIGC animation")
@@ -333,12 +356,34 @@ object HomeCustomizeHook {
             if (!HookSettings.isHomeCustomizeEnabled || !HookSettings.isHomeSearchAigcIconHidden) {
                 chain.proceed()
             } else {
-                hideSearchboxAigcBindingViews(chain.thisObject)
+                // 动画入口 no-op：不加载 mp4、不 play、不触发 border/icon 动画。
+                // 布局默认可见的 searchbox_aigc_icon 由 onViewCreated 一次性折叠，不再在此做 View 兜底。
                 XposedCompat.logD("[HomeCustomizeHook] HomeSearchboxFragment.startSearchBoxAnim blocked")
                 getBindingObject(chain.thisObject)
             }
         }
-        return 1
+        count += 1
+
+        val onViewCreated = XposedCompat.findMethodOrNull(
+            clazz,
+            "onViewCreated",
+            View::class.java,
+            Bundle::class.java,
+        )
+        if (onViewCreated != null) {
+            mod.hook(onViewCreated).intercept { chain ->
+                val result = chain.proceed()
+                if (HookSettings.isHomeCustomizeEnabled && HookSettings.isHomeSearchAigcIconHidden) {
+                    hideSearchboxAigcBindingViews(chain.thisObject)
+                    XposedCompat.logD(
+                        "[HomeCustomizeHook] HomeSearchboxFragment.onViewCreated aigc views collapsed",
+                    )
+                }
+                result
+            }
+            count += 1
+        }
+        return count
     }
 
     private fun hookRecentCardDataUseCase(cl: ClassLoader): Int {
