@@ -15,10 +15,12 @@ import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.view.Gravity
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
@@ -140,6 +142,7 @@ internal object IntlMemberCardCustomizeHook {
                 return
             }
             hookCardRenderEntry(method)
+            hookTopCreateView(method.declaringClass)
             XposedCompat.log("[IntlMemberCardCustomizeHook] hook INSTALLED")
         } catch (e: Exception) {
             hookState.reset()
@@ -171,6 +174,34 @@ internal object IntlMemberCardCustomizeHook {
         }
         XposedCompat.log(
             "[IntlMemberCardCustomizeHook] card render entry INSTALLED: " +
+                "${method.declaringClass.name}.${method.name}",
+        )
+    }
+
+    private fun hookTopCreateView(fragmentClass: Class<*>) {
+        val mod = XposedCompat.module ?: return
+        val method = XposedCompat.findMethodOrNull(
+            fragmentClass,
+            "onCreateView",
+            LayoutInflater::class.java,
+            ViewGroup::class.java,
+            Bundle::class.java,
+        ) ?: run {
+            XposedCompat.logD("[IntlMemberCardCustomizeHook] top onCreateView not found")
+            return
+        }
+
+        mod.hook(method).intercept { chain ->
+            val result = chain.proceed()
+            try {
+                (result as? View)?.let(::hideTopSvipLevelBadge)
+            } catch (e: Exception) {
+                XposedCompat.logD("[IntlMemberCardCustomizeHook] top svip badge apply failed: ${e.message}")
+            }
+            result
+        }
+        XposedCompat.logD(
+            "[IntlMemberCardCustomizeHook] top onCreateView hook installed: " +
                 "${method.declaringClass.name}.${method.name}",
         )
     }
@@ -287,6 +318,7 @@ internal object IntlMemberCardCustomizeHook {
                 XposedCompat.logD("[IntlMemberCardCustomizeHook] intl svip level hidden")
             }
             hideByEntryName(root, resources, packageName, MEMBER_CARD_SVIP_NUMBER_ID)
+            hideTopSvipLevelBadge(root)
         }
 
         if (snapshot.isMemberCardSvipStatusHidden) {
@@ -308,6 +340,16 @@ internal object IntlMemberCardCustomizeHook {
             if (divider != null && divider.visibility != View.GONE) {
                 divider.visibility = View.GONE
             }
+        }
+    }
+
+    private fun hideTopSvipLevelBadge(root: View) {
+        val snapshot = HookSettings.memberCardSnapshot()
+        if (!snapshot.isMemberCardCustomizeEnabled || !snapshot.isIntlMemberCardSvipLevelHidden) return
+        val resources = root.resources ?: return
+        val packageName = root.context?.packageName ?: return
+        hideByEntryName(root, resources, packageName, MEMBER_CARD_UNLOCK_SVIP_ROOT_ID) {
+            XposedCompat.logD("[IntlMemberCardCustomizeHook] intl top svip level badge hidden")
         }
     }
 

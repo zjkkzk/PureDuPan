@@ -40,7 +40,7 @@ object AboutMeTextEntryHideHook {
 
         try {
             var installed = 0
-            if (isAccountExitEnabled() || isStarSkinEnabled()) {
+            if (isAccountExitEnabled() || isStarSkinEnabled() || isFreeDataCardEnabled()) {
                 installed += hookMiddleRows(cl)
             }
             if (isFreeDataCardEnabled()) {
@@ -68,44 +68,34 @@ object AboutMeTextEntryHideHook {
 
     private fun hookMiddleRows(cl: ClassLoader): Int {
         val mod = XposedCompat.module ?: return 0
-        val holderClass = XposedCompat.findClassOrNull(
-            BaiduAboutMeHookPoints.BASE_MIDDLE_VIEW_HOLDER,
-            cl,
-        ) ?: run {
-            XposedCompat.logD("[$TAG] BaseMiddleViewHolder not found")
+        val method = AboutMeMiddleViewHolderDexKitResolver.resolve(cl) ?: run {
+            XposedCompat.logD("[$TAG] BaseMiddleViewHolder.bind not found")
             return 0
         }
 
-        var count = 0
-        for (method in holderClass.declaredMethods) {
-            if (!isMiddleBindMethod(method)) continue
-            method.isAccessible = true
-            mod.hook(method).intercept { chain ->
-                val node = chain.args.firstOrNull()
-                val starNode = isStarSkinEnabled() && hasStringValue(node, KEY_PERSONAL_THEME_SETTING)
-                if (isAccountExitEnabled()) {
-                    clearStringValues(node, setOf(TEXT_ACCOUNT_EXIT), "account/exit hint")
-                }
-                if (isStarSkinEnabled()) {
-                    clearStringValues(node, setOf(TEXT_STAR_SKIN), "star-skin hint")
-                }
-                val result = chain.proceed()
-                if (starNode) {
-                    clearHolderHint(chain.thisObject)
-                }
-                result
+        method.isAccessible = true
+        mod.hook(method).intercept { chain ->
+            val node = chain.args.firstOrNull()
+            val starNode = isStarSkinEnabled() && hasStringValue(node, KEY_PERSONAL_THEME_SETTING)
+            if (isAccountExitEnabled()) {
+                clearStringValues(node, setOf(TEXT_ACCOUNT_EXIT), "account/exit hint")
             }
-            count++
-            XposedCompat.logD("[$TAG] middle model hook installed: ${method.name}")
+            if (isStarSkinEnabled()) {
+                clearStringValues(node, setOf(TEXT_STAR_SKIN), "star-skin hint")
+            }
+            if (isFreeDataCardEnabled()) {
+                clearStringValues(node, setOf(TEXT_FREE_DATA_CARD), "free-data middle row hint")
+            }
+            val result = chain.proceed()
+            if (starNode) {
+                clearHolderHint(chain.thisObject)
+            }
+            result
         }
-        return count
-    }
-
-    private fun isMiddleBindMethod(method: Method): Boolean {
-        val params = method.parameterTypes
-        return method.returnType == Void.TYPE &&
-            params.size == 2 &&
-            params[1] == Boolean::class.javaPrimitiveType
+        XposedCompat.logD(
+            "[$TAG] middle model hook installed: ${method.declaringClass.name}.${method.name}",
+        )
+        return 1
     }
 
     private fun hookWelfareItems(cl: ClassLoader): Int {

@@ -22,6 +22,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.shared.automation.DomesticCookie
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.DomesticColdStartSplashDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.DomesticHotStartSplashDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.FilePageSafetyFooterUseCaseDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeMiddleViewHolderDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMePopupResponseHelperDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.search.SearchPageVoiceSearchDexKitResolver
 
@@ -159,6 +160,12 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
             feature = "my page customize",
             featureKey = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE,
         ),
+        DexKitTargetDescriptor(
+            id = AboutMeMiddleViewHolderDexKitResolver.CACHE_ID,
+            target = "about me middle row bind method",
+            feature = "my page customize",
+            featureKey = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE,
+        ),
     )
 
     override fun buildTasks(
@@ -274,6 +281,9 @@ internal object BaiduDomesticDexKitTargetRegistry : DexKitTargetRegistry {
         if (available(FeatureKeys.KEY_MY_PAGE_CUSTOMIZE)) {
             tasks += DexKitWarmUpTask(AboutMePopupResponseHelperDexKitResolver.CACHE_ID) {
                 AboutMePopupResponseHelperDexKitResolver.warmUpDexKitCache(classLoader)
+            }
+            tasks += DexKitWarmUpTask(AboutMeMiddleViewHolderDexKitResolver.CACHE_ID) {
+                AboutMeMiddleViewHolderDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         return tasks

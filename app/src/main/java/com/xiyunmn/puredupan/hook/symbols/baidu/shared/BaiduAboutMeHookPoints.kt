@@ -6,6 +6,11 @@ internal object BaiduAboutMeHookPoints {
     const val ABOUT_ME_MIDDLE_FRAGMENT = "com.baidu.netdisk.ui.aboutme.view.AboutMeMiddleFragment"
     const val ABOUT_ME_BOTTOM_FRAGMENT = "com.baidu.netdisk.ui.aboutme.view.AboutMeBottomFragment"
     const val BASE_MIDDLE_VIEW_HOLDER = "com.baidu.netdisk.ui.aboutme.view.BaseMiddleViewHolder"
+    const val BASE_MIDDLE_VIEW_HOLDER_METADATA_TOKEN =
+        "Lcom/baidu/netdisk/ui/aboutme/view/BaseMiddleViewHolder;"
+    const val MIDDLE_NODE = "xq0.MiddleNode"
+    const val MIDDLE_NODE_METADATA_TOKEN =
+        "Lcom/baidu/netdisk/ui/aboutme/model/operation/MiddleNode;"
     const val ABOUT_MY_WELFARE_ADAPTER = "com.baidu.netdisk.ui.aboutme.view.AboutMyWelfareAdapter"
     const val POPUP_RESPONSE_HELPER = "com.baidu.netdisk.ui.aboutme.view.PopupResponseHelper"
     const val POPUP_RESPONSE = "com.baidu.netdisk.operation.io.PopupResponse"

@@ -18,6 +18,7 @@ import com.xiyunmn.puredupan.hook.feature.baidu.intl.ui.membercard.IntlAboutMeTo
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarAddUseCaseDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.DownloadPagePromotionAdDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.FilePageSafetyFooterUseCaseDexKitResolver
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeMiddleViewHolderDexKitResolver
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMePopupResponseHelperDexKitResolver
 
 internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
@@ -100,6 +101,12 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
             featureKey = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE,
             feature = "我的页定制",
         ),
+        DexKitTargetDescriptor(
+            id = AboutMeMiddleViewHolderDexKitResolver.CACHE_ID,
+            target = "intl about me middle row bind method",
+            featureKey = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE,
+            feature = "我的页定制",
+        ),
     )
 
     override fun buildTasks(
@@ -177,6 +184,9 @@ internal object BaiduIntlDexKitTargetRegistry : DexKitTargetRegistry {
         if (available(FeatureKeys.KEY_MY_PAGE_CUSTOMIZE)) {
             tasks += DexKitWarmUpTask(AboutMePopupResponseHelperDexKitResolver.CACHE_ID) {
                 AboutMePopupResponseHelperDexKitResolver.warmUpDexKitCache(classLoader)
+            }
+            tasks += DexKitWarmUpTask(AboutMeMiddleViewHolderDexKitResolver.CACHE_ID) {
+                AboutMeMiddleViewHolderDexKitResolver.warmUpDexKitCache(classLoader)
             }
         }
         return tasks
