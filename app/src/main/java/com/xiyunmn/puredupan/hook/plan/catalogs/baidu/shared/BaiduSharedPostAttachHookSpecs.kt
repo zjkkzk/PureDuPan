@@ -3,6 +3,7 @@ package com.xiyunmn.puredupan.hook.plan.catalogs.baidu.shared
 import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.SplashBypassCore
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AboutMeGodModeHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeBannerHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeCoinCenterBubbleHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeServiceAndSignDotHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.AlbumBackupBarBlockHook
@@ -72,6 +73,13 @@ internal object BaiduSharedPostAttachHookSpecs {
                 settings.isAboutMeCoinCenterBubbleHidden
         }, featureKey = FeatureKeys.KEY_HIDE_ABOUT_ME_COIN_CENTER_BUBBLE) { cl ->
             AboutMeCoinCenterBubbleHideHook.hook(cl)
+        },
+        HookSpec("AboutMeBannerHideHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isMyPageCustomizeEnabled &&
+                settings.isAboutMeBannerRemoved
+        }, featureKey = FeatureKeys.KEY_REMOVE_ABOUT_ME_BANNER) { cl ->
+            AboutMeBannerHideHook.hook(cl)
         },
         HookSpec("AboutMeServiceAndSignDotHideHook", { context, settings, _ ->
             context.isMain &&

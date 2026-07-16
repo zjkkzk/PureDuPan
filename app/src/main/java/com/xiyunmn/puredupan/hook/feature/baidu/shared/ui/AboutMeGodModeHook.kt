@@ -16,7 +16,6 @@ import java.util.WeakHashMap
  * DecorView-level cleanup for "About Me" page views that are rebuilt by host UI.
  */
 object AboutMeGodModeHook {
-    private const val BANNER_ID = "aboutme_banner"
     private const val TEXT_MANAGE_SPACE = "管理空间"
     private const val TEXT_REWARD = "领奖励"
     private const val TEXT_ACCOUNT_EXIT = "账号、退出"
@@ -190,9 +189,6 @@ object AboutMeGodModeHook {
         val config = HookSettings.aboutMeOptions()
         if (!hasEnabledOption()) return
 
-        if (config.isAboutMeBannerRemoved) {
-            hideViewByEntryName(activity, root, BANNER_ID, "banner")
-        }
         if (config.isAboutMeManageSpaceTextHidden) {
             hideTextView(root, TEXT_MANAGE_SPACE, "manage_space_text")
         }
@@ -207,35 +203,6 @@ object AboutMeGodModeHook {
         }
         if (config.isAboutMeFreeDataCardTextHidden) {
             hideTextView(root, TEXT_FREE_DATA_CARD, "free_data_card_text")
-        }
-    }
-
-    private fun hideViewByEntryName(activity: Activity, root: View, entryName: String, label: String) {
-        val id = activity.resources.getIdentifier(entryName, "id", activity.packageName)
-        if (id == 0) return
-        val view = activity.findViewById<View>(id) ?: root.findViewById(id) ?: return
-        hideView(view, label, entryName)
-    }
-
-    private fun hideViewByEntryNameInRoot(activity: Activity, root: View, entryName: String, label: String) {
-        val view = findViewByEntryNameInRoot(activity, root, entryName) ?: return
-        hideView(view, label, entryName)
-    }
-
-    private fun findViewByEntryNameInRoot(activity: Activity, root: View, entryName: String): View? {
-        val id = activity.resources.getIdentifier(entryName, "id", activity.packageName)
-        if (id == 0) return null
-        return root.findViewById(id)
-    }
-
-    private fun hideView(view: View, label: String, source: String) {
-        val shouldLog = view.visibility != View.GONE || view.alpha != 0f || view.isEnabled || view.isClickable
-        view.visibility = View.GONE
-        view.alpha = 0f
-        view.isEnabled = false
-        view.isClickable = false
-        if (shouldLog) {
-            XposedCompat.log("[AboutMeGodModeHook] $label hidden ($source)")
         }
     }
 
@@ -263,8 +230,7 @@ object AboutMeGodModeHook {
         val snapshot = HookSettings.aboutMeOptions()
         return snapshot.isMyPageCustomizeEnabled &&
             (
-                snapshot.isAboutMeBannerRemoved ||
-                    snapshot.isAboutMeManageSpaceTextHidden ||
+                snapshot.isAboutMeManageSpaceTextHidden ||
                     snapshot.isAboutMeRewardTextHidden ||
                     snapshot.isAboutMeAccountExitTextHidden ||
                     snapshot.isAboutMeStarSkinTextHidden ||
