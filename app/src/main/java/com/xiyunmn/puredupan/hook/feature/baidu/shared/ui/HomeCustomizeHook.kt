@@ -29,7 +29,6 @@ object HomeCustomizeHook {
     private const val HOME25_CONTENT_ID = "home25ai_content"
     private const val HOME25_SEARCHBOX_CONTENT_ID = "searchbox_content"
     private const val FEED_CONTAINER_ID = "feed_container"
-    private const val FEED_TIP_HEADER_FIELD = "feedSettingTipViewHeader"
     private const val INIT_FEED_SETTING_TIP_HEADER_METHOD = "initFeedSettingTipHeader"
     private const val EXPECT_KT_CLASS = "com.mars.united.core.architecture.ExpectKt"
     private const val EXPECT_SUCCESS_METHOD = "success"
@@ -54,7 +53,7 @@ object HomeCustomizeHook {
             installedCount += hookRecentCardDataUseCase(cl)
             installedCount += hookSaveCardViewModel(cl)
             installedCount += hookHomeStoryCardRenderEntry(cl)
-            installedCount += hookFeedRecommendView(cl)
+            installedCount += hookFeedSettingTipRenderEntry(cl)
             installedCount += hookHomeBannerCardRenderEntry(cl)
             installedCount += hookStartupHomeBannerPreload(cl)
 
@@ -539,7 +538,15 @@ object HomeCustomizeHook {
             method.parameterTypes.any { Context::class.java.isAssignableFrom(it) }
     }
 
-    private fun hookFeedRecommendView(cl: ClassLoader): Int {
+    /**
+     * Feed tip 是「开启推荐」提示条，不是推荐本身。
+     *
+     * 宿主只在 [initFeedSettingTipHeader] 里 inflate binding 并写入
+     * [feedSettingTipViewHeader]；[hideFeedList] 仅在该字段非空时 show/gone。
+     * 因此渲染入口 no-op 即可阻止提示条创建，无需字段级 View 隐藏，
+     * 也不会改写 [KEY_HOME_PAGE_SHOW_RECOMMENDED] 配置。
+     */
+    private fun hookFeedSettingTipRenderEntry(cl: ClassLoader): Int {
         if (!isFeedTipHidden()) return 0
         val mod = XposedCompat.module ?: return 0
         var count = 0
@@ -561,18 +568,19 @@ object HomeCustomizeHook {
             if (initFeedSettingTipHeader != null) {
                 mod.hook(initFeedSettingTipHeader).intercept { chain ->
                     if (isFeedTipHidden()) {
-                        hideFeedTipHeaderField(chain.thisObject)
-                        XposedCompat.logD("[HomeCustomizeHook] $className.$INIT_FEED_SETTING_TIP_HEADER_METHOD blocked")
+                        XposedCompat.logD(
+                            "[HomeCustomizeHook] $className.$INIT_FEED_SETTING_TIP_HEADER_METHOD blocked",
+                        )
                         null
                     } else {
-                        val result = chain.proceed()
-                        hideFeedTipHeaderField(chain.thisObject)
-                        result
+                        chain.proceed()
                     }
                 }
                 count += 1
             } else {
-                XposedCompat.logD("[HomeCustomizeHook] $className.$INIT_FEED_SETTING_TIP_HEADER_METHOD not found")
+                XposedCompat.logD(
+                    "[HomeCustomizeHook] $className.$INIT_FEED_SETTING_TIP_HEADER_METHOD not found",
+                )
             }
         }
         return count
@@ -650,22 +658,6 @@ object HomeCustomizeHook {
         }
         adjustHome25ContentOffset(root, resources, packageName)
         adjustIntlFeedContainerOffset(root, resources, packageName)
-    }
-
-    private fun hideFeedTipHeaderField(fragment: Any?) {
-        if (!isFeedTipHidden() || fragment == null) return
-        runCatching {
-            var current: Class<*>? = fragment.javaClass
-            while (current != null) {
-                val field = current.declaredFields.firstOrNull { it.name == FEED_TIP_HEADER_FIELD }
-                if (field != null) {
-                    field.isAccessible = true
-                    hideView(field.get(fragment) as? View)
-                    return
-                }
-                current = current.superclass
-            }
-        }
     }
 
     private fun hideSearchboxAigcBindingViews(fragment: Any?) {

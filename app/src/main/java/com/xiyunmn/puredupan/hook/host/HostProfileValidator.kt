@@ -257,14 +257,7 @@ internal object HostProfileValidator {
             requireRequiredClassNames(profile, points.searchTextFragmentClassNames, "home search text fragment")
         }
 
-        val needsFeedFragment = featureKeys.any {
-            it in setOf(
-                FeatureKeys.KEY_HIDE_HOME_FEED_TIP,
-                FeatureKeys.KEY_HIDE_HOME_BANNER,
-                FeatureKeys.KEY_HIDE_HOME_MEMORIES_SECTION,
-            )
-        }
-        if (needsFeedFragment) {
+        if (FeatureKeys.KEY_HIDE_HOME_FEED_TIP in featureKeys) {
             requireRequiredClassNames(profile, points.feedFragmentClassNames, "home feed fragment")
         }
         if (FeatureKeys.KEY_HIDE_HOME_TOOLBAR in featureKeys) {
