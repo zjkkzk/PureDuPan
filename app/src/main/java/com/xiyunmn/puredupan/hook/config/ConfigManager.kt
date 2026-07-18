@@ -15,6 +15,14 @@ object ConfigManager {
     const val MODULE_STATE_PREFS_NAME = "wangpan_module_state"
     const val PREFS_NAME = USER_SETTINGS_PREFS_NAME
     private const val KEY_USER_SETTINGS_VERSION_CODE = "user_settings_version_code"
+    private val CONTENT_POSITION_CACHE_INVALIDATION_KEYS = setOf(
+        FeatureKeys.KEY_MY_PAGE_CUSTOMIZE,
+        FeatureKeys.KEY_MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD,
+        FeatureKeys.KEY_MY_PAGE_CONTENT_MANUAL_OFFSET,
+        FeatureKeys.KEY_MY_PAGE_CONTENT_OFFSET_Y_DP,
+        FeatureKeys.KEY_MEMBER_CARD_SIZE_ADJUST,
+        FeatureKeys.KEY_MEMBER_CARD_SIZE_HEIGHT_DP,
+    )
 
     const val KEY_ENABLE_DETAILED_LOGGING = FeatureKeys.KEY_ENABLE_DETAILED_LOGGING
     const val KEY_DEXKIT_STATUS = FeatureKeys.KEY_DEXKIT_STATUS
@@ -54,6 +62,15 @@ object ConfigManager {
     const val KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH = FeatureKeys.KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH
     const val KEY_SHARE_PAGE_CUSTOMIZE = FeatureKeys.KEY_SHARE_PAGE_CUSTOMIZE
     const val KEY_MY_PAGE_CUSTOMIZE = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE
+    const val KEY_MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD =
+        FeatureKeys.KEY_MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD
+    const val KEY_MY_PAGE_CONTENT_MANUAL_OFFSET =
+        FeatureKeys.KEY_MY_PAGE_CONTENT_MANUAL_OFFSET
+    const val KEY_MY_PAGE_CONTENT_OFFSET_Y_DP = FeatureKeys.KEY_MY_PAGE_CONTENT_OFFSET_Y_DP
+    const val KEY_MY_PAGE_CONTENT_POSITION_CACHE_SIGNATURE =
+        FeatureKeys.KEY_MY_PAGE_CONTENT_POSITION_CACHE_SIGNATURE
+    const val KEY_MY_PAGE_CONTENT_POSITION_CACHE_OFFSET_PX =
+        FeatureKeys.KEY_MY_PAGE_CONTENT_POSITION_CACHE_OFFSET_PX
     const val KEY_REMOVE_GAME_CENTER = FeatureKeys.KEY_REMOVE_GAME_CENTER
     const val KEY_REMOVE_ABOUT_ME_BANNER = FeatureKeys.KEY_REMOVE_ABOUT_ME_BANNER
     const val KEY_REMOVE_MY_SERVICE = FeatureKeys.KEY_REMOVE_MY_SERVICE
@@ -319,9 +336,12 @@ object ConfigManager {
 
     private fun ensurePrefsListener(p: SharedPreferences) {
         if (prefsListener != null) return
-        val listener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPrefs, _ ->
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { sharedPrefs, key ->
             synchronized(this@ConfigManager) {
                 if (prefs !== sharedPrefs) return@OnSharedPreferenceChangeListener
+                if (key in CONTENT_POSITION_CACHE_INVALIDATION_KEYS) {
+                    invalidateContentPositionCache(appContext)
+                }
                 val previousSnapshot = settingsSnapshot
                 val snapshot = refreshUserSettingsSnapshot(sharedPrefs)
                 if (
@@ -338,6 +358,15 @@ object ConfigManager {
         }
         prefsListener = listener
         p.registerOnSharedPreferenceChangeListener(listener)
+    }
+
+    private fun invalidateContentPositionCache(context: Context?) {
+        val appCtx = context ?: return
+        getModuleStatePrefs(appCtx).edit()
+            .remove(KEY_MY_PAGE_CONTENT_POSITION_CACHE_SIGNATURE)
+            .remove(KEY_MY_PAGE_CONTENT_POSITION_CACHE_OFFSET_PX)
+            .apply()
+        XposedCompat.logD("[ConfigManager] content position cache invalidated")
     }
 
     private fun ensureUserSettingsVersion(p: SharedPreferences) {
@@ -472,8 +501,15 @@ object ConfigManager {
                 featureBoolean(KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH, false)
         val hasSharePageOptionEnabled =
             featureBoolean(KEY_REMOVE_HOME_FAB, false)
+        val myPageContentAutoFollowMemberCard =
+            featureBoolean(KEY_MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD, false)
+        val myPageContentManualOffset =
+            !myPageContentAutoFollowMemberCard &&
+                featureBoolean(KEY_MY_PAGE_CONTENT_MANUAL_OFFSET, false)
         val hasMyPageOptionEnabled =
-            featureBoolean(KEY_HIDE_RENEW_BUTTON, false) ||
+            myPageContentAutoFollowMemberCard ||
+                myPageContentManualOffset ||
+                featureBoolean(KEY_HIDE_RENEW_BUTTON, false) ||
                 featureBoolean(KEY_REMOVE_GAME_CENTER, false) ||
                 featureBoolean(KEY_REMOVE_ABOUT_ME_BANNER, false) ||
                 featureBoolean(KEY_REMOVE_MY_SERVICE, false) ||
@@ -560,6 +596,13 @@ object ConfigManager {
             isSearchPageVoiceSearchHidden = featureBoolean(KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH, false),
             isSharePageCustomizeEnabled = featureBoolean(KEY_SHARE_PAGE_CUSTOMIZE, hasSharePageOptionEnabled),
             isMyPageCustomizeEnabled = featureBoolean(KEY_MY_PAGE_CUSTOMIZE, hasMyPageOptionEnabled),
+            isMyPageContentAutoFollowMemberCardEnabled = myPageContentAutoFollowMemberCard,
+            isMyPageContentManualOffsetEnabled = myPageContentManualOffset,
+            myPageContentOffsetYDp = if (isFeatureAvailable(KEY_MY_PAGE_CONTENT_OFFSET_Y_DP)) {
+                p.getInt(KEY_MY_PAGE_CONTENT_OFFSET_Y_DP, 0).coerceIn(-160, 160)
+            } else {
+                0
+            },
             isGameCenterRemoved = featureBoolean(KEY_REMOVE_GAME_CENTER, false),
             isAboutMeBannerRemoved = featureBoolean(KEY_REMOVE_ABOUT_ME_BANNER, false),
             isMyServiceRemoved = featureBoolean(KEY_REMOVE_MY_SERVICE, false),

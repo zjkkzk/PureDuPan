@@ -98,7 +98,15 @@ internal object HookInstallPlanner {
                     ) ||
                     enabled(FeatureKeys.KEY_HIDE_SEARCH_PAGE_VOICE_SEARCH, settings.isSearchPageVoiceSearchHidden),
             hasMyPageCustomizeOption =
-                enabled(FeatureKeys.KEY_HIDE_RENEW_BUTTON, settings.isRenewButtonHidden) ||
+                enabled(
+                    FeatureKeys.KEY_MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD,
+                    settings.isMyPageContentAutoFollowMemberCardEnabled,
+                ) ||
+                    enabled(
+                        FeatureKeys.KEY_MY_PAGE_CONTENT_MANUAL_OFFSET,
+                        settings.isMyPageContentManualOffsetEnabled,
+                    ) ||
+                    enabled(FeatureKeys.KEY_HIDE_RENEW_BUTTON, settings.isRenewButtonHidden) ||
                     enabled(FeatureKeys.KEY_REMOVE_GAME_CENTER, settings.isGameCenterRemoved) ||
                     enabled(FeatureKeys.KEY_REMOVE_ABOUT_ME_BANNER, settings.isAboutMeBannerRemoved) ||
                     enabled(FeatureKeys.KEY_REMOVE_MY_SERVICE, settings.isMyServiceRemoved) ||

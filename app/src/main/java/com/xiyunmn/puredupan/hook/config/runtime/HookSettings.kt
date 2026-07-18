@@ -6,6 +6,13 @@ import com.xiyunmn.puredupan.hook.config.ConfigManager
 import com.xiyunmn.puredupan.hook.config.SettingsSnapshot
 
 internal object HookSettings {
+    data class ContentPositionCache(
+        val signature: String,
+        val offsetPx: Int,
+    )
+
+    @Volatile private var contentPositionMemoryCache: ContentPositionCache? = null
+
     data class AboutMeOptions(
         val isMyPageCustomizeEnabled: Boolean,
         val isAboutMeBannerRemoved: Boolean,
@@ -64,6 +71,34 @@ internal object HookSettings {
             .edit()
             .putInt(ConfigManager.KEY_MEMBER_CARD_DEFAULT_WIDTH_PX, width)
             .putInt(ConfigManager.KEY_MEMBER_CARD_DEFAULT_HEIGHT_PX, height)
+            .apply()
+    }
+
+    fun recordedMemberCardDefaultHeightPx(context: Context): Int {
+        return ConfigManager.getModuleStatePrefs(context)
+            .getInt(ConfigManager.KEY_MEMBER_CARD_DEFAULT_HEIGHT_PX, 0)
+            .coerceAtLeast(0)
+    }
+
+    fun contentPositionCache(context: Context, signature: String): ContentPositionCache? {
+        contentPositionMemoryCache?.takeIf { it.signature == signature }?.let { return it }
+        val prefs = ConfigManager.getModuleStatePrefs(context)
+        if (prefs.getString(ConfigManager.KEY_MY_PAGE_CONTENT_POSITION_CACHE_SIGNATURE, null) != signature) {
+            return null
+        }
+        if (!prefs.contains(ConfigManager.KEY_MY_PAGE_CONTENT_POSITION_CACHE_OFFSET_PX)) return null
+        return ContentPositionCache(
+            signature = signature,
+            offsetPx = prefs.getInt(ConfigManager.KEY_MY_PAGE_CONTENT_POSITION_CACHE_OFFSET_PX, 0),
+        ).also { contentPositionMemoryCache = it }
+    }
+
+    fun recordContentPositionCache(context: Context, cache: ContentPositionCache) {
+        contentPositionMemoryCache = cache
+        ConfigManager.getModuleStatePrefs(context)
+            .edit()
+            .putString(ConfigManager.KEY_MY_PAGE_CONTENT_POSITION_CACHE_SIGNATURE, cache.signature)
+            .putInt(ConfigManager.KEY_MY_PAGE_CONTENT_POSITION_CACHE_OFFSET_PX, cache.offsetPx)
             .apply()
     }
 

@@ -4,6 +4,7 @@ import com.xiyunmn.puredupan.hook.settings.registry.SettingsUserState
 import com.xiyunmn.puredupan.hook.ui.UiText
 
 internal enum class MyPageCustomizeSettingsSection {
+    POSITION,
     WIDGET,
     TEXT_WIDGET,
 }
@@ -17,6 +18,18 @@ internal data class MyPageCustomizeSwitchSpec(
 
 internal object MyPageCustomizeSettingsRegistry {
     val specs: List<MyPageCustomizeSwitchSpec> = listOf(
+        MyPageCustomizeSwitchSpec(
+            SettingsUserState.KEY_MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD,
+            UiText.Settings.MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD_LABEL,
+            UiText.Settings.MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD_DESC,
+            MyPageCustomizeSettingsSection.POSITION,
+        ),
+        MyPageCustomizeSwitchSpec(
+            SettingsUserState.KEY_MY_PAGE_CONTENT_MANUAL_OFFSET,
+            UiText.Settings.MY_PAGE_CONTENT_MANUAL_OFFSET_LABEL,
+            UiText.Settings.MY_PAGE_CONTENT_MANUAL_OFFSET_DESC,
+            MyPageCustomizeSettingsSection.POSITION,
+        ),
         MyPageCustomizeSwitchSpec(
             SettingsUserState.KEY_HIDE_RENEW_BUTTON,
             UiText.Settings.HIDE_RENEW_BUTTON_LABEL,

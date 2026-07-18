@@ -87,6 +87,16 @@ object UiText {
         const val HIDE_ABOUT_ME_SIGN_IN_DOT_DESC = "隐藏「我的」页右上角签到入口旁的小红点"
         const val HIDE_ABOUT_ME_AI_COIN_ASSET_LABEL = "AI 点数和资产"
         const val HIDE_ABOUT_ME_AI_COIN_ASSET_DESC = "隐藏会员卡片下方 AI 点数和资产区域"
+        const val MY_PAGE_CONTENT_POSITION_SECTION_TITLE = "内容位置"
+        const val MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD_LABEL = "自动跟随会员卡高度"
+        const val MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD_DESC =
+            "根据会员卡片相对默认高度的变化，自动移动下方全部内容"
+        const val MY_PAGE_CONTENT_MANUAL_OFFSET_LABEL = "手动调整下方内容位置"
+        const val MY_PAGE_CONTENT_MANUAL_OFFSET_DESC =
+            "使用垂直偏移量整体移动会员卡片下方的全部内容"
+        const val MY_PAGE_CONTENT_OFFSET_Y_LABEL = "垂直偏移"
+        const val MY_PAGE_CONTENT_OFFSET_Y_DESC = "负值上移，正值下移"
+        const val MY_PAGE_CONTENT_OFFSET_NONE = "不偏移"
         const val SHARE_PAGE_CUSTOMIZE_LABEL = "共享页定制"
         const val SHARE_PAGE_CUSTOMIZE_DESC = "管理「共享」页面右下角广告悬浮窗"
         const val REMOVE_HOME_FAB_LABEL = "广告悬浮窗"
@@ -333,6 +343,11 @@ object UiText {
         const val MEMBER_CARD_CUSTOMIZE_DIALOG_TITLE = "会员卡片定制"
         const val MEMBER_CARD_CUSTOMIZE_SAVED = "会员卡片定制配置已保存"
         fun memberCardBackgroundSelected(name: String): String = "已选择：$name"
+        fun myPageContentOffset(value: Int): String = when {
+            value < 0 -> "上移 ${-value}dp"
+            value > 0 -> "下移 ${value}dp"
+            else -> MY_PAGE_CONTENT_OFFSET_NONE
+        }
 
         const val ABOUT = "关于"
         const val DEVICE_FINGERPRINT_LABEL = "设备指纹"

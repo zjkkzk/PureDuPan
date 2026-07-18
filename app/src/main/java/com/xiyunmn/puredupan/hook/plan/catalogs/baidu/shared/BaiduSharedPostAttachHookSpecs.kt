@@ -4,6 +4,7 @@ import com.xiyunmn.puredupan.hook.config.model.FeatureKeys
 import com.xiyunmn.puredupan.hook.host.HostIds
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.startup.SplashBypassCore
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeBannerHideHook
+import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeBottomContentPositionHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeCoinCenterBubbleHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeServiceAndSignDotHideHook
 import com.xiyunmn.puredupan.hook.feature.baidu.shared.ui.aboutme.AboutMeTextEntryHideHook
@@ -69,6 +70,16 @@ internal object BaiduSharedPostAttachHookSpecs {
     )
 
     val myPage = listOf(
+        HookSpec("AboutMeBottomContentPositionHook", { context, settings, _ ->
+            context.isMain &&
+                settings.isMyPageCustomizeEnabled &&
+                (
+                    settings.isMyPageContentAutoFollowMemberCardEnabled ||
+                        settings.isMyPageContentManualOffsetEnabled
+                    )
+        }, featureKey = FeatureKeys.KEY_MY_PAGE_CUSTOMIZE) { cl ->
+            AboutMeBottomContentPositionHook.hook(cl)
+        },
         HookSpec("AboutMeCoinCenterBubbleHideHook", { context, settings, _ ->
             context.isMain &&
                 settings.isMyPageCustomizeEnabled &&

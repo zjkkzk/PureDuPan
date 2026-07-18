@@ -244,16 +244,41 @@ internal object PageCustomizeSettingsItemsBuilder {
         editor: SharedPreferences.Editor,
         isFeatureVisible: (String) -> Boolean,
         isChecked: (String) -> Boolean,
+        manualOffsetYDp: Int,
     ): SharedPreferences.Editor {
+        val autoFollowMemberCard =
+            isFeatureVisible(SettingsUserState.KEY_MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD) &&
+                isChecked(SettingsUserState.KEY_MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD)
+        val manualOffset =
+            !autoFollowMemberCard &&
+                isFeatureVisible(SettingsUserState.KEY_MY_PAGE_CONTENT_MANUAL_OFFSET) &&
+                isChecked(SettingsUserState.KEY_MY_PAGE_CONTENT_MANUAL_OFFSET)
         val hasEnabledOption = hasEnabledMyPageCustomizeOption(
             isFeatureVisible = isFeatureVisible,
-            isChecked = isChecked,
+            isChecked = { key ->
+                when (key) {
+                    SettingsUserState.KEY_MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD -> autoFollowMemberCard
+                    SettingsUserState.KEY_MY_PAGE_CONTENT_MANUAL_OFFSET -> manualOffset
+                    else -> isChecked(key)
+                }
+            },
         )
         editor.putBoolean(SettingsUserState.KEY_MY_PAGE_CUSTOMIZE, hasEnabledOption)
         MyPageCustomizeSettingsRegistry.specs.filter { spec ->
             isFeatureVisible(spec.key)
         }.forEach { spec ->
-            editor.putBoolean(spec.key, isChecked(spec.key))
+            val checked = when (spec.key) {
+                SettingsUserState.KEY_MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD -> autoFollowMemberCard
+                SettingsUserState.KEY_MY_PAGE_CONTENT_MANUAL_OFFSET -> manualOffset
+                else -> isChecked(spec.key)
+            }
+            editor.putBoolean(spec.key, checked)
+        }
+        if (isFeatureVisible(SettingsUserState.KEY_MY_PAGE_CONTENT_OFFSET_Y_DP)) {
+            editor.putInt(
+                SettingsUserState.KEY_MY_PAGE_CONTENT_OFFSET_Y_DP,
+                manualOffsetYDp.coerceIn(-160, 160),
+            )
         }
         return editor
     }

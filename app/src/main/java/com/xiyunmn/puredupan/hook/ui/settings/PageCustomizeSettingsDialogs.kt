@@ -15,6 +15,8 @@ import com.xiyunmn.puredupan.hook.ui.UiText
 
 internal object PageCustomizeSettingsDialogs {
     private const val LOG_TAG = "[PageCustomizeSettingsDialogs]"
+    private const val MY_PAGE_CONTENT_OFFSET_MIN_DP = -160
+    private const val MY_PAGE_CONTENT_OFFSET_MAX_DP = 160
 
     fun showFilePage(
         context: Context,
@@ -362,18 +364,45 @@ internal object PageCustomizeSettingsDialogs {
                 isFeatureVisible = settingsSession::isFeatureVisible,
             )
             val rowsByKey = createRowsByKey(context, prefs, padding, myPageItems)
+            val offsetText = texts.text(
+                SettingsUserState.KEY_MY_PAGE_CONTENT_OFFSET_Y_DP,
+                UiText.Settings.MY_PAGE_CONTENT_OFFSET_Y_LABEL,
+                UiText.Settings.MY_PAGE_CONTENT_OFFSET_Y_DESC,
+            )
+            val manualOffsetSlider = MemberCardSettingsControls.createIntSliderRow(
+                context = context,
+                label = offsetText.label,
+                description = offsetText.description.orEmpty(),
+                padding = padding,
+                minValue = MY_PAGE_CONTENT_OFFSET_MIN_DP,
+                maxValue = MY_PAGE_CONTENT_OFFSET_MAX_DP,
+                initialValue = prefs.getInt(SettingsUserState.KEY_MY_PAGE_CONTENT_OFFSET_Y_DP, 0),
+                valueFormatter = UiText.Settings::myPageContentOffset,
+            )
 
             fun visibleMyPageRows(section: MyPageCustomizeSettingsSection): List<View> {
                 return PageCustomizeSettingsItemsBuilder.myPageCustomizeItemsIn(section, myPageItems)
                     .visibleRows(rowsByKey)
             }
 
+            val positionRows = visibleMyPageRows(MyPageCustomizeSettingsSection.POSITION).toMutableList()
+            if (settingsSession.isFeatureVisible(SettingsUserState.KEY_MY_PAGE_CONTENT_OFFSET_Y_DP)) {
+                positionRows += manualOffsetSlider.row
+            }
+            SettingsDialogLayout.addTitledSection(
+                root = root,
+                context = context,
+                padding = padding,
+                titleView = SettingsDialogLayout.createMyPageContentPositionSectionTitle(context, padding),
+                rows = positionRows,
+            )
             SettingsDialogLayout.addTitledSection(
                 root = root,
                 context = context,
                 padding = padding,
                 titleView = SettingsDialogLayout.createCustomHideWidgetSectionTitle(context, padding),
                 rows = visibleMyPageRows(MyPageCustomizeSettingsSection.WIDGET),
+                addDividerBefore = root.childCount > 0,
             )
             SettingsDialogLayout.addTitledSection(
                 root = root,
@@ -389,6 +418,37 @@ internal object PageCustomizeSettingsDialogs {
                 XposedCompat.logW("$LOG_TAG showMyPage failed: switch view missing")
                 return
             }
+            val autoFollowSwitch =
+                switchesByKey[SettingsUserState.KEY_MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD]
+            val manualOffsetSwitch =
+                switchesByKey[SettingsUserState.KEY_MY_PAGE_CONTENT_MANUAL_OFFSET]
+            if (autoFollowSwitch == null || manualOffsetSwitch == null) {
+                XposedCompat.logW("$LOG_TAG showMyPage failed: position switch missing")
+                return
+            }
+            if (autoFollowSwitch.isChecked && manualOffsetSwitch.isChecked) {
+                manualOffsetSwitch.isChecked = false
+            }
+
+            fun updateManualOffsetRow() {
+                SettingsSwitchRows.setRowEnabled(
+                    manualOffsetSlider.row,
+                    manualOffsetSwitch.isChecked,
+                )
+            }
+            autoFollowSwitch.setOnCheckedChangeListener { _, isChecked ->
+                if (isChecked && manualOffsetSwitch.isChecked) {
+                    manualOffsetSwitch.isChecked = false
+                }
+                updateManualOffsetRow()
+            }
+            manualOffsetSwitch.setOnCheckedChangeListener { _, isChecked ->
+                if (isChecked && autoFollowSwitch.isChecked) {
+                    autoFollowSwitch.isChecked = false
+                }
+                updateManualOffsetRow()
+            }
+            updateManualOffsetRow()
 
             val dialog = AlertDialog.Builder(context, SettingsDialogWindows.themeFor(context))
                 .setTitle(UiText.Settings.MY_PAGE_CUSTOMIZE_DIALOG_TITLE)
@@ -402,6 +462,7 @@ internal object PageCustomizeSettingsDialogs {
                         editor = prefs.edit(),
                         isFeatureVisible = settingsSession::isFeatureVisible,
                         isChecked = { key -> switchesByKey[key]?.isChecked == true },
+                        manualOffsetYDp = manualOffsetSlider.getValue(),
                     ).apply()
                     Toast.makeText(
                         context,

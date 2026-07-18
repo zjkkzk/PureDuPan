@@ -128,6 +128,9 @@ internal object BaiduFeatureSets {
 
     private val baiduSharedMyPageCustomize = listOf(
         FeatureKeys.KEY_MY_PAGE_CUSTOMIZE,
+        FeatureKeys.KEY_MY_PAGE_CONTENT_AUTO_FOLLOW_MEMBER_CARD,
+        FeatureKeys.KEY_MY_PAGE_CONTENT_MANUAL_OFFSET,
+        FeatureKeys.KEY_MY_PAGE_CONTENT_OFFSET_Y_DP,
         FeatureKeys.KEY_HIDE_ABOUT_ME_ACCOUNT_EXIT_TEXT,
         FeatureKeys.KEY_HIDE_ABOUT_ME_COIN_CENTER_BUBBLE,
         FeatureKeys.KEY_HIDE_ABOUT_ME_MANAGE_SPACE_TEXT,
